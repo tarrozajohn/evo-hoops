@@ -6375,7 +6375,7 @@ function treeBigList(A, pts){
       <button class="btn sm ${UI.keyLimArm ? 'hot' : ''}" data-act="tree-keylimit">${UI.keyLimArm ? 'Tap again to confirm' : LEAGUE.keyLimitOff ? 'Turn limit on' : 'Turn limit off'}</button></div>
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 173;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 174;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8752,7 +8752,7 @@ function playHelpHtml(){
     <h4>💡 Tips</h4><ul>
       <li>Let go of the stick and your player plays by himself.</li>
       <li>📺 lets the computer play. 🎮 lets you play again.</li>
-      <li>🎥 changes the camera.</li>
+      <li>🎥 changes the camera: Close, Wide or Overhead.</li>
       <li>❓ opens this help.</li></ul>
     <label class="autotog" style="align-self:flex-start"><input type="checkbox" data-autoturbo ${auto ? 'checked' : ''}>Sprint by myself (no turbo button needed)</label>
     <button class="btn hot" data-act="live" data-id="helpclose" style="width:100%">Let's play!</button></div>`;
@@ -9081,7 +9081,8 @@ function tokenImg(e, col){
    every assignment at once. 🎥 switches between the two, and each screen remembers its own choice. */
 
 // which camera this game screen uses right now: 'tv' (broadcast) or 'top' (overhead)
-const camMode = LV => LV.play ? (SET.camPlay || 'tv') : (SET.camWatch || 'top');
+const camSet = LV => LV.play ? (SET.camPlay || 'tv') : (SET.camWatch || 'top');   // 'tv' (close), 'tvwide' or 'top' (overhead)
+const camMode = LV => camSet(LV) === 'top' ? 'top' : 'tv';
 
 // Camera tilt. dy: how much of the court's depth shows (higher = looking down more steeply). zf: how tall things stand.
 const BC = { dy:0.6, zf:0.82 };
@@ -9127,21 +9128,26 @@ function bcastTick(LV, dt){
   // the ball leaves a short trail while it's flying
   LV.btrail = LV.btrail || [];
   if(dt > 0){ if(b.state === 'air' || b.state === 'pass'){ LV.btrail.unshift({ x:b.x, y:b.y, z:b.z }); if(LV.btrail.length > 9) LV.btrail.pop(); } else if(LV.btrail.length) LV.btrail.pop(); }
-  // CAMERA: frame the ball AND the player you control, zooming out when you're far apart
+  // CAMERA (v174), like a TV broadcast:
+  //  - in the half court it fits all ten players plus the hoop being attacked, zooming out as needed, so nobody is cut off
+  //  - on a fast break (players spread too far to fit) it keeps the ball in view and leads toward the hoop it's heading to
+  //  - up and down, it follows where the players are across the court, with the ball counting double
   const bx = held ? b.holder.x : b.x, by = held ? b.holder.y : b.y;
   const me = LV.play && G.ctrl && G.ents.includes(G.ctrl) ? G.ctrl : null;
-  let lo = me ? Math.min(bx, me.x) : bx, hi = me ? Math.max(bx, me.x) : bx;
-  const atk = held ? b.holder.team : G.poss;   // in the half court, keep the hoop being attacked in the picture
-  if(atk != null){ const hx = atkHoop(atk).x; if(Math.abs(hx - bx) < 36){ lo = Math.min(lo, hx - 4); hi = Math.max(hi, hx + 4); } }
-  const base = LV.bSpan, want = clamp(hi - lo + 10, base, base*1.3);   // zoom out at most 30%, so the players stay big
-  const cdt = dt || (LV.camX == null ? 1 : 0);   // first frame: jump straight to the action
-  LV.camS = LV.camS == null ? want : lerp(LV.camS, want, k(cdt*(want > LV.camS ? 3 : 1.5)));   // zoom out quickly, ease back in
+  const atk = held ? b.holder.team : G.poss, hx = atk != null ? atkHoop(atk).x : bx, dir = hx > 47 ? 1 : -1;
+  let lo = bx, hi = bx, sy = by*2, ny = 2;
+  for(const e of G.ents){ lo = Math.min(lo, e.x); hi = Math.max(hi, e.x); sy += e.y; ny++; }
+  if(Math.abs(hx - bx) < 40){ lo = Math.min(lo, hx - 5); hi = Math.max(hi, hx + 5); }     // the hoop being attacked stays in the shot
+  const base = LV.bSpan, maxS = base*1.6, want = clamp(hi - lo + 8, base, maxS);
   let cx = (lo + hi)/2;
-  if(hi - lo + 10 > LV.camS) cx = bx + Math.sign(me ? me.x - bx : 0)*(LV.camS/2 - 7);       // too far apart even zoomed out: keep the ball, lean toward you
-  const half = Math.min(LV.camS*0.5 - 6, COURT_L/2);                                     // can reach just past the baseline so the whole hoop fits
-  LV.camX = LV.camX == null ? clamp(cx, half, COURT_L - half) : lerp(LV.camX, clamp(cx, half, COURT_L - half), k(cdt*3));
-  const fy = me ? (by + me.y)/2 : by;
-  LV.camY = LV.camY == null ? clamp(fy, 6, 44) : lerp(LV.camY, clamp(fy, 6, 44), k(cdt*2));
+  if(hi - lo + 8 > maxS){   // too spread out to fit everyone: frame the ball, leaning toward where the play is going
+    cx = bx + dir*maxS*0.18; if(me && Math.abs(me.x - cx) > maxS*0.45) cx = lerp(cx, me.x, 0.25); }
+  const cdt = dt || (LV.camX == null ? 1 : 0);   // first frame: jump straight to the action
+  LV.camS = LV.camS == null ? want : lerp(LV.camS, want, k(cdt*(want > LV.camS ? 2.5 : 1.2)));   // zoom out quickly, ease back in
+  const half = Math.min(LV.camS*0.5 - 6, COURT_L/2);                                            // can reach just past the baseline so the whole hoop fits
+  LV.camX = LV.camX == null ? clamp(cx, half, COURT_L - half) : lerp(LV.camX, clamp(cx, half, COURT_L - half), k(cdt*2.4));
+  const fy = sy/ny;
+  LV.camY = LV.camY == null ? clamp(fy, 8, 42) : lerp(LV.camY, clamp(fy, 8, 42), k(cdt*1.6));
 }
 
 // The hoop: padded stanchion, glass backboard with the shooter's square, orange rim that bends after a dunk, and a swaying net.
@@ -9457,7 +9463,7 @@ function drawBroadcast(LV, cv){
   if(dt > 0 && !LV.bLow && now - LV.bT0 > 3000){
     if(!LV.bW) LV.bW = { t0:now, n:0 }; LV.bW.n++;
     if(now - LV.bW.t0 >= 2000){ const fps = LV.bW.n*1000/(now - LV.bW.t0); LV.bW = null; if(fps < 30){ LV.bLow = true; LV.camX = null; } } }
-  LV.bSpan = W < H*1.4 ? 36 : 54;   // feet of court across the screen: closer in on a phone held upright, so the creatures are bigger
+  LV.bSpan = (W < H*1.4 ? 36 : 54)*(camSet(LV) === 'tvwide' ? 1.35 : 1);   // feet of court across the screen: closer on an upright phone; Wide shows a third more
   if(!B_CROWD) makeBCrowd();
   B_BUDGET = 8;   // new sprites allowed this frame
   bcastTick(LV, dt);
@@ -9666,7 +9672,9 @@ function liveCall(id, silent){
     case 'switch': switchControl(G); return;
     case 'help': showPlayHelp(); return;
     // 🎥 switches this screen's camera between broadcast and overhead (playing and coaching remember their own choice)
-    case 'cam': { const k = LV.play ? 'camPlay' : 'camWatch'; SET[k] = camMode(LV) === 'tv' ? 'top' : 'tv'; saveSettings(); LV.camX = null; watchDraw(); return; }
+    case 'cam': { const k = LV.play ? 'camPlay' : 'camWatch', order = ['tv', 'tvwide', 'top'], next = order[(order.indexOf(camSet(LV)) + 1) % 3];
+      SET[k] = next; saveSettings(); LV.camX = null; LV.camS = null;
+      LV.feed.push({ tv:'🎥 Camera: Close', tvwide:'🎥 Camera: Wide', top:'🎥 Camera: Overhead' }[next]); watchRefresh(false); watchDraw(); return; }   // 🎥: Close → Wide → Overhead
     case 'helpclose': closePlayHelp(false); return;
     case 'playtoggle': LV.play = !LV.play; if(LV.play){ if(G.user == null){ G.user = G.mine; G.playAutoSub = true; } LV.speed = 1; } else LV.speed = SET.watchSpeed || 2;
       PIN.keys.clear(); PIN.tx = PIN.ty = 0; PIN.tTurbo = false; watchScreen(); return;   // with no input your player goes back to playing on his own
