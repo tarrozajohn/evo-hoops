@@ -1008,9 +1008,9 @@ function autoFillTree(p, focus){
   }
   return n;
 }
-/* Keystone limit: 4 by default. Each keystone is a game-changer; with all 16 a test season went 24-0 by 78 points a game
-   (with 4: 21-3 by 19.5). You can turn the limit off on the Skill Tree tab (L.keyLimitOff) and fill the whole tree. */
-function keySlots(L){ try { L = L || LEAGUE; } catch(e){ L = null; } return L && L.keyLimitOff ? 99 : 4; }
+/* Keystones: no limit (v180). You can take every one of them. (For reference: in a test season with all 16 your team went 24-0
+   and won by 78 points a game; with 4 it was 21-3 by 19.5.) */
+function keySlots(){ return 99; }
 const keyCount = p => treeOf(p).filter(id => TREE.N[id] && TREE.N[id].type === 'key').length;
 // The nodes you'd need to take to reach a node, nearest first (empty if you already own it, null if it can't be reached,
 // e.g. a keystone when all 4 keystone slots are full). Breadth-first search outward from everything you own.
@@ -5887,7 +5887,7 @@ function renderHelp(back){
         <h3 style="margin-top:12px">Your arena</h3><p class="dim">You are the GM, the franchise star and the landlord. Every home game, demand comes from fan hype, your record, your own star power, the opponent (Kaine nights draw big), the playoffs, marketing, the jumbotron and promotions, times your ticket price. Fill every seat for a sellout; sellout streaks build hype. Revenue is tickets, concessions and luxury suites. Expand seats and add upgrades on the Arena tab.</p>
         <h3 style="margin-top:12px">Kaine and achievements</h3><p class="dim">Beat Kaine's team once, then five times, then meet him in a playoff series. Win it and decide how the story ends. Achievements on the Legacy tab pay coins; spend coins on team colors, emblems, card frames and titles in the Shop.</p>
         <h3 style="margin-top:12px">Game plan</h3><p class="dim">On the Play tab. <b>Tempo</b>: fast teams shoot early and take more shots, slow teams work for better ones. <b>Shot diet</b>: attack the rim or let threes fly. <b>Defense</b>: pack the paint (more blocks and inside D), pressure (more steals, tires faster), or man to man. <b>Offense runs through</b>: you, or everyone. After each game the recap shows the score by quarter, runs, lead changes and who hit the go-ahead basket.</p>
-        <h3 style="margin-top:12px">Staying competitive</h3><p class="dim">Ratings past 85 level off in games, so a huge number still helps but can't break a game. You can hold up to ${keySlots() > 16 ? 'all 16' : keySlots()} keystones at once (the limit can be turned off on the Skill Tree tab). With <b>Competitive balance</b> on (Settings), teams you have been blowing out get fired up against you, shown as 🔥 on the Play tab; it cools off when games are close. CPU difficulty sets how sharp opponents play.</p>
+        <h3 style="margin-top:12px">Staying competitive</h3><p class="dim">Ratings past 85 level off in games, so a huge number still helps but can't break a game. You can hold every keystone at once. With <b>Competitive balance</b> on (Settings), teams you have been blowing out get fired up against you, shown as 🔥 on the Play tab; it cools off when games are close. CPU difficulty sets how sharp opponents play.</p>
         <h3 style="margin-top:12px">Rules of the floor</h3><p class="dim">Three straight makes by one creature makes it <b>Supercharged</b>: better shooting and unlimited turbo until the other team scores. No fouls. 24-second shot clock.</p></div>
       <div class="panel"><h3>Body</h3><p class="dim">Every creature has a height, wingspan and weight, shown on its card. Taller creatures release higher and shoot over smaller defenders. Long wingspans contest shots from farther away and reach more steals, passes and rebounds. Height and wingspan together help blocks. Weight slows you down and lowers your jump, but heavy creatures win body contact, knock others farther, resist shoves and power through blocks on dunks. Creatures grow when they evolve.</p></div>
       <div class="panel"><h3>Positions and playstyles</h3><p class="dim">Your five starters play PG, SG, SF, PF and C. Each creature has two natural positions from its archetype and height, and every step out of position costs 2 on every rating. Pick a playstyle for each creature on the Roster tab:</p>${STYLE_KEYS.map(k => `<div class="cond"><b>${STYLES[k].name}</b> <span class="dim">${STYLES[k].desc}</span></div>`).join('')}</div>
@@ -6381,14 +6381,10 @@ function treeBigList(A, pts){
     : near('key').slice(0, 6).map(({ n, path }) => row(n, path, KEYSTONES[n.key].desc + ` · ${path.length} step${path.length > 1 ? 's' : ''} away`)).join('');
   const otherKeys = full ? `<details style="margin-top:6px"><summary class="dim cond">See the other keystones</summary>${all.filter(n => n.type === 'key' && !own.has(n.id)).map(n => `<div class="cond" style="margin-top:4px"><b style="color:${TREE_COL[n.g]}">◆ ${esc(n.name)}</b> <span class="dim">${esc(KEYSTONES[n.key].desc)}</span></div>`).join('')}</details>` : '';
   return `<div class="panel tlist"><h3 style="margin:0">★ Masteries in reach</h3>${mas || '<div class="dim">You have every mastery you can reach.</div>'}</div>
-    <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${LEAGUE.keyLimitOff ? keyCount(A) + ' taken · no limit' : keyCount(A) + '/' + keySlots() + ' slots'}</span></h3>${keyList}${otherKeys}
-    <div class="frow" style="margin-top:6px"><span class="tmain"><b>${LEAGUE.keyLimitOff ? '🔓 No keystone limit' : '🔒 Limit: 4 keystones'}</b><br><span class="dim">${LEAGUE.keyLimitOff
-      ? 'You can take all 16. Turning the limit back on keeps your first 4 and refunds the rest as skill points.'
-      : 'Turn it off to fill the whole tree. Fair warning: in a test with your team, all 16 keystones went 24-0 and won by 78 a game (with 4: 21-3, by 19.5).'}</span></span>
-      <button class="btn sm ${UI.keyLimArm ? 'hot' : ''}" data-act="tree-keylimit">${UI.keyLimArm ? 'Tap again to confirm' : LEAGUE.keyLimitOff ? 'Turn limit on' : 'Turn limit off'}</button></div>
+    <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 179;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 180;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
