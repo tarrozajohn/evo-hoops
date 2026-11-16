@@ -552,13 +552,14 @@ img[src*="#pk"]{visibility:hidden}
 .treeinfo{flex-wrap:wrap}.treeinfo > div{flex:1 1 220px!important}.treeinfo > .btn{white-space:normal}
 /* 🎮 play controls */
 .ppad{display:none;justify-content:space-between;align-items:center;gap:12px;padding:6px 4px;touch-action:none;-webkit-user-select:none;user-select:none}
-.pjoy{position:relative;width:124px;height:124px;flex:none;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.06),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.18);touch-action:none}
+.pjoy{position:relative;width:112px;height:112px;flex:none;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.06),rgba(255,255,255,.12));border:2px solid rgba(255,255,255,.18);touch-action:none}
 .pknob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffa766,#f2661f 60%,#b9440d);box-shadow:0 4px 10px rgba(0,0,0,.5)}
 .pknob.turbo{box-shadow:0 0 0 4px #ffd23a,0 0 18px #ffd23a}
-.pbtns{display:grid;grid-template-columns:repeat(3,62px);grid-template-rows:56px 56px;gap:8px;touch-action:none}
+.pbtns{display:grid;grid-template-columns:repeat(4,54px);grid-template-rows:54px 54px;gap:6px;touch-action:none}
+.pbtns .pact{background:rgba(255,80,80,.14);border-color:rgba(255,120,120,.5)}
 .pbtns button{border-radius:50%;border:2px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:var(--text);font:700 12px var(--cond);letter-spacing:.03em;touch-action:none;-webkit-user-select:none;user-select:none}
 .pbtns button.down{background:rgba(255,255,255,.3)}
-.pbtns .pshoot{grid-row:span 2;align-self:center;height:72px;width:72px;background:#ff6b2c;border-color:#ffb07a;color:#1a0b02;font-size:14px}
+.pbtns .pshoot{grid-row:span 2;align-self:center;justify-self:center;height:66px;width:66px;background:#ff6b2c;border-color:#ffb07a;color:#1a0b02;font-size:14px}
 .pkeys{font-size:13px;text-align:center;padding:4px 0}
 .storycard.watchbox.playbox{max-width:min(1000px,100%);width:100%}
 #modal:has(.watchbox){align-items:flex-start}   /* the game screen starts at the top; centered, its scoreboard was cut off on tall content */   /* computers get a big court while you play */
@@ -1814,7 +1815,7 @@ function updateEnt(G, e, dt, inp){
   else if(ctl){
     userActions(G, e, inp, dt); if(e.dunk) return;
     // idle assist: if you let go of the controls without the ball, your player keeps playing smart until you move
-    const idle = hyp(inp.mx, inp.my) < 0.1 && !inp.btnTurbo && !inp.shootDown && !inp.passDown;   // btnTurbo: the real button (auto-sprint keeps turbo on)
+    const idle = hyp(inp.mx, inp.my) < 0.1 && !inp.actDown && !inp.shootDown && !inp.passDown;   // the TURBO switch being on doesn't count as touching the controls
     e.idleT = idle ? (e.idleT || 0) + dt : 0;
     const hasBall = G.ball.state === 'held' && G.ball.holder === e;
     if(e.idleT > 1.2 && !hasBall && SET.ctrlMode !== 'auto'){ const a = aiThink(G, e, dt); mx = a.mx; my = a.my; turbo = a.turbo; }
@@ -1897,16 +1898,25 @@ function userActions(G, e, inp, dt){
       else startJump(G, e, 1);
     } else if(inp.passDown && !e.shooting){
       const m = pickPassTarget(G, e, inp.mx, inp.my);
-      if(m) doPass(G, e, m, inp.btnTurbo && dist(m, atkHoop(e.team)) < 12 && dist(e, atkHoop(e.team)) > 6);   // TURBO button (not the stick) + Pass to a teammate near the rim = alley-oop lob
+      if(m) doPass(G, e, m, false);
+    } else if(inp.actDown && !e.shooting){
+      // LOB: one tap throws an alley-oop to the open teammate closest to the hoop (a normal pass if nobody is near it)
+      const h = atkHoop(e.team); let m = null, md = 12;
+      for(const o of G.ents){ if(o.team !== e.team || o === e || o.stun > 0) continue; const d = dist(o, h); if(d < md){ md = d; m = o; } }
+      if(m && dist(e, h) > 6) doPass(G, e, m, true);
+      else { const p2 = pickPassTarget(G, e, inp.mx, inp.my); if(p2) doPass(G, e, p2, false); }
     }
   } else {
     if(inp.shootDown && e.z === 0){ e.vz = 14 + e.r.blk*0.035 - e.dwt*0.8 + e.vert*0.6; e.z = 0.01; e.sq = 1.15; G.sfx('jump'); }   // block / rebound jump
     // a teammate has the ball: Pass calls for it
     if(inp.passDown && b.state === 'held' && b.holder.team === e.team){ G.callFor = { ent:e, t:G.t }; fxText(G, 'CALLING FOR IT', '#3fd0ff', e.x, e.y, 8, 0.5); return; }
+    // SHOVE: one tap knocks down the closest opponent if he's right next to you (costs some turbo)
+    if(inp.actDown && e.cd <= 0){ const opp = nearestOpp(G, e);
+      if(!opp || dist(e, opp) >= 3) fxText(G, 'TOO FAR', '#9aa3d6', e.x, e.y, 8, 0.6);
+      else if(e.turbo > 10 || e.fire) shove(G, e, opp);
+      else fxText(G, 'NO TURBO LEFT', '#9aa3d6', e.x, e.y, 8, 0.6); }
     if(inp.passDown && e.cd <= 0){
-      const opp = nearestOpp(G, e);
-      if(inp.btnTurbo && opp && dist(e, opp) < 3 && (e.turbo > 20 || e.fire)) shove(G, e, opp);
-      else if(b.state === 'held' && b.holder.team !== e.team && dist(e, b.holder) < 4.2 + e.dws*0.5 + (e.rare === 'ballhawk' ? 1.5 : 0)) trySteal(G, e, b.holder);
+      if(b.state === 'held' && b.holder.team !== e.team && dist(e, b.holder) < 4.2 + e.dws*0.5 + (e.rare === 'ballhawk' ? 1.5 : 0)) trySteal(G, e, b.holder);
       else e.cd = 0.35;
     }
   }
@@ -6375,7 +6385,7 @@ function treeBigList(A, pts){
       <button class="btn sm ${UI.keyLimArm ? 'hot' : ''}" data-act="tree-keylimit">${UI.keyLimArm ? 'Tap again to confirm' : LEAGUE.keyLimitOff ? 'Turn limit on' : 'Turn limit off'}</button></div>
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 175;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 176;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8636,25 +8646,25 @@ function coachStep(G){ stepGame(G, 1/30, null); coachTick(G); }
    🎮 Play puts you on the court of the Watch screen: you control one of your players, the rest of your team plays on its own.
    Computer: keyboard. Phone: an on-screen stick (left) and buttons (right).
    Everything writes into PIN; shootDown / shootUp / passDown are one-step events, cleared after each game step. */
-const PIN = { keys:new Set(), tx:0, ty:0, tTurbo:false, jTurbo:false, shootDown:false, shootUp:false, passDown:false };
+const PIN = { keys:new Set(), tx:0, ty:0, tTurbo:false, jTurbo:false, shootDown:false, shootUp:false, passDown:false, actDown:false };   // tTurbo: the TURBO switch; actDown: LOB/SHOVE tapped this step
 const PKEYS = { left:['ArrowLeft','KeyA'], right:['ArrowRight','KeyD'], up:['ArrowUp','KeyW'], down:['ArrowDown','KeyS'],
-  shoot:['KeyJ','KeyZ','Space'], pass:['KeyK','KeyX'], turbo:['ShiftLeft','ShiftRight','KeyL','KeyC'], ult:['KeyU','KeyV'] };
+  shoot:['KeyJ','KeyZ','Space'], pass:['KeyK','KeyX'], turbo:['ShiftLeft','ShiftRight'], act:['KeyL','KeyE'], ult:['KeyU','KeyV'] };   // Shift: turbo on/off; L or E: lob / shove
 const pKey = (code, act) => PKEYS[act].includes(code);
 // the input the engine reads each step: stick direction, turbo, and the button events
 function playInput(){
   const k = PIN.keys, has = act => PKEYS[act].some(c => k.has(c));
   const mx = (has('right') ? 1 : 0) - (has('left') ? 1 : 0) + PIN.tx, my = (has('down') ? 1 : 0) - (has('up') ? 1 : 0) + PIN.ty;
-  // auto-sprint (on by default): always sprinting when you move, and close-range SHOOT is always a dunk. The meter still
-  // drains while you sprint and refills while you stand, same as the other team. The TURBO button (btnTurbo) is still
-  // what makes alley-oops and shoves.
-  return { mx, my, turbo:SET.autoTurbo !== false || has('turbo') || PIN.tTurbo || PIN.jTurbo, btnTurbo:has('turbo') || PIN.tTurbo, touch:PIN.tx !== 0 || PIN.ty !== 0,
-    shootDown:PIN.shootDown, shootUp:PIN.shootUp, passDown:PIN.passDown };
+  // TURBO is a switch (on by default): while it's on you sprint whenever you move, and close-range SHOOT is always a dunk.
+  // The meter still drains while you sprint and refills while you stand, same as the other team. Pushing the stick all the
+  // way to the edge also sprints. actDown is the one-tap LOB (with the ball) or SHOVE (without it).
+  return { mx, my, turbo:PIN.tTurbo || PIN.jTurbo, touch:PIN.tx !== 0 || PIN.ty !== 0,
+    shootDown:PIN.shootDown, shootUp:PIN.shootUp, passDown:PIN.passDown, actDown:PIN.actDown };
 }
-function playClearEdges(){ PIN.shootDown = PIN.shootUp = PIN.passDown = false; }
+function playClearEdges(){ PIN.shootDown = PIN.shootUp = PIN.passDown = PIN.actDown = false; }
 // one game step with your input (used instead of coachStep while you're playing)
-function playStep(G){ stepGame(G, 1/30, playInput()); coachTick(G);
-  if(SET.autoTurbo !== false && PIN.tTurbo && PIN.passDown){ PIN.tTurbo = false; padLabels(G); }   // LOB/SHOVE: used by this pass or steal, so it turns itself off
-  playClearEdges(); }
+function playStep(G){ stepGame(G, 1/30, playInput()); coachTick(G); playClearEdges(); }
+// TURBO on/off (phone button or Shift); the choice is remembered for next time
+function toggleTurbo(G){ PIN.tTurbo = !PIN.tTurbo; SET.turboOn = PIN.tTurbo; saveSettings(); if(G) padLabels(G); }
 const playOn = () => !!(UI.live && UI.live.play && UI.live.watch && !UI.live.paused && !UI.live.G.over);
 // SWITCH: move to the next teammate on the floor (PG, SG, SF, PF, C, then around) and stay on him
 function switchControl(G){
@@ -8677,6 +8687,8 @@ if(typeof document !== 'undefined'){
     PIN.keys.add(ev.code);
     if(pKey(ev.code, 'shoot')) PIN.shootDown = true;
     if(pKey(ev.code, 'pass')) PIN.passDown = true;
+    if(pKey(ev.code, 'turbo')) toggleTurbo(LV.G);
+    if(pKey(ev.code, 'act')) PIN.actDown = true;
     if(pKey(ev.code, 'ult') && LV.G.ctrl) activateUlt(LV.G, LV.G.ctrl);
     try { audioInit(); } catch(e){}
   });
@@ -8704,7 +8716,8 @@ function setupPlayTouch(){
     btn.addEventListener('pointerdown', ev => { ev.preventDefault(); try { btn.setPointerCapture(ev.pointerId); } catch(e){} btn.classList.add('down');
       const LV = UI.live; if(!LV) return;
       if(!playOn() && b !== 'turbo'){ liveCall('pause'); return; }   // any button starts a paused game
-      if(b === 'shoot') PIN.shootDown = true; if(b === 'pass') PIN.passDown = true; if(b === 'turbo'){ PIN.tTurbo = !PIN.tTurbo; padLabels(LV.G); }   // a tap turns it on or off (no holding)
+      if(b === 'shoot') PIN.shootDown = true; if(b === 'pass') PIN.passDown = true; if(b === 'act') PIN.actDown = true;
+      if(b === 'turbo') toggleTurbo(LV.G);   // a tap turns it on or off (no holding)
       if(b === 'switch') switchControl(LV.G); if(b === 'ult' && LV.G.ctrl) activateUlt(LV.G, LV.G.ctrl); });
     const up = () => { btn.classList.remove('down'); if(b === 'shoot') PIN.shootUp = true; };
     btn.addEventListener('pointerup', up); btn.addEventListener('pointercancel', up);
@@ -8720,16 +8733,18 @@ function playHelpHtml(){
   // one row of the guide: the button, then what it does
   const row = (k, t) => `<div class="ph-k">${k}</div><div>${t}</div>`;
   const touch = `<h4>📱 Phone buttons</h4><div class="ph-grid">
-      ${row('<span class="ph-stick"></span> Stick', auto ? 'Move. You run fast by yourself.' : 'Move. Push it all the way to run fast.')}
+      ${row('<span class="ph-stick"></span> Stick', 'Move.')}
       ${row('<span class="ph-btn hot">SHOOT</span>', 'Shoot. On defense it says <b>JUMP</b>: jump to block.')}
       ${row('<span class="ph-btn">PASS</span>', 'Pass. On defense it says <b>STEAL</b>: grab the ball.')}
-      ${auto ? row('<span class="ph-btn">LOB</span>', 'Tap it (it lights up), then tap PASS to throw an alley-oop. On defense it says <b>SHOVE</b>: tap it, then tap STEAL next to someone to knock them down (and the ball loose).') : row('<span class="ph-btn">TURBO</span>', 'Tap to turn running fast on or off.')}
+      ${row('<span class="ph-btn">TURBO</span>', 'Run fast. Tap to turn it on or off. It lights up while it\'s on, and it starts on.')}
+      ${row('<span class="ph-btn" style="background:rgba(255,80,80,.14)">SHOVE</span>', 'Tap next to someone to knock them down. If they had the ball, it pops loose. With the ball it says <b>LOB</b>: tap to throw an alley-oop.')}
       ${row('<span class="ph-btn">SWITCH</span>', 'Control a different teammate.')}
       ${row('<span class="ph-btn">ULT</span>', 'Super move! Tap it when it says 100%.')}
     </div>`;
   const keys = `<h4>⌨️ Keyboard</h4><div class="ph-grid">
       ${row('<kbd>W A S D</kbd> or arrows', 'Move')}
-      ${row('<kbd>Shift</kbd>', auto ? 'Lob / Shove (hold it and tap K)' : 'Run fast')}
+      ${row('<kbd>Shift</kbd>', 'Turbo on / off')}
+      ${row('<kbd>L</kbd> or <kbd>E</kbd>', 'Lob / Shove')}
       ${row('<kbd>J</kbd> or <kbd>Space</kbd>', 'Shoot / Jump')}
       ${row('<kbd>K</kbd>', 'Pass / Steal')}
       ${row('<kbd>Q</kbd>', 'Switch player')}
@@ -8741,20 +8756,19 @@ function playHelpHtml(){
     ${phone ? touch + keys : keys + touch}
     <h4>🏀 Score</h4><ul>
       <li><b>Shoot:</b> hold SHOOT. Let go when the bar is in the <b style="color:#3fe08a">green</b>.</li>
-      <li><b>Dunk:</b> get close to the hoop and tap SHOOT.${auto ? '' : ' (Turn TURBO on if you\'re not right under it.)'}</li>
+      <li><b>Dunk:</b> get close to the hoop and tap SHOOT. (With TURBO off, you have to be right under it.)</li>
       <li><b>Drive:</b> run at the hoop and hold SHOOT. You dunk when you get there.</li>
       <li><b>Pass:</b> point the stick at a teammate and tap PASS.</li>
-      <li><b>Alley-oop:</b> tap ${auto ? 'LOB' : 'TURBO'}, then tap PASS to a teammate near the hoop.</li></ul>
+      <li><b>Alley-oop:</b> tap LOB when a teammate is near the hoop.</li></ul>
     <h4>🛡️ Defend</h4><ul>
       <li><b>Steal:</b> get right next to the player with the ball. Tap STEAL.</li>
       <li><b>Block:</b> tap JUMP when they shoot.</li>
-      <li><b>Shove:</b> tap ${auto ? 'SHOVE' : 'TURBO'}, then tap STEAL next to someone. They fall down, and if they had the ball it pops loose.</li></ul>
+      <li><b>Shove:</b> get right next to someone and tap SHOVE. They fall down, and if they had the ball it pops loose.</li></ul>
     <h4>💡 Tips</h4><ul>
       <li>Let go of the stick and your player plays by himself.</li>
       <li>📺 lets the computer play. 🎮 lets you play again.</li>
       <li>🎥 changes the camera: Close, Wide or Overhead.</li>
       <li>❓ opens this help.</li></ul>
-    <label class="autotog" style="align-self:flex-start"><input type="checkbox" data-autoturbo ${auto ? 'checked' : ''}>Sprint by myself (no turbo button needed)</label>
     <button class="btn hot" data-act="live" data-id="helpclose" style="width:100%">Let's play!</button></div>`;
 }
 function showPlayHelp(){
@@ -8762,7 +8776,6 @@ function showPlayHelp(){
   LV.helpPaused = !LV.paused && !LV.G.over; LV.paused = true; watchRefresh(false);   // pause while the guide is open
   PIN.keys.clear(); PIN.tx = PIN.ty = 0;
   const d = document.createElement('div'); d.id = 'playhelp'; d.innerHTML = playHelpHtml(); document.body.appendChild(d);
-  d.addEventListener('change', ev => { if(!ev.target.matches('[data-autoturbo]')) return; SET.autoTurbo = ev.target.checked; saveSettings(); d.innerHTML = playHelpHtml(); padLabels(LV.G); });
   SET.playHelpSeen = true; saveSettings();
 }
 function closePlayHelp(quiet){
@@ -8774,7 +8787,7 @@ function padLabels(G){
   const pad = document.getElementById('pbtns'); if(!pad || !G) return;
   const b = G.ball, c = G.ctrl, has = c && b.state === 'held' && b.holder === c, mateHas = c && b.state === 'held' && b.holder.team === c.team && !has;
   const want = { shoot: has ? 'SHOOT' : 'JUMP', pass: has ? 'PASS' : mateHas ? 'CALL FOR IT' : 'STEAL', ult: 'ULT ' + Math.round((G.ultM || [0, 0])[G.mine]) + '%',
-    turbo: SET.autoTurbo === false ? 'TURBO' : has ? 'LOB' : 'SHOVE' };   // auto-sprint: this button is only for alley-oops (LOB) and shoves (SHOVE)
+    act: has ? 'LOB' : 'SHOVE', turbo: 'TURBO' };
   for(const k in want){ const el = pad.querySelector(`[data-b="${k}"]`); if(el && el.textContent !== want[k]) el.textContent = want[k]; }
   const u = pad.querySelector('[data-b="ult"]'); if(u) u.classList.toggle('ready', (G.ultM || [0, 0])[G.mine] >= 100);
   const tb = pad.querySelector('[data-b="turbo"]'); if(tb) tb.classList.toggle('on', !!PIN.tTurbo);   // lit while switched on
@@ -8951,13 +8964,14 @@ function watchScreen(){
       ${LV.play ? `<button class="btn sm" data-act="live" data-id="help" title="How to play">❓</button>` : ''}
       <button class="btn sm" data-act="live" data-id="end">⏭ Sim</button></div>
     ${LV.play ? `<div class="ppad" id="ppad"><div class="pjoy" id="pjoy"><div class="pknob" id="pknob"></div></div>
-      <div class="pbtns" id="pbtns"><button data-b="pass">PASS</button><button data-b="shoot" class="pshoot">SHOOT</button><button data-b="turbo">TURBO</button><button data-b="switch">SWITCH</button><button data-b="ult">ULT ${Math.round((G.ultM || [0, 0])[G.mine])}%</button></div></div>
-      <div class="pkeys dim cond">Move: WASD. Shoot: hold J, let go in the green. Pass: K. <b>❓ for help.</b></div>
+      <div class="pbtns" id="pbtns"><button data-b="pass">PASS</button><button data-b="shoot" class="pshoot">SHOOT</button><button data-b="act" class="pact">SHOVE</button><button data-b="turbo">TURBO</button><button data-b="switch">SWITCH</button><button data-b="ult">ULT ${Math.round((G.ultM || [0, 0])[G.mine])}%</button></div></div>
+      <div class="pkeys dim cond">Move: WASD. Shoot: hold J, let go in the green. Pass: K. Turbo: Shift. Shove/Lob: L. <b>❓ for help.</b></div>
       <div class="ptouchhint dim cond">Hold SHOOT. Let go in the green. Tap ❓ for help.</div>` : ''}
     <div class="msg walert" id="w-alert" ${sitAlert(G) ? '' : 'hidden'}>${sitAlert(G)}</div></div>
     <div id="w-panel">${coachPanel(G)}</div></div>`;
   if(!LV.shown){ LV.shown = true; M.scrollTop = 0; }   // open at the scoreboard
   else { M.scrollTop = y0; requestAnimationFrame(() => { M.scrollTop = y0; }); }
+  if(LV.play && LV.turboSet == null){ LV.turboSet = 1; PIN.tTurbo = SET.turboOn !== false && SET.autoTurbo !== false; }   // TURBO starts how you left it (on the first time)
   watchDraw(); watchLoop(); if(LV.play){ setupPlayTouch(); padLabels(G); if(!SET.playHelpSeen) showPlayHelp(); } else closePlayHelp(true);   // first time in control: open the guide
 }
 // the current scoring run, from the play log: points in a row by one team (shown when it's 6-0 or more)
@@ -9676,7 +9690,7 @@ function liveCall(id, silent){
       SET[k] = next; saveSettings(); LV.camX = null; LV.camS = null;
       LV.feed.push({ tv:'🎥 Camera: Close', tvwide:'🎥 Camera: Wide', top:'🎥 Camera: Overhead' }[next]); watchRefresh(false); watchDraw(); return; }   // 🎥: Close → Wide → Overhead
     case 'helpclose': closePlayHelp(false); return;
-    case 'playtoggle': LV.play = !LV.play; if(LV.play){ if(G.user == null){ G.user = G.mine; G.playAutoSub = true; } LV.speed = 1; } else LV.speed = SET.watchSpeed || 2;
+    case 'playtoggle': LV.play = !LV.play; if(LV.play){ if(G.user == null){ G.user = G.mine; G.playAutoSub = true; } LV.speed = 1; PIN.tTurbo = SET.turboOn !== false && SET.autoTurbo !== false; } else LV.speed = SET.watchSpeed || 2;
       PIN.keys.clear(); PIN.tx = PIN.ty = 0; PIN.tTurbo = false; watchScreen(); return;   // with no input your player goes back to playing on his own
     case 'pause': if(G.over){ liveFinish(); return; } LV.paused = !LV.paused; watchRefresh(false); return;
     case 'speedcycle': { const sp = [1, 2, 4, 8]; LV.speed = sp[(sp.indexOf(LV.speed) + 1) % sp.length]; SET.watchSpeed = LV.speed; saveSettings(); const el = document.getElementById('w-speed'); if(el) el.textContent = LV.speed + 'x'; return; }
