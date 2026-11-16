@@ -6385,7 +6385,7 @@ function treeBigList(A, pts){
       <button class="btn sm ${UI.keyLimArm ? 'hot' : ''}" data-act="tree-keylimit">${UI.keyLimArm ? 'Tap again to confirm' : LEAGUE.keyLimitOff ? 'Turn limit on' : 'Turn limit off'}</button></div>
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 176;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 177;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8657,7 +8657,7 @@ function playInput(){
   // TURBO is a switch (on by default): while it's on you sprint whenever you move, and close-range SHOOT is always a dunk.
   // The meter still drains while you sprint and refills while you stand, same as the other team. Pushing the stick all the
   // way to the edge also sprints. actDown is the one-tap LOB (with the ball) or SHOVE (without it).
-  return { mx, my, turbo:PIN.tTurbo || PIN.jTurbo, touch:PIN.tx !== 0 || PIN.ty !== 0,
+  return { mx, my, turbo:PIN.tTurbo, touch:PIN.tx !== 0 || PIN.ty !== 0,   // only the TURBO switch sprints (and burns the turbo bar)
     shootDown:PIN.shootDown, shootUp:PIN.shootUp, passDown:PIN.passDown, actDown:PIN.actDown };
 }
 function playClearEdges(){ PIN.shootDown = PIN.shootUp = PIN.passDown = PIN.actDown = false; }
@@ -8705,7 +8705,7 @@ function setupPlayTouch(){
     if(len > R){ dx = dx/len*R; dy = dy/len*R; }
     knob.style.transform = `translate(${dx}px,${dy}px)`;
     PIN.tx = dx/R; PIN.ty = dy/R; if(hyp(PIN.tx, PIN.ty) < 0.15) PIN.tx = PIN.ty = 0;
-    PIN.jTurbo = len >= R*0.92; knob.classList.toggle('turbo', PIN.jTurbo);
+    PIN.jTurbo = false;   // pushing the stick to the edge no longer sprints; only the TURBO switch does
   };
   joy.addEventListener('pointerdown', ev => { ev.preventDefault(); jid = ev.pointerId; try { joy.setPointerCapture(jid); } catch(e){} moveJoy(ev); try { audioInit(); } catch(e){} });
   joy.addEventListener('pointermove', ev => { if(ev.pointerId === jid) moveJoy(ev); });
@@ -8736,7 +8736,7 @@ function playHelpHtml(){
       ${row('<span class="ph-stick"></span> Stick', 'Move.')}
       ${row('<span class="ph-btn hot">SHOOT</span>', 'Shoot. On defense it says <b>JUMP</b>: jump to block.')}
       ${row('<span class="ph-btn">PASS</span>', 'Pass. On defense it says <b>STEAL</b>: grab the ball.')}
-      ${row('<span class="ph-btn">TURBO</span>', 'Run fast. Tap to turn it on or off. It lights up while it\'s on, and it starts on.')}
+      ${row('<span class="ph-btn">TURBO</span>', 'Run fast. Tap to turn it on or off. It lights up while it\'s on. Running fast uses up the blue turbo bar over your player; it refills while turbo is off.')}
       ${row('<span class="ph-btn" style="background:rgba(255,80,80,.14)">SHOVE</span>', 'Tap next to someone to knock them down. If they had the ball, it pops loose. With the ball it says <b>LOB</b>: tap to throw an alley-oop.')}
       ${row('<span class="ph-btn">SWITCH</span>', 'Control a different teammate.')}
       ${row('<span class="ph-btn">ULT</span>', 'Super move! Tap it when it says 100%.')}
@@ -8756,7 +8756,7 @@ function playHelpHtml(){
     ${phone ? touch + keys : keys + touch}
     <h4>🏀 Score</h4><ul>
       <li><b>Shoot:</b> hold SHOOT. Let go when the bar is in the <b style="color:#3fe08a">green</b>.</li>
-      <li><b>Dunk:</b> get close to the hoop and tap SHOOT. (With TURBO off, you have to be right under it.)</li>
+      <li><b>Dunk:</b> get right under the hoop and tap SHOOT. With TURBO on, you can dunk from a few steps farther out.</li>
       <li><b>Drive:</b> run at the hoop and hold SHOOT. You dunk when you get there.</li>
       <li><b>Pass:</b> point the stick at a teammate and tap PASS.</li>
       <li><b>Alley-oop:</b> tap LOB when a teammate is near the hoop.</li></ul>
@@ -8971,7 +8971,7 @@ function watchScreen(){
     <div id="w-panel">${coachPanel(G)}</div></div>`;
   if(!LV.shown){ LV.shown = true; M.scrollTop = 0; }   // open at the scoreboard
   else { M.scrollTop = y0; requestAnimationFrame(() => { M.scrollTop = y0; }); }
-  if(LV.play && LV.turboSet == null){ LV.turboSet = 1; PIN.tTurbo = SET.turboOn !== false && SET.autoTurbo !== false; }   // TURBO starts how you left it (on the first time)
+  if(LV.play && LV.turboSet == null){ LV.turboSet = 1; PIN.tTurbo = SET.turboOn === true; }   // TURBO starts how you left it (off the first time)
   watchDraw(); watchLoop(); if(LV.play){ setupPlayTouch(); padLabels(G); if(!SET.playHelpSeen) showPlayHelp(); } else closePlayHelp(true);   // first time in control: open the guide
 }
 // the current scoring run, from the play log: points in a row by one team (shown when it's 6-0 or more)
@@ -9690,7 +9690,7 @@ function liveCall(id, silent){
       SET[k] = next; saveSettings(); LV.camX = null; LV.camS = null;
       LV.feed.push({ tv:'🎥 Camera: Close', tvwide:'🎥 Camera: Wide', top:'🎥 Camera: Overhead' }[next]); watchRefresh(false); watchDraw(); return; }   // 🎥: Close → Wide → Overhead
     case 'helpclose': closePlayHelp(false); return;
-    case 'playtoggle': LV.play = !LV.play; if(LV.play){ if(G.user == null){ G.user = G.mine; G.playAutoSub = true; } LV.speed = 1; PIN.tTurbo = SET.turboOn !== false && SET.autoTurbo !== false; } else LV.speed = SET.watchSpeed || 2;
+    case 'playtoggle': LV.play = !LV.play; if(LV.play){ if(G.user == null){ G.user = G.mine; G.playAutoSub = true; } LV.speed = 1; PIN.tTurbo = SET.turboOn === true; } else LV.speed = SET.watchSpeed || 2;
       PIN.keys.clear(); PIN.tx = PIN.ty = 0; PIN.tTurbo = false; watchScreen(); return;   // with no input your player goes back to playing on his own
     case 'pause': if(G.over){ liveFinish(); return; } LV.paused = !LV.paused; watchRefresh(false); return;
     case 'speedcycle': { const sp = [1, 2, 4, 8]; LV.speed = sp[(sp.indexOf(LV.speed) + 1) % sp.length]; SET.watchSpeed = LV.speed; saveSettings(); const el = document.getElementById('w-speed'); if(el) el.textContent = LV.speed + 'x'; return; }
