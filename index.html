@@ -6375,7 +6375,7 @@ function treeBigList(A, pts){
       <button class="btn sm ${UI.keyLimArm ? 'hot' : ''}" data-act="tree-keylimit">${UI.keyLimArm ? 'Tap again to confirm' : LEAGUE.keyLimitOff ? 'Turn limit on' : 'Turn limit off'}</button></div>
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 174;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 175;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8653,7 +8653,7 @@ function playInput(){
 function playClearEdges(){ PIN.shootDown = PIN.shootUp = PIN.passDown = false; }
 // one game step with your input (used instead of coachStep while you're playing)
 function playStep(G){ stepGame(G, 1/30, playInput()); coachTick(G);
-  if(SET.autoTurbo !== false && PIN.tTurbo && PIN.passDown){ PIN.tTurbo = false; padLabels(G); }   // LOB/PUSH: used by this pass or steal, so it turns itself off
+  if(SET.autoTurbo !== false && PIN.tTurbo && PIN.passDown){ PIN.tTurbo = false; padLabels(G); }   // LOB/SHOVE: used by this pass or steal, so it turns itself off
   playClearEdges(); }
 const playOn = () => !!(UI.live && UI.live.play && UI.live.watch && !UI.live.paused && !UI.live.G.over);
 // SWITCH: move to the next teammate on the floor (PG, SG, SF, PF, C, then around) and stay on him
@@ -8723,13 +8723,13 @@ function playHelpHtml(){
       ${row('<span class="ph-stick"></span> Stick', auto ? 'Move. You run fast by yourself.' : 'Move. Push it all the way to run fast.')}
       ${row('<span class="ph-btn hot">SHOOT</span>', 'Shoot. On defense it says <b>JUMP</b>: jump to block.')}
       ${row('<span class="ph-btn">PASS</span>', 'Pass. On defense it says <b>STEAL</b>: grab the ball.')}
-      ${auto ? row('<span class="ph-btn">LOB</span>', 'Tap it (it lights up), then tap PASS to throw an alley-oop. On defense it says <b>PUSH</b>: tap it, then tap STEAL to push.') : row('<span class="ph-btn">TURBO</span>', 'Tap to turn running fast on or off.')}
+      ${auto ? row('<span class="ph-btn">LOB</span>', 'Tap it (it lights up), then tap PASS to throw an alley-oop. On defense it says <b>SHOVE</b>: tap it, then tap STEAL next to someone to knock them down (and the ball loose).') : row('<span class="ph-btn">TURBO</span>', 'Tap to turn running fast on or off.')}
       ${row('<span class="ph-btn">SWITCH</span>', 'Control a different teammate.')}
       ${row('<span class="ph-btn">ULT</span>', 'Super move! Tap it when it says 100%.')}
     </div>`;
   const keys = `<h4>⌨️ Keyboard</h4><div class="ph-grid">
       ${row('<kbd>W A S D</kbd> or arrows', 'Move')}
-      ${row('<kbd>Shift</kbd>', auto ? 'Lob / Push (hold it and tap K)' : 'Run fast')}
+      ${row('<kbd>Shift</kbd>', auto ? 'Lob / Shove (hold it and tap K)' : 'Run fast')}
       ${row('<kbd>J</kbd> or <kbd>Space</kbd>', 'Shoot / Jump')}
       ${row('<kbd>K</kbd>', 'Pass / Steal')}
       ${row('<kbd>Q</kbd>', 'Switch player')}
@@ -8748,7 +8748,7 @@ function playHelpHtml(){
     <h4>🛡️ Defend</h4><ul>
       <li><b>Steal:</b> get right next to the player with the ball. Tap STEAL.</li>
       <li><b>Block:</b> tap JUMP when they shoot.</li>
-      <li><b>Push:</b> tap ${auto ? 'PUSH' : 'TURBO'}, then tap STEAL next to someone.</li></ul>
+      <li><b>Shove:</b> tap ${auto ? 'SHOVE' : 'TURBO'}, then tap STEAL next to someone. They fall down, and if they had the ball it pops loose.</li></ul>
     <h4>💡 Tips</h4><ul>
       <li>Let go of the stick and your player plays by himself.</li>
       <li>📺 lets the computer play. 🎮 lets you play again.</li>
@@ -8774,7 +8774,7 @@ function padLabels(G){
   const pad = document.getElementById('pbtns'); if(!pad || !G) return;
   const b = G.ball, c = G.ctrl, has = c && b.state === 'held' && b.holder === c, mateHas = c && b.state === 'held' && b.holder.team === c.team && !has;
   const want = { shoot: has ? 'SHOOT' : 'JUMP', pass: has ? 'PASS' : mateHas ? 'CALL FOR IT' : 'STEAL', ult: 'ULT ' + Math.round((G.ultM || [0, 0])[G.mine]) + '%',
-    turbo: SET.autoTurbo === false ? 'TURBO' : has ? 'LOB' : 'PUSH' };   // auto-sprint: this button is only for alley-oops (LOB) and shoves (PUSH)
+    turbo: SET.autoTurbo === false ? 'TURBO' : has ? 'LOB' : 'SHOVE' };   // auto-sprint: this button is only for alley-oops (LOB) and shoves (SHOVE)
   for(const k in want){ const el = pad.querySelector(`[data-b="${k}"]`); if(el && el.textContent !== want[k]) el.textContent = want[k]; }
   const u = pad.querySelector('[data-b="ult"]'); if(u) u.classList.toggle('ready', (G.ultM || [0, 0])[G.mine] >= 100);
   const tb = pad.querySelector('[data-b="turbo"]'); if(tb) tb.classList.toggle('on', !!PIN.tTurbo);   // lit while switched on
