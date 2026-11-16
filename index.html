@@ -1,3 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- lay the page out at the phone's real width (without this, iPhone Safari draws a 980px desktop page shrunk down) -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Evo Hoops: a creature basketball franchise game. Draft, train, evolve and play.">
+<meta name="theme-color" content="#05060f">
+<!-- Add to Home Screen: opens full screen like an app, with its own icon and name -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Evo Hoops">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- tells the game it's on the website (saves live on the device; no Claude cloud save here) -->
+<script>window.EVO_WEB = true;</script>
+</head>
+<body>
 <title>Evo Hoops</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -514,6 +534,7 @@ html.skin .msg{border-radius:0 8px 8px 0;border-left-color:var(--acc);background
 .farmodds{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font:500 14px var(--cond);align-items:baseline}.farmodds b{color:var(--gold,#ffcf4a)}.farmpair{display:flex;align-items:center;justify-content:center;gap:10px}.farmpair img{width:72px;height:79px}.farmpair .x{font:800 26px var(--cond);opacity:.7}.frow.sel{outline:2px solid var(--acc,#ff6b2c);outline-offset:-2px}
 .face{position:relative;flex:none;width:60px;height:64px;border-radius:10px;border:2px solid var(--t1);border-right-color:var(--t2);border-bottom-color:var(--t2);background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--t1) 45%,transparent),rgba(0,0,0,.55) 75%);overflow:hidden;display:inline-block}.face img{position:absolute;left:50%;bottom:-2px;width:66px!important;height:72px!important;transform:translateX(-50%)}.face .fpos{position:absolute;right:0;bottom:0;font:800 10px var(--cond);font-style:normal;padding:0 4px;border-radius:6px 0 0 0;background:rgba(0,0,0,.78);color:#fff;letter-spacing:.03em}.face .faura{position:absolute;left:2px;top:0;font-style:normal;font-size:12px;color:#ffd23a;text-shadow:0 0 4px #000}.trow .tmain b,.frow .tmain b{font-size:16px}
 .promptcard .eventopts{flex-direction:column}.promptcard .eventopts .btn{max-width:none;width:100%}.promptcard .pwho{flex-direction:row!important;align-items:center!important;gap:10px}.promptcard .pwho>span:last-child{display:flex;flex-direction:column;gap:2px;align-items:flex-start}.promptfoot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:10px}.btn.ghost{background:none;border-color:transparent;opacity:.65}
+img[src*="#pk"]{visibility:hidden}
 .upgchip.ring{background:rgba(255,210,58,.14);color:#ffd23a;border:1px solid #ffd23a}
 .champcard{position:relative;overflow:hidden!important;text-align:center;align-items:stretch;border:2px solid #ffd23a!important;box-shadow:0 0 40px rgba(255,210,58,.35)!important;background:radial-gradient(120% 60% at 50% 0%,rgba(255,210,58,.22),transparent 70%),#0e0d0c!important;clip-path:none!important;border-radius:14px!important}
 .champtop{display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -557,7 +578,13 @@ html.skin .msg{border-radius:0 8px 8px 0;border-left-color:var(--acc);background
 .ph-btn.hot{background:#ff6b2c;border-color:#ffb07a;color:#1a0b02}
 .ph-stick{display:inline-block;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,#ff8a3d 35%,rgba(255,255,255,.12) 38%);border:2px solid rgba(255,255,255,.25)}
 .ph-card kbd{display:inline-block;padding:1px 6px;border-radius:5px;border:1px solid rgba(255,255,255,.35);border-bottom-width:3px;font:700 12px var(--cond);background:rgba(255,255,255,.06)}
-@media (pointer:coarse){ .ppad{display:flex} .pkeys{display:none} .ptouchhint{display:block} }
+@media (pointer:coarse){ .ppad{display:flex} .pkeys{display:none} .ptouchhint{display:block}
+  .playbox .watchctl{display:flex;flex-wrap:nowrap;gap:4px;padding:4px}
+  .playbox .watchctl .btn{flex:1 1 0;padding:7px 2px;font-size:11px}
+  .playbox .watchfeed{min-height:0;max-height:1.4em;overflow:hidden;padding:2px 8px;font-size:12px}
+  .playbox .watchtop{gap:6px}
+  .playbox .ppad{padding:2px 4px}
+  .playbox .ptouchhint{padding:0 0 2px;font-size:12px} }
 </style>
 
 <div id="view"></div>
@@ -597,8 +624,8 @@ const rand = Math.random;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 // distance helper: same result as Math.hypot(a, b) but several times faster (the game engine calls it millions of times a season)
 const hyp = (a, b) => Math.sqrt(a*a + b*b);
-const MEMO = { on:false, ls:new Map(), ovr:new Map(), cont:new Map() };   // trade-math caches (see ovr)
-const memoClear = () => { MEMO.ls.clear(); MEMO.ovr.clear(); MEMO.cont.clear(); MEMO.scale = null; };
+const MEMO = { on:false, ls:new Map(), ovr:new Map(), cont:new Map(), phys:new Map(), npos:new Map() };   // phys/npos: body size and natural positions, which don't change during one round of trade math   // trade-math caches (see ovr)
+const memoClear = () => { MEMO.ls.clear(); MEMO.ovr.clear(); MEMO.cont.clear(); MEMO.phys.clear(); MEMO.npos.clear(); MEMO.scale = null; };
 const lerp = (a, b, t) => a + (b - a) * t;
 const dist = (a, b) => hyp(a.x - b.x, a.y - b.y);     // 2D distance on the floor
 const pick = arr => arr[Math.floor(rand() * arr.length)];
@@ -1236,6 +1263,10 @@ function randBody(){ const n = () => (rand() + rand() + rand() - 1.5)/1.5; retur
 const ARCH_SPAN = { slasher:1.05, shooter:1.03, big:1.08, guard:1.01, wing:1.06 };   // wingspan / height
 const BODY_REF = { h:72, ws:75, wt:170 };   // league-average body that the gameplay effects compare against
 function physicals(p){
+  if(MEMO.on){ const c = MEMO.phys.get(p); if(c) return c; const v = physicals0(p); MEMO.phys.set(p, v); return v; }   // cached during trade math
+  return physicals0(p);
+}
+function physicals0(p){
   const S = SPECIES[p.sp], K = S.look, b = SHAPES[K.shape], v = p.bod || { h:1, ws:1, wt:1 }, sc = stageScale(S);
   const units = (0.07 + K.leg + b.ry*K.body*1.85 + b.hr*K.head*1.55)*sc;       // drawn height, feet to top of head
   const vol = Math.pow(b.rx*K.body, 2)*b.ry*K.body*Math.pow(sc, 3);              // rough body volume
@@ -3685,6 +3716,24 @@ function ultimatePal(t){ const h = (t*70) % 360; return { layers:[hslRgb(h, 90, 
 const AURA_SPARKS = { 1:['#ffd23a', '#fff1a8'], 2:['#ff4a3a', '#ffb08a'], 3:['#7fd8ff', '#ffffff', '#b9e6ff'], 4:Object.values(TYPES).map(T => T.c).concat(['#ffffff']), 5:['#fff4d6', '#ffffff', '#ffd98a'], 7:['#ffffff', '#f2f6ff', '#dfe8ff', '#ffffff', '#cfdcff'], 6:['#fff4d6', '#ffffff'].concat(Object.values(TYPES).map(T => T.c)) };
 // Portrait images for menus, cached by species + jersey color.
 const PORTRAITS = new Map();
+/* Lazy faces. Drawing a face and turning it into an image is the slowest part of opening a tab with many creatures
+   (trade, free agents, bonds). While a tab is built, faces not drawn yet get a blank stand-in (a 1-pixel clear image
+   tagged #pk<id>); right after the tab shows, fillPortraits draws them a few at a time and swaps them in. */
+const PORT_BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+const PORT_LAZY = { on:false, n:0, ids:new Map(), todo:new Map(), busy:false };
+function fillPortraits(){
+  if(PORT_LAZY.busy || !PORT_LAZY.todo.size) return; PORT_LAZY.busy = true;
+  const step = () => {
+    const t0 = performance.now();
+    while(PORT_LAZY.todo.size && performance.now() - t0 < 10){   // about 10 ms of drawing per frame, so scrolling stays smooth
+      const [id, args] = PORT_LAZY.todo.entries().next().value; PORT_LAZY.todo.delete(id);
+      const url = portrait(...args);   // draws it for real (lazy mode is off here) and caches it
+      document.querySelectorAll(`img[src$="#pk${id}"]`).forEach(im => { im.src = url; });
+    }
+    if(PORT_LAZY.todo.size) requestAnimationFrame(step); else { PORT_LAZY.busy = false; PORT_LAZY.ids.clear(); }
+  };
+  requestAnimationFrame(step);
+}
 function portrait(sp, jersey, asc, heroSt){
   let look = null; if(sp && typeof sp === 'object'){ look = sp.look || null; sp = sp.sp; }   // given a creature: use its species and its own look
   // asc is the aura tier to draw (0-4); heroSt picks your hero's stage (defaults to your current one)
@@ -3692,6 +3741,10 @@ function portrait(sp, jersey, asc, heroSt){
   if(SPECIES[sp].nemesis && !heroSt) heroSt = nemesisStageNow();
   const key = sp + '|' + (jersey || '') + (asc ? '|a' + asc : '') + (heroSt ? '|h' + heroSt : '') + (look ? '|l' + look.tone + '.' + look.acc : '');
   if(PORTRAITS.has(key)) return PORTRAITS.get(key);
+  if(PORT_LAZY.on){   // building a tab: hand back a blank stand-in now, draw the real face right after the tab shows
+    let id = PORT_LAZY.ids.get(key); if(id == null){ id = PORT_LAZY.n++; PORT_LAZY.ids.set(key, id); PORT_LAZY.todo.set(id, [look ? { sp, look } : sp, jersey, asc, heroSt]); }
+    return PORT_BLANK + '#pk' + id;
+  }
   const c = document.createElement('canvas'); c.width = 128; c.height = 140;
   paintPortrait(c.getContext('2d'), sp, jersey, asc, heroSt, 0.3, look);
   const url = c.toDataURL(); PORTRAITS.set(key, url); return url;
@@ -3799,6 +3852,10 @@ const styleOf = p => p.avatar || p.nemesis ? 'legend' : p.style || (p.rare ? RAR
 // against other babies, so a baby big is still a PF/C.
 const STAGE_HEIGHT = [54, 67, 80];   // typical height in inches at stages 1, 2, 3
 function naturalPos(p){
+  if(MEMO.on){ const c = MEMO.npos.get(p); if(c) return c; const v = naturalPos0(p); MEMO.npos.set(p, v); return v; }   // cached during trade math
+  return naturalPos0(p);
+}
+function naturalPos0(p){
   if(p.avatar || p.nemesis) return [0, 4];   // adaptive: you (and your nemesis) play any position with no penalty
   const S = SPECIES[p.sp], base = { guard:0, shooter:1, slasher:1, wing:2, big:3 }[S.arch];
   const norm = S.legend ? 84 : STAGE_HEIGHT[S.stage - 1], h = physicals(p).h;
@@ -3821,15 +3878,20 @@ function optimalLineup(L, ids){
   const mins = p => !yours ? 0 : (p.mins === 'start' ? 300 : 0) + (L.playKids && !p.avatar && (p.age || 0) <= 2 ? 8 : 0);
   const eff = p => (p.inj > 0 ? -500 : 0) + ovr(p) + (p.form && p.form.games > 0 ? p.form.mod : 0) + (L.friend === p.id ? 2 : 0) + (p.avatar ? 1000 : 0) + mins(p);
   const fit = (p, slot) => p.avatar ? 0 : -12*posGap(p, slot);   // you adapt (any slot, no penalty); everyone else: fill natural positions first
-  // dp over players: state = which of the 5 slots are filled; keep the best score and who went where
-  let dp = new Map([[0, { sc:0, at:[] }]]);
-  for(let i = 0; i < n; i++){ const p = P(ids[i]), e = eff(p), next = new Map();
-    const put = (m, v) => { const o = next.get(m); if(!o || v.sc > o.sc) next.set(m, v); };
-    for(const [mask, v] of dp){ put(mask, v);   // bench this one
-      for(let s = 0; s < STARTERS; s++) if(!(mask & (1 << s))) put(mask | (1 << s), { sc:v.sc + e + fit(p, s), at:v.at.concat([[s, ids[i]]]) }); }
-    dp = next; }
-  const full = dp.get((1 << STARTERS) - 1); if(!full) return bestLineup(L, ids);   // fewer than 5 creatures: old way
-  const start = []; full.at.forEach(([s, id]) => { start[s] = id; });
+  // dp over players: state = which of the 5 slots are filled (a 5-bit mask, 32 states); keep the best score for each state.
+  // Plain number arrays instead of lists of objects: same answer, far less work (this runs thousands of times in trade math).
+  const M = 1 << STARTERS, NEG = -1e18;
+  let cur = new Float64Array(M).fill(NEG); cur[0] = 0;
+  const took = new Int8Array(n*M), prev = new Int8Array(n*M);   // for player i reaching state m: which slot he took (-1 = bench) and the state before
+  for(let i = 0; i < n; i++){ const p = P(ids[i]), e = eff(p), next = new Float64Array(M).fill(NEG), base = i*M;
+    const fits = []; for(let s = 0; s < STARTERS; s++) fits.push(e + fit(p, s));   // this player's score in each spot, worked out once
+    for(let mask = 0; mask < M; mask++){ const v = cur[mask]; if(v === NEG) continue;
+      if(v > next[mask]){ next[mask] = v; took[base + mask] = -1; prev[base + mask] = mask; }   // bench this one
+      for(let s = 0; s < STARTERS; s++){ if(mask & (1 << s)) continue; const m2 = mask | (1 << s), w = v + fits[s];
+        if(w > next[m2]){ next[m2] = w; took[base + m2] = s; prev[base + m2] = mask; } } }
+    cur = next; }
+  if(cur[M - 1] === NEG) return bestLineup(L, ids);   // fewer than 5 creatures: old way
+  const start = []; for(let i = n - 1, mask = M - 1; i >= 0; i--){ const k = i*M + mask, s = took[k]; if(s >= 0) start[s] = ids[i]; mask = prev[k]; }   // walk back to see who went where
   start.forEach((id, s) => { if(P(id).avatar) P(id).avatarPos = s; });   // you take whatever spot fills the lineup best
   const bench = ids.filter(id => !start.includes(id)).sort((a, b) => (P(b).inj > 0 ? -500 : 0) + ovr(P(b)) - ((P(a).inj > 0 ? -500 : 0) + ovr(P(a))));
   return start.concat(bench);
@@ -5727,6 +5789,7 @@ function agoText(t){ const s = Math.round((Date.now() - t)/1000); return s < 10 
 // a short status line used in the menu, the ☰ sheet and Settings
 function cloudStatus(){
   if(CLOUD.state === 'checking') return '☁️ Connecting to cloud save…';
+  if(CLOUD.state === 'off' && window.EVO_WEB) return '💾 Your game saves on this device. To move it to another phone or computer: Settings → Show backup code → Copy, then Paste backup code there.';   // the GitHub website
   if(CLOUD.state === 'off' && location.protocol === 'file:') return '💾 You opened a downloaded copy, so it can\'t reach your cloud save. It saves in this browser only. To play your iPhone league here: on iPhone, Settings → Show backup code → Copy; here, Paste backup code below.';
   if(CLOUD.state === 'off') return '☁️ Cloud save is off here (only on the published page while signed in). Saving in this browser only.';
   if(CLOUD.state === 'error' || CLOUD.err) return `☁️ Cloud save hit a problem (${CLOUD.err || 'error'}). Your browser copy is still saved; it will try again on your next move.`;
@@ -5793,7 +5856,7 @@ function renderMenu(){
       <button class="btn ${LEAGUE ? '' : 'hot'}" data-act="newfr">New franchise<small>Pick one of 30 teams, draft 12 creatures, play the season and the 16-team playoffs</small></button>
       <button class="btn" data-act="help">How to play<small>Game plans, types, supercharge, evolution</small></button>
       <button class="btn" data-act="settings">Settings<small>Quarter length ${SET.qlen} min · Difficulty ${diffName()}</small></button>
-      ${CLOUD.state === 'off' && location.protocol === 'file:' ? `<button class="btn" data-act="restore">Paste backup code<small>Bring your iPhone league to this computer</small></button>` : ''}
+      ${CLOUD.state === 'off' && (location.protocol === 'file:' || window.EVO_WEB) ? `<button class="btn" data-act="restore">Paste backup code<small>${window.EVO_WEB ? 'Bring a league over from another device' : 'Bring your iPhone league to this computer'}</small></button>` : ''}
     </div>${UI.msg && UI.msg.startsWith('☁️') ? `<div class="msg">${UI.msg}</div>` : ''}<p class="dim cond cloudline" style="margin:0">${cloudStatus()}</p></div></div>`);
 }
 const diffName = () => SET.diff < 1 ? 'Rookie' : SET.diff > 1 ? 'All-Star' : 'Pro';
@@ -6045,7 +6108,8 @@ function subTabs(){
   return `<div class="subtabs">${g.tabs.map(k => `<button class="subtab ${UI.tab === k ? 'on' : ''}" data-act="tab" data-id="${k}">${tabName(k)}${k === 'trade' && LEAGUE && offersWaiting(LEAGUE) ? ` 📨${offersWaiting(LEAGUE)}` : ''}</button>`).join('')}</div>`;
 }
 // Drawing a screen asks for the same ratings hundreds of times; remember them while one screen is being drawn.
-function renderHub(){ if(MEMO.on) return renderHub0(); memoClear(); MEMO.on = true; try { return renderHub0(); } finally { MEMO.on = false; memoClear(); } }
+function renderHub(){ if(MEMO.on) return renderHub0(); memoClear(); MEMO.on = true; PORT_LAZY.on = true;
+  try { return renderHub0(); } finally { MEMO.on = false; PORT_LAZY.on = false; memoClear(); fillPortraits(); } }   // faces fill in right after the tab shows
 function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGUE) syncBredYouth(LEAGUE);   // keeps the Arena look's team color in step with the loaded league
   const L = LEAGUE; if(!L){ renderMenu(); return; }
   applyUiScale();   // full size on the skill tree tab, your chosen size everywhere else
@@ -6311,7 +6375,7 @@ function treeBigList(A, pts){
       <button class="btn sm ${UI.keyLimArm ? 'hot' : ''}" data-act="tree-keylimit">${UI.keyLimArm ? 'Tap again to confirm' : LEAGUE.keyLimitOff ? 'Turn limit on' : 'Turn limit off'}</button></div>
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 172;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 173;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9028,7 +9092,7 @@ function bproj(V, x, y, z){ const s = 0.84 + 0.16*y/COURT_W; return { x:V.W/2 + 
 // The canvas size for each camera: overhead is always 940x500. Broadcast is 16:9 on a wide screen and taller on a phone held upright.
 function sizeCourt(cv, mode, LV){
   const q = mode === 'tv' && LV && LV.bLow ? 0.75 : 1;   // slow device: draw the broadcast view at 75% resolution
-  const [w, h] = mode === 'tv' ? (innerWidth < innerHeight ? [960*q, 854*q] : [1152*q, 648*q]) : [940, 500];
+  const [w, h] = mode === 'tv' ? (innerWidth < innerHeight ? [960*q, 800*q] : [1152*q, 648*q])   /* upright phone: a bit taller than wide-screen, still leaving room for the buttons */ : [940, 500];
   if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
 }
 const B_AURA_RING = { 1:'#ffd23a', 2:'#ff4a3a', 3:'#7fd8ff', 4:'#c77dff', 5:'#fff0c8', 6:'#ffe6ff', 7:'#ffffff' };   // feet ring colors when auras are turned off
@@ -9281,16 +9345,16 @@ function bDrawEnt(ctx, V, G, LV, e){
     const sx = p.x - e.face*hpx*0.32, sy = p.y - tall*0.78 + Math.sin(now*5 + e.slot)*2, r = Math.max(3, hpx*0.05);
     ctx.fillStyle = '#7fd8ff'; ctx.beginPath(); ctx.moveTo(sx, sy - r*2); ctx.quadraticCurveTo(sx + r*1.2, sy, sx, sy + r); ctx.quadraticCurveTo(sx - r*1.2, sy, sx, sy - r*2); ctx.fill(); }
   if(e.stun > 0){ ctx.fillStyle = '#ffd23a'; for(let i = 0; i < 3; i++){ const a = now*8 + i*2.1; star(ctx, p.x + e.face*hpx*0.35 + Math.cos(a)*hpx*0.25, p.y - tall*0.6 + Math.sin(a)*hpx*0.07, hpx*0.06); } }   // dizzy stars
-  if(isMe){   // over your player: an arrow, then energy (top) and turbo (bottom) bars
-    const ty = p.y - tall - 12;
-    ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(p.x - 26, ty - 27, 52, 6); ctx.fillRect(p.x - 26, ty - 19, 52, 6);
-    ctx.fillStyle = e.energy > 60 ? '#4fdc8a' : e.energy > 35 ? '#ffcf4a' : '#ff5470'; ctx.fillRect(p.x - 26, ty - 27, 52*e.energy/100, 6);
-    ctx.fillStyle = e.fire ? '#ffd23a' : '#3fd0ff'; ctx.fillRect(p.x - 26, ty - 19, 52*(e.fire ? 1 : (e.turbo || 0)/100), 6);
-    const bounce = Math.sin(now*6)*3; ctx.fillStyle = '#3fd0ff'; ctx.strokeStyle = '#05060f'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(p.x - 10, ty - 9 + bounce); ctx.lineTo(p.x + 10, ty - 9 + bounce); ctx.lineTo(p.x, ty + 3 + bounce); ctx.closePath(); ctx.stroke(); ctx.fill();
+  if(isMe){   // over your player: an arrow, then energy (top) and turbo (bottom) bars, sized for the screen (u)
+    const u = Math.max(1, V.k/2), ty = p.y - tall - 12*u, bw = 52*u, bh = 6*u;
+    ctx.fillStyle = 'rgba(0,0,0,.65)'; ctx.fillRect(p.x - bw/2, ty - 27*u, bw, bh); ctx.fillRect(p.x - bw/2, ty - 19*u, bw, bh);
+    ctx.fillStyle = e.energy > 60 ? '#4fdc8a' : e.energy > 35 ? '#ffcf4a' : '#ff5470'; ctx.fillRect(p.x - bw/2, ty - 27*u, bw*e.energy/100, bh);
+    ctx.fillStyle = e.fire ? '#ffd23a' : '#3fd0ff'; ctx.fillRect(p.x - bw/2, ty - 19*u, bw*(e.fire ? 1 : (e.turbo || 0)/100), bh);
+    const bounce = Math.sin(now*6)*3*u; ctx.fillStyle = '#3fd0ff'; ctx.strokeStyle = '#05060f'; ctx.lineWidth = 2*u;
+    ctx.beginPath(); ctx.moveTo(p.x - 10*u, ty - 9*u + bounce); ctx.lineTo(p.x + 10*u, ty - 9*u + bounce); ctx.lineTo(p.x, ty + 3*u + bounce); ctx.closePath(); ctx.stroke(); ctx.fill();
   }
   // shot meter: live while your shooter is in the air, then frozen with the result for a moment
-  const mh = Math.max(60, tall*0.8), mx = p.x + e.face*hpx*0.55 - (e.face < 0 ? 16 : 0), my = p.y - hpx*0.05;
+  const mh = Math.max(60*Math.max(1, V.k/2), tall*0.8), mx = p.x + e.face*hpx*0.55 - (e.face < 0 ? 16 : 0), my = p.y - hpx*0.05;
   if(isMe && e.shooting && e.shooting.apex){ const s = e.shooting, span = s.apex + 0.4; bDrawMeter(ctx, mx, my, mh, { frac:clamp(s.t/span, 0, 1), lo:(s.apex - s.w)/span, hi:(s.apex + s.w)/span }, true); }
   else if(G.meter && G.meter.ent === e) bDrawMeter(ctx, mx, my, mh, G.meter, false);
 }
@@ -9299,17 +9363,24 @@ function bDrawEnt(ctx, V, G, LV, e){
 // Follows the Name tags setting: everyone, your team only, or off.
 function bDrawTags(ctx, V, G, LV){
   if(SET.tags === 'off') return;
-  const fs = Math.round(clamp(V.ppf*0.62, 13, 20));
+  const fs = Math.round(Math.max(11*V.k, clamp(V.ppf*0.62, 13, 20)));   // at least 11 pixels tall on screen
   ctx.font = `700 ${fs}px 'Barlow Condensed', sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for(const e of G.ents){
     if(SET.tags === 'mine' && e.team !== G.mine) continue;
     const g = bproj(V, e.x, e.y, 0); if(g.x < -60 || g.x > V.W + 60) continue;
     const name = e.avatar ? 'YOU' : e.nemesis ? 'KAINE' : (e.p ? pname(e.p).split(' ')[0] : '').toUpperCase();
-    const text = `${e.num != null ? e.num + ' ' : ''}${name}`, w = ctx.measureText(text).width + 14, h = fs + 6, y = g.y + V.ppf*0.75*g.s + h/2 + 2;
-    const tc = LV.teams[e.team].color, me = LV.play && G.ctrl === e;
-    ctx.fillStyle = 'rgba(5,6,15,.8)'; ctx.strokeStyle = me ? '#3fd0ff' : tc; ctx.lineWidth = me ? 3 : 2;
-    ctx.beginPath(); ctx.roundRect(g.x - w/2, y - h/2, w, h, h/2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = me ? '#3fd0ff' : '#eef1ff'; ctx.fillText(text, g.x, y + 1);
+    const text = `${e.num != null ? e.num + ' ' : ''}${name}`, tc = LV.teams[e.team].color, me = LV.play && G.ctrl === e;
+    // each plate is drawn once into a small image (text, colors and size are its key) and stamped after that
+    const key = `t${text}|${tc}|${me ? 1 : 0}|${fs}|${Math.round(V.k*2)}`; let img = B_SPR.get(key);
+    if(!img){ const m = document.createElement('canvas').getContext('2d'); m.font = `700 ${fs}px 'Barlow Condensed', sans-serif`;
+      const w = Math.ceil(m.measureText(text).width + 14), h = fs + 6, lw = (me ? 1.5 : 1)*Math.max(2, V.k), c = document.createElement('canvas'); c.width = Math.ceil(w + lw*2); c.height = Math.ceil(h + lw*2);
+      const x = c.getContext('2d'); x.font = m.font; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillStyle = 'rgba(5,6,15,.8)'; x.strokeStyle = me ? '#3fd0ff' : tc; x.lineWidth = lw;
+      x.beginPath(); x.roundRect(lw, lw, w, h, h/2); x.fill(); x.stroke();
+      x.fillStyle = me ? '#3fd0ff' : '#eef1ff'; x.fillText(text, c.width/2, c.height/2 + 1);
+      img = { c, h:c.height }; B_SPR.set(key, img); }
+    const y = g.y + V.ppf*0.75*g.s + img.h/2 + 2;
+    ctx.drawImage(img.c, Math.round(g.x - img.c.width/2), Math.round(y - img.h/2));
   }
   ctx.textBaseline = 'alphabetic';
 }
@@ -9386,11 +9457,11 @@ function drawBroadcast(LV, cv){
   if(dt > 0 && !LV.bLow && now - LV.bT0 > 3000){
     if(!LV.bW) LV.bW = { t0:now, n:0 }; LV.bW.n++;
     if(now - LV.bW.t0 >= 2000){ const fps = LV.bW.n*1000/(now - LV.bW.t0); LV.bW = null; if(fps < 30){ LV.bLow = true; LV.camX = null; } } }
-  LV.bSpan = W < H*1.4 ? 44 : 54;   // feet of court across the screen (a phone held upright shows a bit less)
+  LV.bSpan = W < H*1.4 ? 36 : 54;   // feet of court across the screen: closer in on a phone held upright, so the creatures are bigger
   if(!B_CROWD) makeBCrowd();
   B_BUDGET = 8;   // new sprites allowed this frame
   bcastTick(LV, dt);
-  const V = { W, H, ppf:W/LV.camS*(1 + (G.zoom || 0)*1.4), dy:BC.dy, zf:BC.zf, camX:LV.camX, cy:0 };
+  const V = { W, H, ppf:W/LV.camS*(1 + (G.zoom || 0)*1.4), dy:BC.dy, zf:BC.zf, camX:LV.camX, cy:0, k:W/Math.max(1, cv.clientWidth || W) };   // k: canvas pixels per screen pixel
   // vertical framing: the focus point sits a bit below the middle, without showing far past either sideline
   const fl50 = bFloorY(V, COURT_W), loC = H*0.95 - fl50, hiC = H*0.24;   // the far sideline never sits lower than 24% down, so the stands are a strip at the top
   V.cy = loC > hiC ? (loC + hiC)/2 : clamp(H*0.6 - bFloorY(V, LV.camY), loC, hiC);
@@ -10140,3 +10211,9 @@ if(typeof document !== 'undefined'){
   renderMenu();
 }
 </script>
+
+<script>
+if('serviceWorker' in navigator && location.protocol === 'https:') addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
