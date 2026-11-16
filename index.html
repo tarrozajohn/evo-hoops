@@ -1112,7 +1112,7 @@ function teamWeakestCat(L){
   const ids = L.teams[L.user].roster, score = c => ids.reduce((t, id) => t + catLevels(L.players[id], c)/catMax(c), 0);
   return CATS.slice().sort((a, b) => score(a) - score(b))[0];
 }
-// One line in the "Recent auto" log on the Upgrades page.
+// One line in the "Recent auto actions" log on the Auto tab.
 function autoNote(L, t){ L.autoLog = [`S${L.season}: ${t}`].concat(L.autoLog || []).slice(0, 8); }
 // Auto lineup: puts your best healthy five at their natural spots (same as the Auto lineup button).
 function autoLineup(L){ if(autoOf(L).lineup && L.teams && L.teams[L.user]) sortRosterByOvr(L, L.teams[L.user]); }
@@ -1178,11 +1178,26 @@ function hubUpgrades(L){
       <div class="dim cond">Now: ${t.now}</div>${t.next ? `<div class="cond">Next: ${t.next}</div>` : '<div class="good cond">Maxed out</div>'}</div>
     <div class="upgbtns">${t.cost != null ? `<button class="btn sm hot" data-act="${t.act}" data-id="${t.id}" ${L.coins >= t.cost ? '' : 'disabled'}><span class="coin"></span> ${t.cost}</button>` : ''}${t.lvl < t.max ? tog(`data-autobuy="${t.key}"`, A.buy[t.key]) : ''}</div></div>`;
   const group = g => `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>${g}</h3>${tracks.filter(t => t.group === g).map(row).join('')}</div>`;
+  // the Upgrades page (Office, next to Shop): only the things you buy with coins. Every Auto switch is on the Auto tab.
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <h3>Upgrades</h3>
+      <p class="dim" style="margin:0">Things you buy once with coins and keep: facilities, staff and team boosts. Tick Auto on a row and it buys the next level by itself after games (cheapest first).</p>
+      <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label></div>
+    </div>
+    ${group('No limit')}${group('Facilities')}${group('Arena')}${group('Staff')}`;
+}
+// The Auto tab (Team): every switch that does a chore for you, in one place.
+function hubAuto(L){
+  const A = autoOf(L), U = L.teams[L.user], tracks = upgTracks(L);
+  const tog = (attr, on) => `<label class="autotog"><input type="checkbox" ${attr} ${on ? 'checked' : ''}>Auto</label>`;
+  const unspent = U.roster.reduce((t, id) => t + CATS.reduce((a, c) => a + ((L.players[id].tp && L.players[id].tp[c]) || 0), 0), 0);
+  const me = L.avatar != null && !L.avatarRetired ? L.players[L.avatar] : null, done = L.practiced === practiceKey(L);
   const allOn = A.train && A.practice && A.lineup && A.bonds && A.book && A.kits && A.tree !== 'off' && tracks.every(t => t.lvl >= t.max || A.buy[t.key]);
   return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
-      <div class="row" style="justify-content:space-between"><h3>Upgrades</h3><button class="btn sm ${allOn ? '' : 'hot'}" data-act="auto-all" data-id="${allOn ? 'off' : 'on'}">${allOn ? 'Turn every Auto off' : 'Turn every Auto on'}</button></div>
-      <p class="dim" style="margin:0">Everything you can upgrade is on this page. Tick Auto on any row and it takes care of itself after every game. Coin upgrades buy the cheapest one first.</p>
+      <div class="row" style="justify-content:space-between"><h3>⚙️ Auto</h3><button class="btn sm ${allOn ? '' : 'hot'}" data-act="auto-all" data-id="${allOn ? 'off' : 'on'}">${allOn ? 'Turn every Auto off' : 'Turn every Auto on'}</button></div>
+      <p class="dim" style="margin:0">Each switch does one chore for you after every game. "Turn every Auto on" also turns on the coin upgrades (Office → Upgrades).</p>
       <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label></div>
+    </div>
     <div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>Player growth</h3>
       <div class="upgrow"><div class="upginfo"><b>Creature training</b><div class="dim cond">Spends each creature's TP: skills stay even, tilted toward its playstyle. ${unspent ? `${unspent} TP unspent on your roster.` : 'No TP waiting.'}</div></div>
         <div class="upgbtns"><button class="btn sm" data-act="autotrain" data-id="all" ${unspent ? '' : 'disabled'}>Spend now</button><button class="btn sm" data-act="tab" data-id="train">Details</button>${tog('data-auto="train"', A.train)}</div></div>
@@ -1208,7 +1223,6 @@ function hubUpgrades(L){
       <div class="upgrow"><div class="upginfo"><b>Breed farm</b><div class="dim cond">When you start a new season, Auto breeds your two most valuable creatures if you haven't bred yet and the coins allow. Not part of "Turn every Auto on".</div></div>
         <div class="upgbtns"><button class="btn sm" data-act="tab" data-id="farm">Farm</button>${tog('data-auto="farm"', A.farm)}</div></div>
     </div>
-    ${group('No limit')}${group('Facilities')}${group('Arena')}${group('Staff')}
     ${(L.autoLog || []).length ? `<div class="panel"><h3>Recent auto actions</h3><div class="dim cond">${L.autoLog.join('<br>')}</div></div>` : ''}`;
 }
 function smartTrain(p, only){   // only: 'stats' | 'phys' | 'mind' to spend just that category's TP
@@ -6087,7 +6101,7 @@ function renderDraft(){
 }
 
 // ----- Hub -----
-const TABS = [['play', 'Play'], ['roster', 'Roster'], ['bonds', 'Bonds'], ['upgrades', 'Upgrades'], ['train', 'Train'], ['badges', 'Skill tree'], ['arena', 'Arena'], ['shop', 'Shop'], ['farm', '🥚 Farm'], ['money', 'Money'], ['standings', 'Standings'], ['leaders', 'Leaders'], ['trade', 'Trade'], ['scout', 'Scouting'], ['fa', 'Free agents'], ['legacy', 'Legacy'], ['types', 'Types']];
+const TABS = [['play', 'Play'], ['roster', 'Roster'], ['bonds', 'Bonds'], ['upgrades', 'Upgrades'], ['auto', '⚙️ Auto'], ['train', 'Train'], ['badges', 'Skill tree'], ['arena', 'Arena'], ['shop', 'Shop'], ['farm', '🥚 Farm'], ['money', 'Money'], ['standings', 'Standings'], ['leaders', 'Leaders'], ['trade', 'Trade'], ['scout', 'Scouting'], ['fa', 'Free agents'], ['legacy', 'Legacy'], ['types', 'Types']];
 /* ---------- PHONE NAVIGATION ----------
    On narrow screens the long tab strip becomes a bottom bar of four groups plus a big action button in the middle:
    Play · Team (Roster, Upgrades, Train, Skill tree) · [▶ Sim] · Office (Money, Trade, Free agents, Scouting, Arena, Shop) ·
@@ -6096,8 +6110,8 @@ const TABS = [['play', 'Play'], ['roster', 'Roster'], ['bonds', 'Bonds'], ['upgr
    pending storyline, sim the next playoff day, or open the offseason. */
 const NAV_GROUPS = [
   { id:'play', label:'Play', icon:'🏀', tabs:['play'] },
-  { id:'team', label:'Team', icon:'👥', tabs:['roster', 'bonds', 'upgrades', 'train', 'badges'] },
-  { id:'office', label:'Office', icon:'💼', tabs:['money', 'trade', 'fa', 'scout', 'arena', 'shop', 'farm'] },
+  { id:'team', label:'Team', icon:'👥', tabs:['roster', 'bonds', 'train', 'badges', 'auto'] },
+  { id:'office', label:'Office', icon:'💼', tabs:['money', 'trade', 'fa', 'scout', 'arena', 'shop', 'upgrades', 'farm'] },
   { id:'league', label:'League', icon:'🏆', tabs:['standings', 'leaders', 'legacy', 'types'] },
 ];
 const groupOf = tab => NAV_GROUPS.find(g => g.tabs.includes(tab)) || NAV_GROUPS[0];
@@ -6136,7 +6150,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   checkAchievements(L, null);
   if(L.achNew && L.achNew.length){ const list = L.achNew.map(id => ACH.find(a => a.id === id)).filter(Boolean); UI.msg = (UI.msg ? UI.msg + ' ' : '') + `🏆 Achievement${list.length > 1 ? 's' : ''} unlocked: ${list.map(a => `${a.name} (+${a.coins})`).join(', ')}.`; L.achNew = []; }
   const phaseTxt = L.phase === 'season' ? `Regular season · Round ${Math.min(L.round + 1, L.schedule.length)} of ${L.schedule.length}` : L.phase === 'playoffs' ? `Playoffs · ${roundName(L)}` : 'Offseason';
-  const body = { bonds:hubBonds, money:hubMoney, legacy:hubLegacy, upgrades:hubUpgrades, arena:hubArena, badges:hubBadges, scout:hubScout, play:hubPlay, roster:hubRoster, train:hubTrain, shop:hubShop, farm:hubFarm, standings:hubStandings, leaders:hubLeaders, trade:hubTrade, fa:hubFA, types:() => `<div class="panel">${typeList()}</div><div class="panel"><h3>Full chart</h3><p class="dim" style="margin:4px 0 10px">Row attacks column. ✓ = row has the edge, ✗ = column has the edge.</p>${typeChart()}</div>` }[UI.tab](L);
+  const body = { bonds:hubBonds, money:hubMoney, legacy:hubLegacy, upgrades:hubUpgrades, auto:hubAuto, arena:hubArena, badges:hubBadges, scout:hubScout, play:hubPlay, roster:hubRoster, train:hubTrain, shop:hubShop, farm:hubFarm, standings:hubStandings, leaders:hubLeaders, trade:hubTrade, fa:hubFA, types:() => `<div class="panel">${typeList()}</div><div class="panel"><h3>Full chart</h3><p class="dim" style="margin:4px 0 10px">Row attacks column. ✓ = row has the edge, ✗ = column has the edge.</p>${typeChart()}</div>` }[UI.tab](L);
   showView(`<div class="wrap">
     <div class="hubhead" data-rec="${U.w}-${U.l}">
       <div class="teamtag"><span class="swatch" style="background:${U.color}"></span><div><h2>${cosOn(L, 'emblem') ? cosOn(L, 'emblem') + ' ' : ''}${esc(U.name)}${(() => { const n = L.champs.filter(c => c.tid === L.user).length; return n ? `<span class="stars" title="${n} title${n > 1 ? 's' : ''}">${n <= 5 ? '★'.repeat(n) : '★×' + n}</span>` : ''; })()}</h2>${L.avatar != null ? `<div class="dim cond gmline">GM${L.avatarRetired ? ' (retired star)' : ' and franchise star'}: <b>${esc(L_NAME() || 'You')}</b></div>` : ''}${cosOf(L).arena ? `<div class="dim cond">🏟️ ${esc(cosOf(L).arena)}</div>` : ''}<div class="dim cond phoneonly phoneblock">S${L.season}${L.avatar != null && !L.avatarRetired ? ` · Yr ${careerYear(L)}/${careerLen(L)}` : ''} · ${L.phase === 'season' ? `R${Math.min(L.round + 1, L.schedule.length)}/${L.schedule.length}` : L.phase === 'playoffs' ? roundName(L) : 'Offseason'} · <b>${U.w}-${U.l}</b>${L.streak ? ` · ${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}` : ''}</div><div class="dim cond deskonly">Season ${L.season}${L.avatar != null && !L.avatarRetired ? ` (year ${careerYear(L)} of ${careerLen(L)}: ${eraOf(L)})` : ''} · ${phaseTxt} · ${U.w}-${U.l} · Team OVR ${teamOVR(L, L.user)}</div>
@@ -6384,7 +6398,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 180;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 181;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7023,7 +7037,7 @@ function hubArena(L){
       <div class="dim cond">Demand: ${d.parts.filter(x => x[1]).map(x => `${x[0]} ${x[1] > 0 ? '+' : ''}${x[1].toLocaleString()}`).join(' · ')} → × ${d.price.elastic} for ${d.price.name.toLowerCase()} = ${d.demand.toLocaleString()}</div>` : '<div class="dim cond">Road game: no gate. Set up your next home night anyway.</div>'}</div>` : ''}
     <div><div class="dim cond" style="margin-bottom:4px">Ticket prices</div><div class="row" style="gap:6px">${Object.entries(PRICES).map(([k, P]) => `<button class="btn sm ${A.price === k ? 'hot' : ''}" data-act="price" data-id="${k}">${P.name} · ${P.per}/1k fans · demand ×${P.elastic}</button>`).join('')}</div></div>
     <div><div class="dim cond" style="margin-bottom:4px">Next home game promotion (one night)</div><div class="row" style="gap:6px">${Object.entries(PROMOS).map(([k, P]) => `<button class="btn sm ${A.promo === k ? 'hot' : ''}" data-act="promo" data-id="${k}">${P.name}${P.cost ? ` · −${P.cost} · +${P.demand.toLocaleString()} fans${P.hype ? ', fans +' + P.hype : ''}` : ''}</button>`).join('')}</div></div>
-    <div class="row" style="gap:8px"><span class="dim cond">Seat expansion, Jumbotron, suites and food court (with Auto) are on the Upgrades page.</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
+    <div class="row" style="gap:8px"><span class="dim cond">Seat expansion, Jumbotron, suites and food court are on the Upgrades tab (Office).</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
     ${season.length ? `<div><div class="dim cond" style="margin-bottom:4px">Home crowds this season</div><div class="crowdbars">${season.map(h => `<i style="height:${Math.round(h.att/h.cap*100)}%;background:${h.sold ? 'var(--good)' : h.att < h.cap*0.6 ? 'var(--bad)' : 'var(--cool)'}" title="vs ${L.teams[h.opp].abbr}: ${h.att.toLocaleString()} (${h.coins} coins)"></i>`).join('')}</div></div>` : ''}
   </div>`;
 }
@@ -7876,16 +7890,22 @@ function hubTrain(L){
   const done = L.practiced === practiceKey(L), gain = 1 + L.fac.gym;
   const unspent = q => CATS.reduce((a, c) => a + ((q.tp && q.tp[c]) || 0), 0);
   const next = isEternal(p) ? 'Every branch is complete: Eternal aura.' : tier >= 3 ? 'All three categories are maxed. Add Eternal Youth (Shop) for the Eternal aura, the max aura.' : `Max ${tier ? 'one more category' : 'any category'} for a ${AURA_NAMES[tier + 1].toLowerCase()} aura (+2 to every rating).`;
-  return `<div class="msg" style="margin:0">Auto-train, auto practice and every other Auto switch are on the <button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button> page.</div><div class="panel" style="display:flex;flex-direction:column;gap:10px">
-      <div class="row" style="justify-content:space-between"><h3>Team practice</h3><span class="dim cond">${done ? 'Done for this round. Play or sim your next game to practice again.' : `Once per round. Every creature on your roster gets +${gain} TP in the focus you pick.`}</span></div>
-      <div class="row">${CATS.map(c => `<button class="btn sm" data-act="practice" data-id="${c}" ${done ? 'disabled' : ''} style="border-color:${TRAIN[c].color}">${TRAIN[c].name} focus</button>`).join('')}</div>
-      <div style="border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px">
-        <span class="dim cond">Auto-train spends TP for you, keeping skills even but favoring what each creature's playstyle uses. Pick a category or do all three.</span>
-        ${[['one', esc(pname(p))], ['all', 'Whole team']].map(([who, label]) => `<div class="row" style="gap:6px"><b class="cond" style="min-width:110px">${label}</b>${CATS.map(c => `<button class="btn sm" data-act="autotrain" data-id="${who}|${c}" style="border-color:${TRAIN[c].color}">${TRAIN[c].name}</button>`).join('')}<button class="btn sm cool" data-act="autotrain" data-id="${who}">All</button></div>`).join('')}
+  // TP that can still buy something (TP in a maxed category has nothing left to buy)
+  const usable = q => CATS.reduce((a, c) => a + (catLevels(q, c) < catMax(c) ? ((q.tp && q.tp[c]) || 0) : 0), 0);
+  const teamTP = U.roster.reduce((t, id) => t + usable(L.players[id]), 0), A = autoOf(L);
+  // top of the page: how it works in three lines, then the one button most people need
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <h3>🏋️ Training</h3>
+      <p style="margin:0">Your creatures earn <b>TP</b> (training points) by playing. There are three kinds: <b style="color:${TRAIN.stats.color}">Stats</b>, <b style="color:${TRAIN.phys.color}">Physique</b> and <b style="color:${TRAIN.mind.color}">Mental</b>. Spend them on skills to make a creature better.</p>
+      <div class="row" style="gap:8px;align-items:center">
+        <button class="btn hot" data-act="autotrain" data-id="all|" ${teamTP ? '' : 'disabled'}>⚡ Train everyone</button>
+        <label class="autotog"><input type="checkbox" data-auto="train" ${A.train ? 'checked' : ''}>Do it after every game</label>
       </div>
+      <span class="dim cond">${teamTP ? `${teamTP} TP ready to spend across your team. Train everyone spends it on each creature's most useful skills.` : 'Nothing to spend right now: no TP, or the skills it\'s for are already maxed. Play games to earn more.'}</span>
     </div>
+    <h3 class="cond" style="margin:4px 2px 0">Or pick one creature</h3>
     <div class="trainpick">${U.roster.map(id => { const q = L.players[id], n = unspent(q);
-      return `<button class="pickbtn ${id === UI.trainSel ? 'sel' : ''}" data-act="train-sel" data-id="${id}" title="${pname(q)}"><img src="${portrait(q, U.color, displayTier(q))}" alt=""><span class="cond">${pname(q)}</span>${n ? `<b class="tpbadge">${n} TP</b>` : ''}</button>`; }).join('')}</div>
+      return `<button class="pickbtn ${id === UI.trainSel ? 'sel' : ''}" data-act="train-sel" data-id="${id}" title="${pname(q)}"><img src="${portrait(q, U.color, displayTier(q))}" alt=""><span class="cond">${pname(q)}</span>${usable(q) ? `<b class="tpbadge">${usable(q)} TP</b>` : ''}</button>`; }).join('')}</div>
     <div class="trainhead panel">
       ${livePortrait(p, U.color, shown)}
       <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
@@ -7894,17 +7914,18 @@ function hubTrain(L){
         <div class="cond num">${fmtBody(physicals(p))}</div>
         ${p.rare ? `<div><span class="rarechip">★ ${RARE[p.rare].name}</span> <span class="dim">${RARE[p.rare].desc}</span></div>` : ''}
         <div class="dim">${next}</div>
+        <div>${usable(p) ? `<button class="btn sm hot" data-act="autotrain" data-id="one|">⚡ Train ${esc(pname(p))} (${usable(p)} TP)</button>` : `<span class="good cond">${CATS.every(c => catLevels(p, c) >= catMax(c)) ? '✓ Every skill is maxed' : 'No TP to spend yet'}</span>`}</div>
       </div>
     </div>
-    <div class="panel branches"><h3>Path to the max aura</h3>
+    <details class="panel branches"><summary class="cond" style="cursor:pointer;font-weight:700">How auras work (max a category to unlock one)</summary>
       <div class="row" style="gap:8px">${CATS.map(c => { const v = catLevels(p, c), m = catMax(c); return `<span class="branch ${v >= m ? 'done' : ''}" style="border-color:${TRAIN[c].color}"><b style="color:${TRAIN[c].color}">${TRAIN[c].name}</b> ${v}/${m}</span>`; }).join('<span class="dim">+</span>')}
         <span class="dim">+</span><span class="branch ${p.youth ? 'done' : ''}" style="border-color:#ffd98a"><b style="color:#ffd98a">Legacy</b> ${p.youth ? 'Eternal Youth ✓' : 'Eternal Youth (Shop)'}</span>
         <span class="dim">=</span><span class="aurachip t5">Eternal aura</span></div>
-      <p class="dim" style="margin:0">Each maxed category adds an aura tier (gold, red, blue, +2 each). Eternal Youth on top of all three unlocks the Eternal aura: +10 to every rating in total, and the creature never declines.</p></div>
+      <p class="dim" style="margin:0">Each maxed category adds an aura tier (gold, red, blue, +2 each). Eternal Youth on top of all three unlocks the Eternal aura: +10 to every rating in total, and the creature never declines.</p></details>
     <div class="traingrid">${CATS.map(c => { const C = TRAIN[c], v = catLevels(p, c), m = catMax(c), tp = (p.tp && p.tp[c]) || 0;
       return `<div class="panel traincat" style="border-top:3px solid ${C.color}">
         <div class="row" style="justify-content:space-between"><h3 style="color:${C.color}">${C.name}</h3><span class="cond num">${v}/${m}${v >= m ? ' · <b class="gold">MAXED</b>' : ''}</span></div>
-        <div class="cond">${tp} TP to spend</div>
+        <div class="cond">${v >= m ? `<span class="dim">Maxed: nothing left to buy here${tp ? ` (${tp} extra TP saved)` : ''}.</span>` : `<b>${tp}</b> ${C.name} TP to spend`}</div>
         ${Object.entries(C.attrs).map(([a, A]) => { const lv = T[c][a], cost = TRAIN_COST[lv] || 99, can = lv < TRAIN_MAX && tp >= cost;
           return `<div class="trainrow"><div style="min-width:0"><div class="cond" style="font-weight:700;font-size:16px">${A.name}</div><div class="dim" style="font-size:13px">${A.desc}</div>
             <span class="pips">${[0, 1, 2, 3, 4].map(i => `<i class="${i < lv ? 'on' : ''}" style="${i < lv ? 'background:' + C.color : ''}"></i>`).join('')}</span></div>
@@ -8115,7 +8136,7 @@ function hubShop(L){
       <div class="row" style="justify-content:space-between;margin-top:auto"><button class="btn sm cool" data-act="buy" data-id="${k}" ${L.coins >= it.cost ? '' : 'disabled'}><span class="coin"></span> ${it.cost} · Buy</button>${L.inv[k] ? `<span class="dim cond">Owned ${L.inv[k]}</span>` : ''}</div></div>`).join('')}</div>`;
   return `<p class="dim" style="margin:0;max-width:70ch">You earn coins every game: 40 for a win, 20 for a loss, plus bonus goals, Arena income, 100 per playoff win and 300 for a title.</p>
     ${bag.length ? `<div class="panel"><h3>Your bag</h3><div class="row" style="margin-top:8px">${bag.map(k => `<button class="btn sm" data-act="usepick" data-id="${k}">${SHOP[k].kind === 'gear' ? 'Equip' : 'Use'} ${SHOP[k].name} ×${L.inv[k]}</button>`).join('')}</div></div>` : ''}
-    <div class="row" style="gap:8px"><span class="dim cond">Facilities (gym, arena, recovery, scouting) moved to the Upgrades page, where they can buy themselves.</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
+    <div class="row" style="gap:8px"><span class="dim cond">Facilities, staff and team boosts are on the Upgrades tab, right next to this one.</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
     ${group(['ultimate', 'youth'], 'The ultimate prizes')}
     ${group(['tp', 'camp', 'respec', 'heal', 'bp'], 'Coaching')}
     ${group(['attr'], 'Body work')}
@@ -9916,7 +9937,7 @@ if(typeof document !== 'undefined'){
       case 'prompt-skip': renderHub(); break;
       case 'prompt-off': SET.prompts = false; saveSettings(); UI.msg = 'Decision prompts are off. Tick "Prompt me for each decision" in the To do box to turn them back on.'; renderHub(); break;
       case 'prompt-auto': { const A = autoOf(L); A[id] = true; if(id === 'train') L.teams[L.user].roster.forEach(x => smartTrain(L.players[x], null)); if(id === 'practice') autoPractice(L); autoKits(L); autoLineup(L); autoHang(L);
-        UI.msg = 'Auto is on for that. You can turn it off on the Upgrades page.'; saveLeague(); renderHub(); break; }
+        UI.msg = 'Auto is on for that. You can turn it off on the Auto tab (Team).'; saveLeague(); renderHub(); break; }
       // injury prompts: pick the replacement, heal him, or let the coach set the five; then decide if he gets his spot back
       case 'inj-sub': { const [a, b] = String(id).split(':').map(Number), R = L.teams[L.user].roster, i = R.indexOf(a), j = R.indexOf(b); if(i < 0 || j < 0) break;
         [R[i], R[j]] = [R[j], R[i]]; UI.msg = `${pname(L.players[b])} starts at ${POS_NAMES[i]} while ${pname(L.players[a])} is out. You'll be asked when he's healthy.`; saveLeague(); renderHub(); break; }
