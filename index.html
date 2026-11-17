@@ -563,6 +563,13 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .fivecard{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;font:600 11px var(--cond)}.fivecard img{width:100%!important;max-width:74px;height:auto!important;aspect-ratio:10/11}
 .fivecard b{font-size:13px}.fivecard .gold{color:#ffd23a}.fiveline{display:none}
 @media (min-width:700px){.fiveline{display:block;opacity:.75;text-align:center}}
+.showcard.flash{background:radial-gradient(120% 70% at 50% 0%,rgba(185,163,106,.3),transparent 72%),#12100a!important}
+.showcard.flash img{filter:sepia(.55) saturate(.8)}
+.proboard{display:flex;align-items:center;gap:14px;padding:8px 18px;border-radius:10px;background:#000;box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);font-family:var(--cond)}
+.proboard div{display:flex;flex-direction:column;align-items:center}.proboard span{font-size:11px;letter-spacing:.14em;opacity:.7}.proboard b{font:400 40px/1 var(--display);color:#ffd23a}.proboard .k b{color:#ff5470}.proboard i{font-style:normal;font-size:11px;letter-spacing:.14em;opacity:.6}
+.profaces{display:flex;align-items:flex-end;justify-content:center;gap:6px}.profaces img{width:84px;height:92px}.profaces img.k{width:104px;height:114px;filter:drop-shadow(0 0 14px rgba(255,51,68,.7))!important}.profaces span{font:400 20px var(--display);opacity:.7;padding:0 6px 30px}
+.proline{width:100%;text-align:left;padding:6px 10px;border-left:3px solid #888;background:rgba(255,255,255,.05);border-radius:6px;font:600 15px var(--cond)}.proline.k{border-color:#ff3344;color:#ffb0bd}
+.procands{display:flex;flex-direction:column;gap:6px;width:100%}.procands .btn{display:flex;align-items:center;gap:10px;text-align:left;white-space:normal}.procands img{width:40px;height:44px;flex:none}.procands span{display:flex;flex-direction:column}
 .fivequotes{display:flex;flex-direction:column;gap:3px;text-align:left;font:600 14px var(--cond);padding:6px 10px;border-left:3px solid #ffd23a;background:rgba(255,255,255,.05);border-radius:6px;width:100%}
 .fivefaces{display:flex;gap:8px;flex-wrap:wrap}.fivefaces span{display:flex;align-items:center;gap:4px;font:600 13px var(--cond)}.fivefaces img{width:30px;height:33px}.fivefaces i{font-style:normal;color:#ffd23a}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
@@ -5930,16 +5937,58 @@ function restoreFromCode(raw){
 // picking a backup file loads it right away
 if(typeof document !== 'undefined') document.addEventListener('change', e => { const t = e.target; if(!t || t.id !== 'rs-file' || !t.files || !t.files[0]) return;
   const fr = new FileReader(); fr.onload = () => restoreFromCode(fr.result); fr.onerror = () => { UI.restoreErr = 'Could not read that file.'; renderSettings(UI.setBack || 'menu'); }; fr.readAsText(t.files[0]); });
+/* ---------- THE STORY SO FAR (v197) ----------
+   Shown once when a new career reaches the hub (and again from Settings → Watch the story intro).
+   Page 0: pick the best friend who came up with you (skipped if you already have one).
+   Page 1: high school, Kaine beats the two of you. Page 2: college, he does it again at the buzzer.
+   Page 3: the promise you and your best friend make: beat him and earn his respect. Page 4: the league, where the rivalry starts for real. */
+function showPrologue(L, replay){
+  const M = $('#modal'), R = L.teams[L.rival], U = L.teams[L.user], me = L.players[L.avatar]; if(!R || !me){ return; }
+  let page = L.friend != null || replay ? 1 : 0;
+  const fr = () => L.friend != null ? L.players[L.friend] : null, fname = () => fr() ? esc(pname(fr())) : 'your best friend';
+  const board = (a, b) => `<div class="proboard"><div><span>YOU</span><b>${a}</b></div><i>FINAL</i><div class="k"><span>KAINE</span><b>${b}</b></div></div>`;
+  const faces = () => `<div class="profaces"><img src="${portrait(me, U.color)}" alt="">${fr() ? `<img src="${portrait(fr(), U.color)}" alt="">` : ''}<span>VS</span><img class="k" src="${portrait(NEMESIS_SP, R.color)}" alt=""></div>`;
+  const line = (who, t) => `<div class="proline ${who === 'Kaine' ? 'k' : ''}"><b>${who}</b> ${t}</div>`;
+  const close = () => { M.hidden = true; saveLeague(); renderHub(); };
+  const draw = () => {
+    M.hidden = false; let h = '';
+    if(page === 0){ const cands = U.roster.map(id => L.players[id]).filter(p => !p.avatar && !p.nemesis).sort((x, y) => ovr(y) - ovr(x)).slice(0, 5);
+      h = `<div class="news-kicker">Before the league</div><div class="showaward">THERE WERE TWO OF YOU</div>
+        <div class="cond">You did not get here alone. One teammate has been next to you since you were kids. Who is it?</div>
+        <div class="procands">${cands.map(p => `<button class="btn" data-pf="${p.id}"><img src="${portrait(p, U.color)}" alt=""><span><b>${esc(pname(p))}</b><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span></span></button>`).join('')}</div>
+        <div class="dim cond">Your best friend becomes a 👑 Generational talent, can never be traded, and you both play better together.</div>
+        <button class="btn" data-pg="1">Decide later</button>`; }
+    else if(page === 1) h = `<div class="news-kicker">Years ago · High school</div><div class="showaward">THE STATE FINAL</div>${faces()}${board(54, 91)}
+        <div class="cond" style="text-align:left">You and ${fname()} had not lost a game all year. Then a transfer nobody had scouted walked into the gym and scored 50 on the two of you.</div>
+        ${line('Kaine', '"Is that it? I was told you two were good."')}
+        <div class="row" style="justify-content:center;gap:8px"><button class="btn hot" data-pg="2">Next</button><button class="btn" data-pg="9">Skip the intro</button></div>`;
+    else if(page === 2) h = `<div class="news-kicker">Three years later · College</div><div class="showaward">THE NATIONAL CHAMPIONSHIP</div>${faces()}${board(88, 89)}
+        <div class="cond" style="text-align:left">Three years of work to get back to him. You and ${fname()} led by one with two seconds left. Kaine took the last shot over both of you. It went in.</div>
+        ${line('Kaine', '"Closer. Still not enough. It never will be."')}
+        <div class="row" style="justify-content:center;gap:8px"><button class="btn hot" data-pg="3">Next</button><button class="btn" data-pg="9">Skip the intro</button></div>`;
+    else if(page === 3) h = `<div class="news-kicker">That night · The empty gym</div><div class="showaward">THE PROMISE</div>
+        <div class="profaces"><img src="${portrait(me, U.color)}" alt="">${fr() ? `<img src="${portrait(fr(), U.color)}" alt="">` : ''}</div>
+        <div class="cond" style="text-align:left">The confetti was for him. You and ${fname()} sat on the floor of the empty gym until the lights went out.</div>
+        ${line(fr() ? esc(pname(fr())) : 'Your best friend', '"He doesn\'t even know our names."')}
+        ${line('You', '"Then we make him learn them. We go where he goes. We beat him. Together."')}
+        ${line(fr() ? esc(pname(fr())) : 'Your best friend', '"Until he respects us. Promise."')}
+        ${line('You', '"Promise."')}
+        <div class="row" style="justify-content:center;gap:8px"><button class="btn hot" data-pg="4">Next</button><button class="btn" data-pg="9">Skip the intro</button></div>`;
+    else h = `<div class="news-kicker">Now · The league</div><div class="showaward">LIGHT AND SHADOW</div>${faces()}
+        <div class="cond" style="text-align:left">Draft night. GM ${esc(rivalGM(L))} took Kaine for the <b>${esc(R.name)}</b>. You${fr() ? ` and ${fname()}` : ''} landed with the <b>${esc(U.name)}</b>. He has beaten you at every level. This is the last one, and you made a promise. You are Light; he is Shadow.</div>
+        ${line('Kaine', '"Twice now. Make it interesting this time."')}
+        <div class="dim cond" style="text-align:left">Kaine is a step above every other CPU: better ratings, smarter play, and badges that grow as he levels. He levels up as you do and he's on the court every rivalry game. The bar at the top of the Play tab tracks your head-to-head.</div>
+        <button class="btn hot" data-pg="9">Bring it on</button>`;
+    M.innerHTML = `<div class="storycard showcard ${page >= 1 && page <= 3 ? 'flash' : ''}" style="--tc:${page === 4 ? '#ff3344' : '#b9a36a'}">${SHOW_BEAMS}${h}</div>`;
+    M.querySelectorAll('[data-pg]').forEach(bn => bn.onclick = () => { page = +bn.dataset.pg; page >= 9 ? close() : draw(); });
+    M.querySelectorAll('[data-pf]').forEach(bn => bn.onclick = () => { runAct('friend', bn.dataset.pf); UI.msg = null; page = 1; draw(); });
+  };
+  draw();
+}
 function hubModals(L){
   if(!$('#modal').hidden || UI.busy || UI.inCut) return;   // never pop a scene mid-sim or on top of a running cutscene
   if(L.nemesis != null && !L.nemesisMet && L.phase !== 'draft'){   // meet your rival
-    L.nemesisMet = true; saveLeague();
-    const N = L.players[L.nemesis], R = L.teams[L.rival], M = $('#modal'); M.hidden = false;
-    M.innerHTML = `<div class="evo"><h2 style="color:#ff5470">Meet your rival</h2><img src="${portrait(N.sp, R.color)}" alt="" style="width:200px;height:220px;filter:drop-shadow(0 0 18px rgba(255,51,68,.6))">
-      <p style="margin:0"><b>Kaine</b> plays for the <b>${esc(R.name)}</b>, GM ${esc(rivalGM(L))}'s hand-picked prodigy. Same age as you, same talent, and he wants everything you want. You are Light; he is Shadow.</p>
-      <p class="dim" style="margin:0">He has no skill tree, but he's a step above every other CPU: better ratings, smarter play, and badges that grow as he levels. He levels up as you do, plays any position, and he's on the court every rivalry game. His red NEMESIS tag marks him in games, and the bar at the top of the hub tracks your head-to-head.</p>
-      <button class="btn hot" id="nem-ok">Bring it on</button></div>`;
-    $('#nem-ok').onclick = () => { M.hidden = true; renderHub(); };
+    L.nemesisMet = true; saveLeague(); showPrologue(L);   // v197: the story so far, then the rival
     return;
   }
   if(L.careerQ && L.careerQ.length){ const key = L.careerQ.shift(); UI.inCut = true; return showCareerScene(L, key, () => { UI.inCut = false; renderHub(); }); }
@@ -6205,7 +6254,7 @@ function renderSettings(back){
         <b>Cloud save</b><span class="cond cloudline">${cloudStatus()}</span>
         ${CLOUD.state === 'on' ? `<div class="row">${LEAGUE ? '<button class="btn sm hot" data-act="cloud-save">Save now</button>' : ''}${CLOUD.meta && !CLOUD.meta.none ? `<button class="btn sm" data-act="cloud-load">Load cloud save (Season ${CLOUD.meta.season}, ${esc(CLOUD.meta.team || '')}, ${agoText(CLOUD.meta.savedAt)})</button>` : ''}</div>` : ''}
         <span class="dim" style="margin-top:6px">Extra safety: a backup you can keep as a file or as a code in Notes. It restores your franchise on any device or browser.</span>
-        <div class="row">${LEAGUE ? '<button class="btn sm" data-act="backup">Back up my franchise</button>' : ''}<button class="btn sm" data-act="restore">Restore a backup</button></div>
+        <div class="row">${LEAGUE ? '<button class="btn sm" data-act="backup">Back up my franchise</button>' : ''}<button class="btn sm" data-act="restore">Restore a backup</button>${LEAGUE && LEAGUE.nemesis != null && LEAGUE.rival != null && LEAGUE.avatar != null ? '<button class="btn sm" data-act="intro-replay">▶ Watch the story intro</button>' : ''}</div>
         ${UI.backup ? `<div class="row" style="gap:8px"><button class="btn hot" data-act="file-backup">💾 Save backup file</button><button class="btn" data-act="copy-backup">Copy backup code</button></div><span class="dim cond"><b>Easiest: Save backup file.</b> On iPhone pick "Save to Files"; on a computer it lands in Downloads. To bring it back: Restore a backup → Choose backup file. Or copy the code and paste it into Notes. On iPhone, Safari can erase a site's saved data if you don't open it for 7 days; this code brings your franchise back.</span><textarea id="bk-code" readonly rows="4" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px monospace">${esc(UI.backup)}</textarea>` : ''}
         ${UI.restoring ? `<div class="row" style="gap:8px"><label class="btn hot" style="cursor:pointer">📂 Choose backup file<input type="file" id="rs-file" accept=".txt,text/plain" style="display:none"></label><button class="btn" data-act="paste-backup">📋 Paste from clipboard</button></div><span class="dim cond">Or paste the code in the box yourself, then tap Load.</span><textarea id="rs-code" rows="4" placeholder="Paste your backup code" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px monospace"></textarea><div class="row"><button class="btn sm hot" data-act="restore-go">Load this franchise</button>${UI.restoreErr ? `<span class="bad cond">${esc(UI.restoreErr)}</span>` : ''}</div>` : ''}
       </div>
@@ -6656,7 +6705,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 196;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 197;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -10395,6 +10444,7 @@ if(typeof document !== 'undefined'){
       case 'cloud-load': cloudLoad(false).catch(e => { UI.restoreErr = 'Could not load the cloud save (' + ((e && e.code) || 'error') + ').'; renderSettings(UI.setBack || 'menu'); }); break;
       case 'restore': UI.restoring = true; UI.restoreErr = ''; renderSettings(UI.setBack || 'menu'); break;
       case 'restore-go': restoreFromCode($('#rs-code').value); break;
+      case 'intro-replay': if(LEAGUE) showPrologue(LEAGUE, true); break;
       case 'paste-backup': {   // one tap: read the clipboard and load it (iPhone shows a small "Paste" bubble to confirm)
         const fail = () => { UI.restoreErr = 'Your browser did not allow reading the clipboard. Paste into the box instead.'; renderSettings(UI.setBack || 'menu'); };
         if(navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(t => t && t.trim() ? restoreFromCode(t) : fail(), fail); else fail(); break; }
