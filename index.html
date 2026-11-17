@@ -510,6 +510,9 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .mabbr{font:400 34px/1 var(--display);color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,.45)}
 .mrec{font:700 20px var(--cond);color:#fff}.mname{font:600 12px var(--cond);color:rgba(255,255,255,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .movr{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;background:rgba(0,0,0,.45);font:700 12px var(--cond);color:#ffd23a}
+.mseries{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:-6px;border-radius:10px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);color:#fff}
+.mseries b{font:800 22px var(--cond);white-space:nowrap;line-height:1}.mseries span{font:700 10px var(--cond);letter-spacing:.12em;opacity:.7}
+.mwins{font-size:12px;font-weight:600;opacity:.8}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
   background:#0a0908;border:2px solid #ffd23a;color:#ffd23a;font:400 16px var(--display);box-shadow:0 0 16px rgba(255,210,58,.45)}
 .gamebtns{display:grid!important;grid-template-columns:1.3fr 1fr 1fr;gap:8px}.gamebtns .btn{padding-left:6px;padding-right:6px;white-space:nowrap}.gamebtns > :nth-child(n+4){grid-column:1 / -1}
@@ -4626,6 +4629,13 @@ function recordSeriesGame(L, S, a, res){
     if(L.nemesis != null && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.rival) && L.teams[L.rival].roster.includes(L.nemesis)) kaineSeriesOver(L, S.winner === L.user); }
 }
 const seriesTxt = (L, S) => { const lead = S.wa === S.wb ? `tied ${S.wa}-${S.wb}` : `${L.teams[S.wa > S.wb ? S.a : S.b].abbr} ${S.winner != null ? 'wins' : 'leads'} ${Math.max(S.wa, S.wb)}-${Math.min(S.wa, S.wb)}`; return lead; };
+// v184: the series from your side. seriesMine gives [your wins, their wins]; seriesYou says it in words.
+const seriesMine = (L, S) => S.a === L.user ? [S.wa, S.wb] : [S.wb, S.wa];
+function seriesYou(L, S){ const [m, o] = seriesMine(L, S);
+  if(S.winner != null) return S.winner === L.user ? `You won the series ${m}-${o}` : `You lost the series ${m}-${o}`;
+  return m === o ? `Series tied ${m}-${o}` : m > o ? `You lead the series ${m}-${o}` : `You trail in the series ${m}-${o}`; }
+// your series this round, finished or not (null once you are out of the bracket)
+const userSeries = L => L.phase === 'playoffs' && L.playoffs ? L.playoffs.series.find(s => s.a === L.user || s.b === L.user) || null : null;
 function advancePlayoffs(L){
   const P = L.playoffs;
   if(P.series.some(s => s.winner == null)) return;
@@ -6191,8 +6201,8 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   const phaseTxt = L.phase === 'season' ? `Regular season · Round ${Math.min(L.round + 1, L.schedule.length)} of ${L.schedule.length}` : L.phase === 'playoffs' ? `Playoffs · ${roundName(L)}` : 'Offseason';
   const body = { bonds:hubBonds, money:hubMoney, legacy:hubLegacy, upgrades:hubUpgrades, auto:hubAuto, arena:hubArena, badges:hubBadges, scout:hubScout, play:hubPlay, roster:hubRoster, train:hubTrain, shop:hubShop, farm:hubFarm, standings:hubStandings, leaders:hubLeaders, trade:hubTrade, fa:hubFA, types:() => `<div class="panel">${typeList()}</div><div class="panel"><h3>Full chart</h3><p class="dim" style="margin:4px 0 10px">Row attacks column. ✓ = row has the edge, ✗ = column has the edge.</p>${typeChart()}</div>` }[UI.tab](L);
   showView(`<div class="wrap">
-    <div class="hubhead${UI.tab === 'play' ? '' : ' compact'}" data-rec="${U.w}-${U.l}">
-      <div class="teamtag"><span class="swatch" style="background:${U.color}"></span><div><h2>${cosOn(L, 'emblem') ? cosOn(L, 'emblem') + ' ' : ''}${esc(U.name)}${(() => { const n = L.champs.filter(c => c.tid === L.user).length; return n ? `<span class="stars" title="${n} title${n > 1 ? 's' : ''}">${n <= 5 ? '★'.repeat(n) : '★×' + n}</span>` : ''; })()}</h2>${L.avatar != null ? `<div class="dim cond gmline">GM${L.avatarRetired ? ' (retired star)' : ' and franchise star'}: <b>${esc(L_NAME() || 'You')}</b></div>` : ''}${cosOf(L).arena ? `<div class="dim cond">🏟️ ${esc(cosOf(L).arena)}</div>` : ''}<div class="dim cond phoneonly phoneblock">S${L.season}${L.avatar != null && !L.avatarRetired ? ` · Yr ${careerYear(L)}/${careerLen(L)}` : ''} · ${L.phase === 'season' ? `R${Math.min(L.round + 1, L.schedule.length)}/${L.schedule.length}` : L.phase === 'playoffs' ? roundName(L) : 'Offseason'} · <b>${U.w}-${U.l}</b>${L.streak ? ` · ${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}` : ''}</div><div class="dim cond deskonly">Season ${L.season}${L.avatar != null && !L.avatarRetired ? ` (year ${careerYear(L)} of ${careerLen(L)}: ${eraOf(L)})` : ''} · ${phaseTxt} · ${U.w}-${U.l} · Team OVR ${teamOVR(L, L.user)}</div>
+    <div class="hubhead${UI.tab === 'play' ? '' : ' compact'}" data-rec="${(() => { const S = userSeries(L); return S ? seriesMine(L, S).join('-') : `${U.w}-${U.l}`; })()}">
+      <div class="teamtag"><span class="swatch" style="background:${U.color}"></span><div><h2>${cosOn(L, 'emblem') ? cosOn(L, 'emblem') + ' ' : ''}${esc(U.name)}${(() => { const n = L.champs.filter(c => c.tid === L.user).length; return n ? `<span class="stars" title="${n} title${n > 1 ? 's' : ''}">${n <= 5 ? '★'.repeat(n) : '★×' + n}</span>` : ''; })()}</h2>${L.avatar != null ? `<div class="dim cond gmline">GM${L.avatarRetired ? ' (retired star)' : ' and franchise star'}: <b>${esc(L_NAME() || 'You')}</b></div>` : ''}${cosOf(L).arena ? `<div class="dim cond">🏟️ ${esc(cosOf(L).arena)}</div>` : ''}<div class="dim cond phoneonly phoneblock">S${L.season}${L.avatar != null && !L.avatarRetired ? ` · Yr ${careerYear(L)}/${careerLen(L)}` : ''} · ${L.phase === 'season' ? `R${Math.min(L.round + 1, L.schedule.length)}/${L.schedule.length}` : L.phase === 'playoffs' ? roundName(L) : 'Offseason'} · <b>${(() => { const S = userSeries(L); if(!S) return `${U.w}-${U.l}`; const [m, o] = seriesMine(L, S); return `Series ${m}-${o}`; })()}</b>${L.streak ? ` · ${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}` : ''}</div><div class="dim cond deskonly">Season ${L.season}${L.avatar != null && !L.avatarRetired ? ` (year ${careerYear(L)} of ${careerLen(L)}: ${eraOf(L)})` : ''} · ${phaseTxt} · ${U.w}-${U.l} · Team OVR ${teamOVR(L, L.user)}</div>
         <div class="row cond" style="gap:12px;margin-top:4px"><span title="Team chemistry: Electric +3, Tight-knit +1, Tense −2, Fractured or Toxic −4 to every rating in games">Chemistry <span class="mini"><i style="width:${L.morale == null ? 60 : L.morale}%;background:${(L.morale ?? 60) >= 70 ? 'var(--good)' : (L.morale ?? 60) >= 45 ? 'var(--gold)' : 'var(--bad)'}"></i></span> <b>${moodName(L.morale ?? 60)}</b>${moodMod(L.morale ?? 60) ? ` (${moodMod(L.morale ?? 60) > 0 ? '+' : ''}${moodMod(L.morale ?? 60)})` : ''}</span>
         <span title="Fan hype: wins and big moves raise it; losses and trading fan favorites drop it. Changes ticket money and what free agents ask.">Fans <span class="mini"><i style="width:${hypeOf(L)}%;background:${hypeOf(L) >= 50 ? 'var(--good)' : 'var(--gold)'}"></i></span> <b>${hypeWord(hypeOf(L))}</b></span>
         <span title="Agent trust: dumping players you just signed or cutting guaranteed money makes agents ask more. Paying full price on re-signs rebuilds it.">Agents <b>${trustWord(trustOf(L))}</b></span>
@@ -6439,7 +6449,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 183;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 184;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7561,11 +7571,13 @@ function scoutLine(L, g){
 }
 // The matchup poster on the Play tab: each team gets half, in its own color, with its best player's portrait.
 function matchupPoster(L, g){
+  const wins = tid => g.playoff ? (g.s.a === tid ? g.s.wa : g.s.wb) : 0;   // series wins for one side
   const side = (tid, right) => { const T = L.teams[tid], star = T.roster.slice().sort((a, b) => ovr(L.players[b]) - ovr(L.players[a]))[0], p = L.players[star];
     return `<div class="mside ${right ? 'r' : ''}" style="--tc:${T.color}"><img src="${portrait(p, T.color, displayTier(p))}" alt="">
-      <div class="minfo"><div class="mabbr">${T.abbr}${reigning(L, tid) ? ' <span title="Reigning champions" style="font-size:20px">👑</span>' : ''}</div><div class="mrec">${T.w}-${T.l}</div><div class="mname">${esc(T.name)}</div><div class="movr">OVR ${teamOVRc(L, tid)}${isSuper(L, tid) ? ' ⭐' : ''}</div></div></div>`; };
+      <div class="minfo"><div class="mabbr">${T.abbr}${reigning(L, tid) ? ' <span title="Reigning champions" style="font-size:20px">👑</span>' : ''}</div><div class="mrec">${g.playoff ? `${wins(tid)} <span class="mwins">${wins(tid) === 1 ? 'win' : 'wins'}</span>` : `${T.w}-${T.l}`}</div><div class="mname">${esc(T.name)}</div><div class="movr">OVR ${teamOVRc(L, tid)}${isSuper(L, tid) ? ' ⭐' : ''}</div></div></div>`; };
   const opp = g.a === L.user ? g.b : g.a;
-  return `<div class="matchup">${side(L.user, false)}<div class="mvs">VS</div>${side(opp, true)}</div>`;
+  const sm = g.playoff ? seriesMine(L, g.s) : null;   /* playoffs: series score in the middle instead of VS */
+  return `${sm ? `<div class="mseries"><span>SERIES</span><b>${L.teams[L.user].abbr} ${sm[0]} – ${sm[1]} ${L.teams[opp].abbr}</b><span>FIRST TO ${Math.ceil(g.s.bestOf/2)}</span></div>` : ''}<div class="matchup">${side(L.user, false)}<div class="mvs">VS</div>${side(opp, true)}</div>`;
 }
 function hubPlay(L){
   const U = L.teams[L.user];
@@ -7579,7 +7591,7 @@ function hubPlay(L){
     if(g){
       const O = L.teams[g.b];
       main = `<div class="panel" style="display:flex;flex-direction:column;gap:14px">
-        <span class="dim cond">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} of up to ${g.s.bestOf} · ${seriesTxt(L, g.s)}` : (g.b === L.rival ? '<b style="color:var(--bad)">Rivalry game</b> · +60 coins for a win' : 'Next game')}</span>
+        <span class="${g.playoff ? 'cond' : 'dim cond'}">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} · <b>${seriesYou(L, g.s)}</b> <span class="dim">· first to ${Math.ceil(g.s.bestOf/2)} wins</span>` : (g.b === L.rival ? '<b style="color:var(--bad)">Rivalry game</b> · +60 coins for a win' : 'Next game')}</span>
         ${matchupPoster(L, g)}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
@@ -8277,6 +8289,7 @@ function renderPost(teams, res, reports, onContinue){
       <span class="dim cond">Final</span>
       <div class="big num"><span style="color:${teams[0].color}">${teams[0].abbr} ${res.score[0]}</span> <span class="dim">–</span> <span style="color:${teams[1].color}">${res.score[1]} ${teams[1].abbr}</span></div>
       ${reports ? `<div style="color:${won ? 'var(--good)' : 'var(--bad)'};font-weight:600">${won ? 'Win' : 'Loss'}</div>` : ''}
+      ${reports && reports.series ? `<div class="cond" style="font-size:17px"><b>${seriesYou(LEAGUE, reports.series)}</b>${reports.series.winner == null ? ` <span class="dim">· first to ${Math.ceil(reports.series.bestOf/2)} wins</span>` : ''}</div>` : ''}
       <div class="row" style="gap:8px"><button class="btn hot" data-act="post-continue">Continue</button><button class="btn" data-act="post-next">Continue and sim the next game</button></div>
     </div>
     ${reports ? falloutPanel(reports.fallout) : ''}
@@ -9849,7 +9862,7 @@ function liveCall(id, silent){
 // shared ending for a game you played (simmed or coached live)
 function finishUserGame(L, g, teams, res){
   const reports = applyGame(L, g.a, g.b, res, g.playoff);
-  if(g.playoff) recordSeriesGame(L, g.s, g.a, res);
+  if(g.playoff){ recordSeriesGame(L, g.s, g.a, res); reports.series = g.s; }
   simRestOfRound(L); saveLeague();
   renderPost(teams, res, reports, () => runEvolutions(reports.filter(r => r.evo).map(r => r.pid), () => { UI.tab = 'play'; renderHub(); }));
 }
@@ -9866,7 +9879,7 @@ function franchiseGame(sim, mode){
   const teams = gameTeams(L, g.a, g.b);
   const after = res => {
     const reports = applyGame(L, g.a, g.b, res, g.playoff);
-    if(g.playoff) recordSeriesGame(L, g.s, g.a, res);
+    if(g.playoff){ recordSeriesGame(L, g.s, g.a, res); reports.series = g.s; }
     simRestOfRound(L); saveLeague();
     renderPost(teams, res, reports, () => runEvolutions(reports.filter(r => r.evo).map(r => r.pid), () => { UI.tab = 'play'; renderHub(); }));
   };
