@@ -536,6 +536,29 @@ html.skin .msg{border-radius:0 8px 8px 0;border-left-color:var(--acc);background
 .face{position:relative;flex:none;width:60px;height:64px;border-radius:10px;border:2px solid var(--t1);border-right-color:var(--t2);border-bottom-color:var(--t2);background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--t1) 45%,transparent),rgba(0,0,0,.55) 75%);overflow:hidden;display:inline-block}.face img{position:absolute;left:50%;bottom:-2px;width:66px!important;height:72px!important;transform:translateX(-50%)}.face .fpos{position:absolute;right:0;bottom:0;font:800 10px var(--cond);font-style:normal;padding:0 4px;border-radius:6px 0 0 0;background:rgba(0,0,0,.78);color:#fff;letter-spacing:.03em}.face .faura{position:absolute;left:2px;top:0;font-style:normal;font-size:12px;color:#ffd23a;text-shadow:0 0 4px #000}.trow .tmain b,.frow .tmain b{font-size:16px}
 .promptcard .eventopts{flex-direction:column}.promptcard .eventopts .btn{max-width:none;width:100%}.promptcard .pwho{flex-direction:row!important;align-items:center!important;gap:10px}.promptcard .pwho>span:last-child{display:flex;flex-direction:column;gap:2px;align-items:flex-start}.promptfoot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:10px}.btn.ghost{background:none;border-color:transparent;opacity:.65}
 img[src*="#pk"]{visibility:hidden}
+/* ---- v182: fit and finish on phones ---- */
+/* compact header on every tab but Play (phones only): one tight block, no mood meters */
+@media (max-width:900px){
+  .hubhead.compact .row.cond,.hubhead.compact .gmline{display:none!important}
+  html.skin .hubhead.compact{padding:8px 12px 8px 18px}
+  html.skin .hubhead.compact h2{font-size:20px}
+  html.skin .hubhead.compact::after{font-size:40px;bottom:-9px}
+}
+/* tables: tighter cells on phones so more columns fit; long first-column names shorten with … */
+@media (max-width:640px){
+  th,td{padding:6px 5px}
+  .tablewrap td:first-child{max-width:52vw;overflow:hidden;text-overflow:ellipsis}
+  .tablewrap td:first-child .row{overflow:hidden}
+  .moneypage td:first-child{white-space:normal}          /* long labels wrap instead of pushing the numbers off screen */
+  .morebtn{min-height:40px!important}                     /* comfortable tap targets (the phone UI is drawn at 80%) */
+  .card select,.frow select{min-height:38px}
+  .linkbtn{padding:10px 14px}
+  .hubhead .coins{min-height:40px}
+  .face .fpos{font-size:11px}
+  .hubhead.compact .teamtag{overflow:hidden}.hubhead.compact .teamtag > div{min-width:0}   /* a long title never runs under the coins */
+}
+.tablewrap.wide{position:relative}
+.tablewrap.wide::after{content:'← swipe to see more →';display:block;position:sticky;left:0;text-align:center;font:600 12px var(--cond);color:var(--dim);padding:6px 0 0;letter-spacing:.04em}
 .upgchip.ring{background:rgba(255,210,58,.14);color:#ffd23a;border:1px solid #ffd23a}
 .champcard{position:relative;overflow:hidden!important;text-align:center;align-items:stretch;border:2px solid #ffd23a!important;box-shadow:0 0 40px rgba(255,210,58,.35)!important;background:radial-gradient(120% 60% at 50% 0%,rgba(255,210,58,.22),transparent 70%),#0e0d0c!important;clip-path:none!important;border-radius:14px!important}
 .champtop{display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -3803,7 +3826,10 @@ function animateLivePortraits(){
     if(!cvs.length){ LIVE_RAF = null; return; }
     if(now - LIVE_LAST > 33){   // about 30 fps is plenty for cards
       LIVE_LAST = now;
-      cvs.forEach(c => { const ctx = c.getContext('2d'); ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 128, 140); const lk = c.dataset.look ? c.dataset.look.split('.') : null; paintPortrait(ctx, +c.dataset.sp, c.dataset.col || null, +c.dataset.tier, null, now/1000, lk ? { tone:+lk[0], acc:+lk[1] } : null); });
+      const vh = innerHeight;
+      cvs.forEach(c => { const r = c.getBoundingClientRect();
+        if(c._painted && (r.bottom < -40 || r.top > vh + 40 || !r.width)) return;   // off screen: skip (saves most of the work on long lists)
+        c._painted = true; const ctx = c.getContext('2d'); ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 128, 140); const lk = c.dataset.look ? c.dataset.look.split('.') : null; paintPortrait(ctx, +c.dataset.sp, c.dataset.col || null, +c.dataset.tier, null, now/1000, lk ? { tone:+lk[0], acc:+lk[1] } : null); });
     }
     LIVE_RAF = requestAnimationFrame(loop);
   };
@@ -6136,7 +6162,9 @@ function subTabs(){
 }
 // Drawing a screen asks for the same ratings hundreds of times; remember them while one screen is being drawn.
 function renderHub(){ if(MEMO.on) return renderHub0(); memoClear(); MEMO.on = true; PORT_LAZY.on = true;
-  try { return renderHub0(); } finally { MEMO.on = false; PORT_LAZY.on = false; memoClear(); fillPortraits(); } }   // faces fill in right after the tab shows
+  try { return renderHub0(); } finally { MEMO.on = false; PORT_LAZY.on = false; memoClear(); fillPortraits(); markWideTables(); } }
+// tables wider than the screen scroll sideways; this marks them so a "swipe" hint shows under them
+function markWideTables(){ try { document.querySelectorAll('#view .tablewrap').forEach(w => w.classList.toggle('wide', w.scrollWidth > w.clientWidth + 4)); } catch(e){} }   // faces fill in right after the tab shows
 function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGUE) syncBredYouth(LEAGUE);   // keeps the Arena look's team color in step with the loaded league
   const L = LEAGUE; if(!L){ renderMenu(); return; }
   applyUiScale();   // full size on the skill tree tab, your chosen size everywhere else
@@ -6152,7 +6180,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   const phaseTxt = L.phase === 'season' ? `Regular season · Round ${Math.min(L.round + 1, L.schedule.length)} of ${L.schedule.length}` : L.phase === 'playoffs' ? `Playoffs · ${roundName(L)}` : 'Offseason';
   const body = { bonds:hubBonds, money:hubMoney, legacy:hubLegacy, upgrades:hubUpgrades, auto:hubAuto, arena:hubArena, badges:hubBadges, scout:hubScout, play:hubPlay, roster:hubRoster, train:hubTrain, shop:hubShop, farm:hubFarm, standings:hubStandings, leaders:hubLeaders, trade:hubTrade, fa:hubFA, types:() => `<div class="panel">${typeList()}</div><div class="panel"><h3>Full chart</h3><p class="dim" style="margin:4px 0 10px">Row attacks column. ✓ = row has the edge, ✗ = column has the edge.</p>${typeChart()}</div>` }[UI.tab](L);
   showView(`<div class="wrap">
-    <div class="hubhead" data-rec="${U.w}-${U.l}">
+    <div class="hubhead${UI.tab === 'play' ? '' : ' compact'}" data-rec="${U.w}-${U.l}">
       <div class="teamtag"><span class="swatch" style="background:${U.color}"></span><div><h2>${cosOn(L, 'emblem') ? cosOn(L, 'emblem') + ' ' : ''}${esc(U.name)}${(() => { const n = L.champs.filter(c => c.tid === L.user).length; return n ? `<span class="stars" title="${n} title${n > 1 ? 's' : ''}">${n <= 5 ? '★'.repeat(n) : '★×' + n}</span>` : ''; })()}</h2>${L.avatar != null ? `<div class="dim cond gmline">GM${L.avatarRetired ? ' (retired star)' : ' and franchise star'}: <b>${esc(L_NAME() || 'You')}</b></div>` : ''}${cosOf(L).arena ? `<div class="dim cond">🏟️ ${esc(cosOf(L).arena)}</div>` : ''}<div class="dim cond phoneonly phoneblock">S${L.season}${L.avatar != null && !L.avatarRetired ? ` · Yr ${careerYear(L)}/${careerLen(L)}` : ''} · ${L.phase === 'season' ? `R${Math.min(L.round + 1, L.schedule.length)}/${L.schedule.length}` : L.phase === 'playoffs' ? roundName(L) : 'Offseason'} · <b>${U.w}-${U.l}</b>${L.streak ? ` · ${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}` : ''}</div><div class="dim cond deskonly">Season ${L.season}${L.avatar != null && !L.avatarRetired ? ` (year ${careerYear(L)} of ${careerLen(L)}: ${eraOf(L)})` : ''} · ${phaseTxt} · ${U.w}-${U.l} · Team OVR ${teamOVR(L, L.user)}</div>
         <div class="row cond" style="gap:12px;margin-top:4px"><span title="Team chemistry: Electric +3, Tight-knit +1, Tense −2, Fractured or Toxic −4 to every rating in games">Chemistry <span class="mini"><i style="width:${L.morale == null ? 60 : L.morale}%;background:${(L.morale ?? 60) >= 70 ? 'var(--good)' : (L.morale ?? 60) >= 45 ? 'var(--gold)' : 'var(--bad)'}"></i></span> <b>${moodName(L.morale ?? 60)}</b>${moodMod(L.morale ?? 60) ? ` (${moodMod(L.morale ?? 60) > 0 ? '+' : ''}${moodMod(L.morale ?? 60)})` : ''}</span>
         <span title="Fan hype: wins and big moves raise it; losses and trading fan favorites drop it. Changes ticket money and what free agents ask.">Fans <span class="mini"><i style="width:${hypeOf(L)}%;background:${hypeOf(L) >= 50 ? 'var(--good)' : 'var(--gold)'}"></i></span> <b>${hypeWord(hypeOf(L))}</b></span>
@@ -6398,7 +6426,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 181;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 182;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7659,7 +7687,7 @@ function hubRoster(L){
 function hubStandings(L){
   const confs = NT(L) >= 30 ? ['East', 'West'] : [null], cut = NT(L) >= 30 ? 8 : playoffTeams(L);
   const table = (list, title) => `<div class="panel tablewrap">${title ? `<h3>${title}</h3>` : ''}<table style="margin-top:6px"><thead><tr><th>Team</th><th>W</th><th>L</th><th>GB</th><th>Diff</th><th>OVR</th></tr></thead><tbody>
-    ${list.map((t, i) => { const gb = ((list[0].w - t.w) + (t.l - list[0].l))/2; return `<tr class="${t.user ? 'me' : ''}" ${i === cut ? 'style="border-top:2px dashed var(--line)"' : ''}><td><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="rk ${i === 0 ? 'top' : i < cut ? 'in' : ''}">${i + 1}</span><span class="swatch" style="background:${t.color};height:16px;width:8px"></span>${esc(t.name)}${t.id === L.rival ? ' <span class="rivaltag">RIVAL</span>' : ''}${i < cut && L.phase === 'season' ? ' <span class="dim cond">· playoff spot</span>' : ''}</span></td><td class="num">${t.w}</td><td class="num">${t.l}</td><td class="num">${gb ? gb.toFixed(1) : '—'}</td><td class="num">${t.pf - t.pa > 0 ? '+' : ''}${t.pf - t.pa}</td><td class="num">${teamOVR(L, t.id)}</td></tr>`; }).join('')}
+    ${list.map((t, i) => { const gb = ((list[0].w - t.w) + (t.l - list[0].l))/2; return `<tr class="${t.user ? 'me' : ''}" ${i === cut ? 'style="border-top:2px dashed var(--line)"' : ''}><td><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="rk ${i === 0 ? 'top' : i < cut ? 'in' : ''}">${i + 1}</span><span class="swatch" style="background:${t.color};height:16px;width:8px"></span>${esc(t.name)}${t.id === L.rival ? ' <span class="rivaltag">RIVAL</span>' : ''}${i < cut && L.phase === 'season' ? ' <span class="dim cond deskonly">· playoff spot</span>' : ''}</span></td><td class="num">${t.w}</td><td class="num">${t.l}</td><td class="num">${gb ? gb.toFixed(1) : '—'}</td><td class="num">${t.pf - t.pa > 0 ? '+' : ''}${t.pf - t.pa}</td><td class="num">${teamOVR(L, t.id)}</td></tr>`; }).join('')}
   </tbody></table></div>`;
   return `<div class="split">${confs.map(c => table(c ? confStandings(L, c) : standings(L), c ? c + 'ern Conference' : '')).join('')}</div><p class="dim cond" style="margin:0">${NT(L) >= 30 ? 'Top 8 in each conference make the playoffs (dashed line).' : `Top ${playoffTeams(L)} make the playoffs.`} Ties break on point differential.</p>`;
 }
