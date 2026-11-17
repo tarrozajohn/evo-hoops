@@ -6600,7 +6600,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 189;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 190;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -10125,6 +10125,7 @@ if(typeof document !== 'undefined'){
       case 'file-backup': {   // save the code as a small text file: the share sheet on phones, a download on computers
         if(!UI.backup) break; const name = `evo-hoops-backup-S${LEAGUE ? LEAGUE.season : 0}.txt`, btn = $('[data-act=file-backup]'), say = t => { if(btn) btn.textContent = t; };
         const download = () => { try{ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([UI.backup], { type:'text/plain' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); say('Saved to Downloads ✓'); }catch(e){ say('Could not save: use Copy'); } };
+        if(window.claude && window.claude.use){ say('Saving…'); window.claude.use('downloads').then(d => d ? d.save({ filename:name, data:UI.backup }).then(() => say('Saved ✓'), e => say(e && e.code === 'declined' ? '💾 Save backup file' : 'Could not save: use Copy')) : say('Not available here: use Copy'), () => say('Not available here: use Copy')); break; }
         let file = null; try{ file = new File([UI.backup], name, { type:'text/plain' }); }catch(e){}
         if(file && navigator.canShare && navigator.canShare({ files:[file] }) && SET.touch !== 'off' && matchMedia('(pointer:coarse)').matches) navigator.share({ files:[file], title:'Evo Hoops backup' }).then(() => say('Saved ✓'), e => { if(!e || e.name !== 'AbortError') download(); });
         else download(); break; }
