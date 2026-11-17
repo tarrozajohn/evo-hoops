@@ -570,6 +570,8 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .profaces{display:flex;align-items:flex-end;justify-content:center;gap:6px}.profaces img{width:84px;height:92px}.profaces img.k{width:104px;height:114px;filter:drop-shadow(0 0 14px rgba(255,51,68,.7))!important}.profaces span{font:400 20px var(--display);opacity:.7;padding:0 6px 30px}
 .proline{width:100%;text-align:left;padding:6px 10px;border-left:3px solid #888;background:rgba(255,255,255,.05);border-radius:6px;font:600 15px var(--cond)}.proline.k{border-color:#ff3344;color:#ffb0bd}
 .procands{display:flex;flex-direction:column;gap:6px;width:100%}.procands .btn{display:flex;align-items:center;gap:10px;text-align:left;white-space:normal}.procands img{width:40px;height:44px;flex:none}.procands span{display:flex;flex-direction:column}
+.goatlist{display:flex;flex-direction:column;gap:4px;margin-top:8px}.goatlist > div{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.04);font:600 14px var(--cond)}
+.goatlist i{font-style:normal;font-size:16px;text-align:center;opacity:.5}.goatlist .ok{background:rgba(80,220,130,.14)}.goatlist .ok i{color:var(--good);opacity:1}.goatlist .dim{font-size:12px;text-align:right}
 .fivequotes{display:flex;flex-direction:column;gap:3px;text-align:left;font:600 14px var(--cond);padding:6px 10px;border-left:3px solid #ffd23a;background:rgba(255,255,255,.05);border-radius:6px;width:100%}
 .fivefaces{display:flex;gap:8px;flex-wrap:wrap}.fivefaces span{display:flex;align-items:center;gap:4px;font:600 13px var(--cond)}.fivefaces img{width:30px;height:33px}.fivefaces i{font-style:normal;color:#ffd23a}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
@@ -1110,6 +1112,21 @@ function treeEffects(p){
   return p._tfx;
 }
 const hasKey = (e, k) => !!(e && e.keys && e.keys[k]);
+const dblStyle = S => S ? { ...S, three:S.three*0.5, jump:S.jump*0.5, drive:S.drive*0.5, pass:S.pass*1.8 } : S;   // two defenders on him: fewer shots, more passing out
+/* v199 boss abilities. The Five Crowns, Vex and final-boss Kaine use the same special powers your Legend's keystones give you
+   (plus one rare archetype each), so they play differently from everyone else:
+   CROWN_KIT[n] = { rare, keys } for crown number n (1 Zenith, 2 Mirage, 3 Onyx, 4 Tempest, 5 Colossus, 6 Vex). */
+const CROWN_KIT = [null,
+  { rare:'maestro',    keys:{ vision:true, laser:true, captain:true } },        // Zenith: Foresight
+  { rare:'sniper',     keys:{ unblockable:true, heatcheck:true, nolimit:true } },             // Mirage: No Limit (scores from anywhere)
+  { rare:'ballhawk',   keys:{ thiefking:true } },                               // Onyx: Shadow (leads the double team on you)
+  { rare:'juggernaut', keys:{ unstoppable:true, handles:true, meteor:true } },  // Tempest: Comet
+  { rare:'wall',       keys:{ guardian:true } },                                // Colossus: The Wall
+  { rare:'phenom',     keys:{} } ];                                             // Vex: Prodigy
+const KAINE_FINAL_KEYS = { unstoppable:true, unblockable:true, handles:true, guardian:true, gravity:true };
+function storyKeys(p){ if(p.crown && CROWN_KIT[p.crown]) return CROWN_KIT[p.crown].keys;
+  if(p.nemesis && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.kaine && LEAGUE.kaine.ending === 'final') return KAINE_FINAL_KEYS;
+  return null; }
 // Auto-fill: repeatedly find the most valuable node you can reach (value divided by how many steps away it is)
 // and take the first step toward it, until your points run out. focus: 'all' or a group (fin, sht, ply, def).
 function treeNodeValue(n, focus){
@@ -1482,6 +1499,12 @@ function createGame(teams, opts){
     if(me && fr){ for(const e of [me, fr]){ e.mood = (e.mood || 0) + 2; e.r = rateFor(e, e.slot); } } }
   // Captain keystone: every teammate plays +4
   if(opts.edge && opts.mine != null){ const ot = 1 - opts.mine; G.ents.concat(G.bench[ot]).filter(e => e.team === ot).forEach(e => { e.edge = opts.edge; e.r = rateFor(e, e.slot); }); }   // fired up against you
+  /* v199 double teams: every CPU team sends a second defender at your Legend. You shoot and dunk worse (SHT -14, DNK -12;
+     -24 and -20 against the story bosses), and because someone is always left open, each of your teammates shoots +3 (+4 against bosses).
+     It is applied after the rating leveling-off, so it bites no matter how strong you are. You do not tire any faster. */
+  if(opts.mine != null){ const mine = G.ents.concat(G.bench[opts.mine]).filter(e => e.team === opts.mine), me = mine.find(e => e.avatar);
+    if(me){ G.dbl = opts.boss ? 2 : 1; mine.forEach(e => { e.dbl = e === me ? (opts.boss ? { sht:-24, dnk:-20 } : { sht:-14, dnk:-12 }) : { sht:opts.boss ? 4 : 3 }; e.r = rateFor(e, e.slot); });
+      me.S = dblStyle(me.S); } }   // when the computer plays your Legend (sims, Watch), he takes fewer shots and passes out of the double
   for(const ti of [0, 1]){ const me = G.ents.find(e => e.team === ti && e.avatar), kn = G.ents.find(e => e.team === ti && e.p.nemesis); if(me && kn){ for(const e of [me, kn]){ e.mood = (e.mood || 0) + 3; e.r = rateFor(e, e.slot); } } }   // Kaine on your team: light and shadow together
   for(const ti of [0, 1]) if(G.ents.concat(G.bench[ti]).some(e => e.team === ti && hasKey(e, 'captain'))) G.ents.concat(G.bench[ti]).filter(e => e.team === ti && !hasKey(e, 'captain')).forEach(e => { e.mood = (e.mood || 0) + 4; e.r = rateFor(e, e.slot); });
   // Ultimate Instinct keystone: start with a half-full meter
@@ -1594,7 +1617,7 @@ Object.entries(DEF_BOOKS).forEach(([k, D]) => { PLAN_OPTS.defense.opts[k] = `${D
 // In games, ratings past 85 give diminishing returns (they level off around 115), so a huge number on the card
 // still helps but can't break the sim. Stars at 99 play like about 96; a 300 plays like about 115.
 const softRating = r => r <= 85 ? r : 85 + 30*(1 - Math.exp(-(r - 85)/30));
-function rateFor(e, slot){ const R = rateRaw(e, slot); for(const k in R) R[k] = Math.round((softRating(R[k]) + (e.edge || 0) + ((e.cmod && e.cmod[k]) || 0) - vetPenalty(e.p))*10)/10; /* cmod: live coaching calls, added after the leveling-off so they always bite */ return R; }   // edge: competitive-balance boost, added after the leveling-off
+function rateFor(e, slot){ const R = rateRaw(e, slot); for(const k in R) R[k] = Math.round((softRating(R[k]) + (e.edge || 0) + ((e.cmod && e.cmod[k]) || 0) + ((e.dbl && e.dbl[k]) || 0) - vetPenalty(e.p))*10)/10;   /* dbl: the double team on your Legend (v199) */ /* cmod: live coaching calls, added after the leveling-off so they always bite */ return R; }   // edge: competitive-balance boost, added after the leveling-off
 function rateRaw(e, slot){ const R = posRatings(e.p, slot); if(e.planDef) for(const k in e.planDef) R[k] = Math.max(20, R[k] + e.planDef[k]); if(e.star) for(const k in R) R[k] = e.avatar ? R[k] + STAR_BUFF : Math.min(99, R[k] + STAR_BUFF); if(e.mood) for(const k in R) R[k] = Math.max(20, R[k] + e.mood); if(e.rb) for(const k in e.rb) R[k] = Math.max(20, R[k] + e.rb[k]); return R; }
 // Legend passive ceiling per game: 8 rating points, +4 with Legend's Hunger, +6 in the Legendary form.
 function legendCap(e){ return 8 + (hasKey(e, 'hunger') ? 4 : 0) + (e.legendary ? 6 : 0); }
@@ -1723,7 +1746,7 @@ function makeEnt(p, team, slot){
   // and standing reach (mostly height, partly arm length)
   const B = physicals(p), dh = (B.h - BODY_REF.h)/12, dws = (B.ws - BODY_REF.ws)/12, dwt = (B.wt - BODY_REF.wt)/100;
   const T = trainOf(p);
-  return { p, id:p.id, team, slot, sp:p.sp, badges: p.avatar ? treeEffects(p).badges : p.nemesis ? nemesisBadges(p) : null, keys: p.avatar ? treeEffects(p).keys : null, gear:p.gear || null, aura: displayTier(p), ult: !!p.ultimate, avatar: !!p.avatar, nemesis: !!p.nemesis, legendary: isLegendary(p), legendGain:0, legT:0, dh, dws, dwt,
+  return { p, id:p.id, team, slot, sp:p.sp, badges: p.avatar ? treeEffects(p).badges : p.nemesis ? nemesisBadges(p) : null, keys: p.avatar ? treeEffects(p).keys : storyKeys(p), gear:p.gear || null, aura: displayTier(p), ult: !!p.ultimate, avatar: !!p.avatar, nemesis: !!p.nemesis, legendary: isLegendary(p), legendGain:0, legT:0, dh, dws, dwt,
     reach: dh*0.9 + dws*0.45 + T.phys.vert*0.25,                 // Vertical adds 3 inches of reach per level
     cw: dwt + T.phys.str*0.25,                                    // "contact weight": Strength counts like extra pounds
     vert: T.phys.vert, endu: T.phys.end, iq: T.mind.iq, clutch: T.mind.clutch, focus: T.mind.focus,
@@ -2102,6 +2125,7 @@ function releaseShot(G, e){
   if(nd && dd < 6) p -= 0.015*bdg(nd, 'clamps');                                // Clamps
   if(d < 12) p += 0.02*bdg(e, 'finisher');                                       // Fearless Finisher
   if(hasKey(e, 'heatcheck')) p += 0.05*Math.min(5, e.heat || 0);                 // Heat Check: hot from deep
+  if(hasKey(e, 'nolimit')) p += three ? 0.22 : 0.1;                              // No Limit: a hand in his face does not matter
   if(G.ents.some(o => o !== e && o.team === e.team && hasKey(o, 'gravity'))) p += 0.06;   // Gravity: they can't leave your teammate
   if(e.spotT > 0) p += 0.10;                                                     // Spotlight
   if(G.lastPass && G.lastPass.passer.team === e.team && G.lastPass.passer !== e && G.t - G.lastPass.t < 2 && hasKey(G.lastPass.passer, 'vision')) p += 0.04;
@@ -2346,7 +2370,7 @@ function bestPassTarget(G, e, mode){
   for(const m of G.ents){
     if(m.team !== e.team || m === e || m.stun > 0) continue;
     const o = nearestOpp(G, m), od = o ? dist(m, o) : 10, dm = dist(m, h);
-    let s = od*0.8 - dm*0.12 + (dm < 8 ? 2 : 0) + (m.fire ? 3 : 0) + (m.star ? (m.plan && m.plan.focus === 'share' ? 0 : m.plan && m.avatar ? 3.5 : 2) : 0) + (mode === 'advance' ? -dm*0.2 : 0);   // teammates look for the star
+    let s = od*0.8 - dm*0.12 + (dm < 8 ? 2 : 0) + (m.fire ? 3 : 0) + (m.star ? (m.plan && m.plan.focus === 'share' ? 0 : m.plan && m.avatar ? 3.5 : 2) : 0) + (mode === 'advance' ? -dm*0.2 : 0) + (hasKey(m, 'nolimit') ? 5 + dm*0.12 : 0);   // teammates look for the star, and for Mirage wherever he is standing
     for(const x of G.ents) if(x.team !== e.team && distToSeg(x, e, m) < 2.2){ s -= 4; break; }   // blocked lane
     if(s > bs){ bs = s; best = m; }
   }
@@ -2457,8 +2481,9 @@ function handlerAI(G, e, dt, sk){
       if(dh < (S.drive > 1.2 ? 9 : 8) && (ndd > 2.3 || rand() < 0.3)){ if(dh < 7.8 && (e.r.dnk > 52 || rand() < 0.45)) startDunk(G, e); else startJump(G, e, sk); return still; }
       if(G.shot < 2.2){ startJump(G, e, sk); return still; }
       // open threes: shooters let it fly, slashers and rim protectors almost never do
-      if(three && dh < 27 && ndd > (S.three > 1.5 ? 3.5 : 4.5) && e.hold > 0.25 && rand() < 0.4*S.three*(e.r.sht/75)*(e.fire ? 1.5 : 1)){ startJump(G, e, sk); return still; }
-      const range = dh < 23.2 ? 1 : dh < 27 ? 0.95*(e.r.sht/80)*Math.min(1.5, S.three) : 0.05;
+      const nl = hasKey(e, 'nolimit');   // Mirage's No Limit: lets it fly from anywhere in the front court, even with a defender close
+      if(three && dh < (nl ? 42 : 27) && ndd > (nl ? 1.2 : S.three > 1.5 ? 3.5 : 4.5) && e.hold > (nl ? 0.12 : 0.25) && rand() < (nl ? 0.9 : 0.4*S.three*(e.r.sht/75)*(e.fire ? 1.5 : 1))){ startJump(G, e, sk); return still; }
+      const range = dh < 23.2 ? 1 : dh < 27 ? 0.95*(e.r.sht/80)*Math.min(1.5, S.three) : nl && dh < 42 ? 1 : 0.05;
       const openF = ndd > 7 ? 1.5 : ndd > 4.5 ? 0.8 : 0.2;
       const p = 0.42 * range * openF * (e.r.sht/78) * (e.fire ? 1.6 : 1) * S.jump;
       if(e.hold > 0.4 && rand() < p*0.8){ startJump(G, e, sk); return still; }
@@ -5703,7 +5728,7 @@ function migrate(L){
   // playbooks split into offense and defense: old defensive playbooks move to the defense side
   if(L.plan){ if(OLD_DEF_BOOK[L.plan.book]){ L.plan.defense = OLD_DEF_BOOK[L.plan.book]; L.plan.book = 'balanced'; } if(!PLAYBOOKS[L.plan.book]) L.plan.book = 'balanced'; if(!DEF_BOOKS[L.plan.defense]) L.plan.defense = 'man'; }
   if(L.players){ if(L.kaine && L.kaine.vex != null && L.players[L.kaine.vex]) L.players[L.kaine.vex].sp = CROWN_SP + 5;
-    Object.values(L.players).forEach(p => { if(p.crown >= 1 && p.crown <= 6) p.sp = CROWN_SP + p.crown - 1; }); }
+    Object.values(L.players).forEach(p => { if(p.crown >= 1 && p.crown <= 6){ p.sp = CROWN_SP + p.crown - 1; p.rare = CROWN_KIT[p.crown].rare; } }); }
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
   if(L.kaine && L.kaine.ending === 'ally' && L.kaine.allyS == null){ L.kaine.allyS = L.season; L.kaine.allyG = L.gameNo || 0; }   // saves from before the Shadow and Light storyline start it from now
   if(L.avatar != null && L.players && L.players[L.avatar]){ const fixed = cleanTree(L.players[L.avatar]); if(fixed) L.keyNote = `Your skill tree had ${fixed} node${fixed > 1 ? 's' : ''} from an older version of the tree. ${fixed > 1 ? 'They were' : 'It was'} removed and the skill point${fixed > 1 ? 's' : ''} refunded.`; }
@@ -6738,7 +6763,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 198;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 199;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7746,6 +7771,29 @@ function careerTotals(L){ const t = L.timeline || [], me = L.players[L.avatar], 
     gp:c.gp || 0, pts:c.pts || 0, reb:c.reb || 0, ast:c.ast || 0, stl:c.stl || 0, blk:c.blk || 0, dnk:c.dnk || 0, wins:t.filter(x => !x.retired).reduce((a, x) => a + x.w, 0), losses:t.filter(x => !x.retired).reduce((a, x) => a + x.l, 0) }; }
 // legacy score: titles and MVPs count most, then the counting stats; ranked against the Hall of Fame
 function legacyScore(T){ return Math.round(T.titles*120 + T.mvps*80 + (T.awards - T.mvps)*25 + T.pts*0.05 + T.reb*0.04 + T.ast*0.06 + (T.stl + T.blk)*0.05 + T.wins*1.5); }
+/* v199 the GOAT checklist: ten things the greatest of all time has done. Shown on the League tab under Your career, and it decides
+   the title you retire with. Each item is { t: what it is, ok: done or not, now: where you stand }. */
+function goatList(L){
+  const T = careerTotals(L), tl = (L.timeline || []).filter(x => !x.retired), K = L.kaine || {}, F = L.five;
+  let run = 0, best = 0; tl.slice().sort((a, b) => a.y - b.y).forEach(x => { run = x.finish === 'Champions' ? run + 1 : 0; best = Math.max(best, run); });   // longest title streak
+  const beatKaine = (K.act || 1) >= 2 || !!K.away || ['ally', 'unbound', 'gone', 'final', 'done'].includes(K.ending);
+  return [
+    { t:'Win 10 championships', ok:T.titles >= 10, now:`${T.titles} of 10` },
+    { t:'Win 5 championships in a row', ok:best >= 5, now:`best run: ${best}` },
+    { t:'Win 8 MVP awards', ok:T.mvps >= 8, now:`${T.mvps} of 8` },
+    { t:'Win 30 awards of any kind', ok:T.awards >= 30, now:`${T.awards} of 30` },
+    { t:'Score 50,000 career points', ok:T.pts >= 50000, now:`${T.pts.toLocaleString()} so far` },
+    { t:'Beat Kaine in a playoff series', ok:beatKaine, now:beatKaine ? 'done' : 'not yet' },
+    { t:'Beat the Five Crowns in a playoff series', ok:!!(F && F.beatS != null), now:F ? (F.beatS != null ? `season ${F.beatS}` : `series so far: ${F.sw}-${F.sl}`) : 'they have not arrived' },
+    { t:'Hold a winning record against the Five Crowns (10+ games)', ok:!!(F && F.w + F.l >= 10 && F.w > F.l), now:F ? `${F.w}-${F.l}` : 'they have not arrived' },
+    { t:'Finish the story: the Five join you, or you beat the Last Shadow', ok:!!((F && F.joined) || K.ending === 'done'), now:(F && F.joined) || K.ending === 'done' ? 'done' : 'not yet' },
+    { t:'Play a full 20-season career', ok:T.seasons >= 20, now:`${T.seasons} of 20` } ];
+}
+const goatGrade = n => n >= 10 ? 'The Greatest of All Time' : n >= 8 ? 'An all-time great' : n >= 5 ? 'A Hall of Famer' : 'A good career';
+function goatPanel(L){ const G = goatList(L), n = G.filter(x => x.ok).length;
+  return `<div class="panel"><div class="row" style="justify-content:space-between"><h3>🐐 The GOAT checklist</h3><span class="cond"><b>${n} of ${G.length}</b> · ${goatGrade(n)}</span></div>
+    <div class="dim cond">This is the story of how you become the greatest Evo Hoops player of all time. All ten before you retire, or you are not the GOAT.</div>
+    <div class="goatlist">${G.map(x => `<div class="${x.ok ? 'ok' : ''}"><i>${x.ok ? '✓' : '○'}</i><span>${x.t}</span><span class="dim">${x.now}</span></div>`).join('')}</div></div>`; }
 function showCareerSummary(L, done){
   const T = careerTotals(L), score = legacyScore(T), me = L.players[L.avatar], M = $('#modal'); M.hidden = false;
   const hofScores = (L.hof || []).map(h => Math.round((h.trophies || []).length*40 + (h.pts || 0)*0.05 + (h.reb || 0)*0.04 + (h.ast || 0)*0.06)).sort((a, b) => b - a);
@@ -7755,7 +7803,8 @@ function showCareerSummary(L, done){
     <div class="careergrid"><div><b>${T.titles}</b><span>titles</span></div><div><b>${T.mvps}</b><span>MVPs</span></div><div><b>${T.awards}</b><span>awards</span></div><div><b>${T.wins}-${T.losses}</b><span>record</span></div>
       <div><b>${T.pts}</b><span>points</span></div><div><b>${T.reb}</b><span>rebounds</span></div><div><b>${T.ast}</b><span>assists</span></div><div><b>${T.dnk}</b><span>dunks</span></div></div>
     ${L.five && L.five.joined ? '<div class="showaward" style="text-align:center">THE ONE WHO STANDS ABOVE THE REST</div><div class="cond" style="text-align:center">You beat the Five Crowns, and all five followed you to the end.</div>' : ''}
-    <div class="msg">Legacy score <b>${score}</b> · ${rank === 1 ? '<b>The greatest of all time in this league.</b>' : `${ordinal(rank)} all time among Hall of Famers.`}${ns.games ? ` Head to head with Kaine: ${ns.wins}-${ns.games - ns.wins}.` : ''}${K.ending === 'ally' ? ' You finished as brothers in arms.' : K.ending === 'done' ? ' You beat the Last Shadow.' : ''}</div>
+    ${(() => { const G = goatList(L), n = G.filter(x => x.ok).length; return `<div class="showaward" style="text-align:center">${goatGrade(n).toUpperCase()}</div><div class="cond" style="text-align:center">GOAT checklist: <b>${n} of ${G.length}</b>${n < G.length ? ' · missing: ' + G.filter(x => !x.ok).map(x => x.t).join('; ') : ''}</div>`; })()}
+    <div class="msg">Legacy score <b>${score}</b> · ${rank === 1 ? '<b>The highest in league history.</b>' : `${ordinal(rank)} all time among Hall of Famers.`}${ns.games ? ` Head to head with Kaine: ${ns.wins}-${ns.games - ns.wins}.` : ''}${K.ending === 'ally' ? ' You finished as brothers in arms.' : K.ending === 'done' ? ' You beat the Last Shadow.' : ''}</div>
     <p class="dim" style="margin:0">Your number ${me.num} goes up in the rafters and you enter the Hall of Fame. What now?</p>
     <div class="row"><button class="btn hot" id="c-gm">Retire and stay on as GM</button><button class="btn" id="c-more">Play one more season</button></div>
     <p class="dim cond" style="margin:0">As GM the franchise keeps going without you on the floor. Playing on adds a season, but your body keeps slowing down (−3 per year past 20).</p></div>`;
@@ -7904,7 +7953,7 @@ function awardsPanel(L){
     ${A.some(a => a.tid === L.user) ? `<div class="good cond">Your team won ${A.filter(a => a.tid === L.user).length} award${A.filter(a => a.tid === L.user).length > 1 ? 's' : ''}: +${150*A.filter(a => a.tid === L.user).length} coins.</div>` : ''}</div>`;
 }
 function hubLegacy(L){
-  return careerPanel(L) + echoPanel(L, true) + achPanel(L) + storylinePanel(L, true) + hubLegacyMain(L);
+  return goatPanel(L) + careerPanel(L) + echoPanel(L, true) + achPanel(L) + storylinePanel(L, true) + hubLegacyMain(L);
 }
 function hubLegacyMain(L){
   const champs = L.champs.slice().reverse(), hof = (L.hof || []).slice().reverse(), R = L.records || { game:{}, season:{} };
@@ -7926,12 +7975,12 @@ function hubLegacyMain(L){
    L.five = { tid, ids, s, w, l, sw, sl, edge }: their team, the five players, the season they formed,
    your wins and losses against them, playoff series won and lost, and their extra boost against you. */
 const FIVE = [
-  { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.' },
-  { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.' },
-  { nick:'Onyx',     arch:'wing',    title:'The Lockdown',  line:'Guards your best player all night.' },
-  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.' },
-  { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.' },
-  { nick:'Vex',      arch:'slasher', title:'The Sixth Man', line:'The one who warned you. First off their bench.' } ];   /* Vex is not one of the five: he is entry 6 */
+  { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.', ab:'Foresight', abd:'His passes can never be stolen, teammates shoot better off them, and his whole team plays +4.' },
+  { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.', ab:'No Limit', abd:'Scores from anywhere: no penalty from deep, jump shots that can\'t be blocked, and he heats up fast.' },
+  { nick:'Onyx',     arch:'wing',    title:'The Lockdown',  line:'Guards your best player all night.', ab:'Shadow', abd:'Leads the double team on you, steals 50% more often and picks off passes.' },
+  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.', ab:'Comet', abd:'Can\'t be stripped, dunks can\'t be blocked, and his slams count 3 and knock nearby defenders down.' },
+  { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.', ab:'The Wall', abd:'Blocks far more shots and keeps the ball when he does. Shots near him are harder.' },
+  { nick:'Vex',      arch:'slasher', title:'The Sixth Man', line:'The one who warned you. First off their bench.', ab:'Prodigy', abd:'+5 on every rating.' } ];   /* Vex is not one of the five: he is entry 6 */
 // what they say. who = index into FIVE (0 Zenith, 1 Mirage, 2 Onyx, 3 Tempest, 4 Colossus)
 const FIVE_TALK = {
   pre: [[0, "I already saw how this game ends. You lose."], [1, "Guard me at half court. It won't matter."], [2, "Tell your star to bring a second jersey. I'll be wearing the first one."], [3, "Blink and I'm at the rim. Try not to blink."],
@@ -7956,7 +8005,7 @@ function formFive(L){
   const lv = Math.max(Av.lvl || 0, Math.round(U.roster.reduce((t, id) => t + (L.players[id].lvl || 0), 0)/U.roster.length)) + 2;
   // what makes someone one of the Five: generational, top potential, your level, a deal that never ends, and the Crowned trait (p.crown):
   // no decline, no retirement, and a bonus on every rating set by storyBonus() (above Kaine until you beat them, below your best friend after). No Eternal Youth or Ultimate Edge: those are your team's items.
-  const crown = (p, i) => { p.crown = i + 1; p.generational = true; p.gift = Math.max(p.gift || 0, 12); p.tr.mind.pot = 5; if(i < 5) p.age = 0;   /* the five are rookies */
+  const crown = (p, i) => { p.crown = i + 1; p.generational = true; p.gift = Math.max(p.gift || 0, 12); p.tr.mind.pot = 5; if(i < 5) p.age = 0; p.rare = CROWN_KIT[i + 1].rare;   /* the five are rookies */
     p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); CATS.forEach(c => addTP(p, c, 10)); autoTrain(p); p.contract = { sal:0, yrs:99, legend:true }; ids.push(p.id); };
   const room = p => { const out = R.roster.filter(id => !ids.includes(id) && id !== L.nemesis && id !== p.id).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0];   // their weakest makes room
     if(out != null && R.roster.length >= ROSTER){ R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); } };
@@ -8014,7 +8063,8 @@ function fiveIntro(L){
     <div class="news-kicker">👑 New rivals · ${esc(R.name)}</div>
     <div class="showaward">THE FIVE CROWNS</div>
     <div class="showline">${L.five.third ? 'Five rookies signed with the same team on the same day.' : `GM ${esc(rivalGM(L))}: "You took my creation. So I built five."`}</div>
-    <div class="fiverow showreveal">${fiveIds(L).map(id => { const p = L.players[id], F = FIVE[(p.crown || 1) - 1]; return `<div class="fivecard"><img src="${portrait(p, R.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><span class="gold">${F.title}</span><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span><span class="fiveline">${F.line}</span></div>`; }).join('')}</div>
+    <div class="fiverow showreveal">${fiveIds(L).map(id => { const p = L.players[id], F = FIVE[(p.crown || 1) - 1]; return `<div class="fivecard"><img src="${portrait(p, R.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><span class="gold">${F.ab}</span><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span><span class="fiveline">${F.line}</span></div>`; }).join('')}</div>
+    <div class="fivequotes" style="border-color:#8fd3ff">${FIVE.slice(0, 5).map(X => `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`).join('')}</div>
     <div class="cond" style="text-align:left">Five 👑 Generational rookies nobody scouted, one at every position, each one Light or Shadow like you and Kaine, all on the ${esc(R.name)}. They are Crowned: they never decline, they level up with you, and each one is rated above a normal Generational. No trade or signing will ever bring one to your side. <b>They exist for one thing: to take you down.</b> Nobody has beaten all five in a playoff series.</div>
     ${L.five.six != null ? `<div class="cond" style="text-align:left">👁 And first off their bench: <b>Vex</b> (OVR ${ovr(L.players[L.five.six])}). He tried to warn you.</div>` : ''}
     <div class="fivequotes">${[5, 1, 4].map(n => fiveSay(L, 'pre', n)).map(q => `<div><b>${esc(q.who)}:</b> "${q.text}"</div>`).join('')}</div>
@@ -8095,7 +8145,9 @@ function hubPlay(L){
       main = `<div class="panel" style="display:flex;flex-direction:column;gap:14px">
         <span class="${g.playoff ? 'cond' : 'dim cond'}">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} · <b>${seriesYou(L, g.s)}</b> <span class="dim">· first to ${Math.ceil(g.s.bestOf/2)} wins</span>` : (isFiveTeam(L, g.b) ? `<b style="color:var(--bad)">👑 Five Crowns game</b>${g.b === L.rival ? ' · +60 coins for a win' : ''}` : g.b === L.rival ? '<b style="color:var(--bad)">Rivalry game</b> · +60 coins for a win' : 'Next game')}</span>
         ${matchupPoster(L, g)}
-        ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>`; })() : ''}
+        ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
+          <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
+        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const hard = isFiveTeam(L, g.b) || vexTeam(L) === g.b || (kaineFinalOn(L) && g.b === L.rival); return `<div class="dim cond">👥 They will double-team you: ${hard ? 'SHT −24, DNK −20' : 'SHT −14, DNK −12'} for you, SHT +${hard ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
@@ -8253,7 +8305,7 @@ const rareBoostText = r => RARE[r].boost === 'all' ? '+5 all' : Object.entries(R
 function talentTags(L, p, cut){
   const out = [], pot = trainOf(p).mind.pot || 0;
   if(p.generational && genIntel(L, p) === 'known') out.push('<span class="ttag gen" title="Generational: permanent. At least +10 natural talent on every rating and Potential 4+/5. Other teams value it highly.">👑 Generational · +10 every rating</span>');
-  if(p.crown) out.push(`<span class="ttag gen" title="One of the Five Crowns. Crowned: never declines or retires, +${storyBonus(p)} on every rating on top of Generational. ${FIVE[p.crown - 1].line}">👑 Five Crowns · ${FIVE[p.crown - 1].title} · Crowned +${storyBonus(p)}</span>`);
+  if(p.crown) out.push(`<span class="ttag gen" title="One of the Five Crowns. Crowned: never declines or retires, +${storyBonus(p)} on every rating on top of Generational. ${FIVE[p.crown - 1].ab}: ${FIVE[p.crown - 1].abd}">👑 Five Crowns · ${FIVE[p.crown - 1].title} · Crowned +${storyBonus(p)}</span>`);
   if(pot >= 4 && (p.age || 0) <= 2) out.push(`<span class="ttag pot" title="High potential: in its first 3 seasons with Potential ${pot}/5. Each Potential point is about 8% more XP and training points from games, so it grows fastest.">💎 High potential · Pot ${pot}/5, grows fast</span>`);
   if(p.rare) out.push(`<span class="ttag rare" title="${esc(RARE[p.rare].name + ': ' + RARE[p.rare].desc)}">★ ${RARE[p.rare].name} · ${rareBoostText(p.rare)}</span>`);
   if(p.ultimate) out.push('<span class="ttag edge" title="Ultimate Edge: element matchups never work against it">🌈 Ultimate Edge</span>');
@@ -8989,7 +9041,8 @@ function showUltimate(p, done){
 // Play or sim the user's next franchise game, then sim the rest of that round.
 // How a franchise game is simmed: which side is yours, and how hard the other side plays.
 function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
-  return { mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
+  const opp0 = g.a === L.user ? g.b : g.a, boss = five || vexTeam(L) === opp0 || (kaineFinalOn(L) && opp0 === L.rival);   // story bosses double you harder
+  return { boss, mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
 /* Competitive balance ("the league studies your tape"): after each of your games, L.heat moves toward whatever keeps
    your average winning margin near +7. Blow teams out and opponents get fired up against you (+heat to every rating);
    lose and it cools off. It never goes below 0, so a weak team is never handicapped. */
@@ -9062,7 +9115,7 @@ function liveCoachRates(G){
     if(e.dm0 == null) e.dm0 = e.drainMul/drainFx(e.plan);   // energy drain without any plan effects, saved the first time
     const m = {}, add = (k, v) => { m[k] = (m[k] || 0) + v; };   // this creature's coaching changes; rateFor adds them, so they survive substitutions
     if(e.team === me){
-      e.plan = plan; e.S = planStyle(e.style, plan); e.planDef = planDefFor(e, plan); e.drainMul = e.dm0*drainFx(plan);
+      e.plan = plan; e.S = planStyle(e.style, plan); if(e.avatar && e.dbl) e.S = dblStyle(e.S); e.planDef = planDefFor(e, plan); e.drainMul = e.dm0*drainFx(plan);
       if(C.focus != null){ const d = e.id === C.focus ? 4 : -1; add('sht', d); add('dnk', d);
         if(e.id === C.focus) e.S = { ...e.S, three:e.S.three*1.4, jump:e.S.jump*1.4, drive:e.S.drive*1.4, pass:e.S.pass*0.7 }; }   // he looks for his own shot
       if(C.glass) for(const k in GLASS[C.glass]) add(k, GLASS[C.glass][k]);
@@ -9940,7 +9993,7 @@ function bDrawEnt(ctx, V, G, LV, e){
     const pr = 1 + Math.sin(now*6)*0.06; ctx.beginPath(); ctx.ellipse(g.x, g.y, V.ppf*1.7*g.s*pr, V.ppf*0.78*g.s*pr, 0, 0, Math.PI*2);
     ctx.strokeStyle = 'rgba(63,208,255,.3)'; ctx.lineWidth = 12; ctx.stroke(); ctx.strokeStyle = '#3fd0ff'; ctx.lineWidth = 4; ctx.stroke(); }
   // your coaching marks: red dashes = double-teamed, orange = attacked, green = your focus scorer
-  if(C.double === e.id || C.attack === e.id || C.focus === e.id){ ctx.setLineDash([7, 6]); ctx.strokeStyle = C.double === e.id ? '#ff3d5a' : C.attack === e.id ? '#ff9d2a' : '#3fe08a'; ctx.lineWidth = 3;
+  if(C.double === e.id || C.attack === e.id || C.focus === e.id || (e.avatar && e.dbl)){ ctx.setLineDash([7, 6]); ctx.strokeStyle = C.double === e.id || (e.avatar && e.dbl) ? '#ff3d5a' : C.attack === e.id ? '#ff9d2a' : '#3fe08a'; ctx.lineWidth = 3;   /* red dashes under you = you are being doubled */
     ctx.beginPath(); ctx.ellipse(g.x, g.y, V.ppf*1.9*g.s, V.ppf*0.86*g.s, 0, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
   const pose = bPose(G, e), look = e.p && e.p.look;
   // Meteor Slam: wrapped in fire on the way down
