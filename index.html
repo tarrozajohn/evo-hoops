@@ -513,6 +513,43 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .mseries{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;margin-bottom:-6px;border-radius:10px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);color:#fff}
 .mseries b{font:800 22px var(--cond);white-space:nowrap;line-height:1}.mseries span{font:700 10px var(--cond);letter-spacing:.12em;opacity:.7}
 .mwins{font-size:12px;font-weight:600;opacity:.8}
+/* v187: draft night, lottery, awards night and the offseason banner */
+@keyframes beamsway{from{transform:rotate(-16deg)}to{transform:rotate(16deg)}}
+@keyframes showpop{0%{opacity:0;transform:scale(.3) translateY(30px)}100%{opacity:1;transform:none}}
+@keyframes showfade{from{opacity:0}to{opacity:1}}
+@keyframes clockpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,210,58,.0)}50%{box-shadow:0 0 0 6px rgba(255,210,58,.28)}}
+@keyframes ballhop{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+.beam{position:absolute;top:-30%;width:34%;height:170%;background:linear-gradient(180deg,rgba(255,255,255,.2),transparent 72%);transform-origin:top center;filter:blur(8px);pointer-events:none;animation:beamsway 5s ease-in-out infinite alternate}
+.beam.b1{left:4%}.beam.b2{right:4%;animation-direction:alternate-reverse}
+.showcard{width:100%;padding:18px 14px!important;position:relative;overflow-x:hidden!important;text-align:center;align-items:center;border:2px solid var(--tc,#ffd23a)!important;border-radius:14px!important;clip-path:none!important;background:#0b0c14!important;background:radial-gradient(120% 70% at 50% 0%,color-mix(in srgb,var(--tc,#ffd23a) 34%,transparent),transparent 72%),#0b0c14!important;box-shadow:0 0 44px color-mix(in srgb,var(--tc,#ffd23a) 45%,transparent)!important}
+.showcard > *{position:relative;z-index:1}.showcard > .beam,.showcard > .confetti{position:absolute;z-index:0}
+.showaward{font:400 30px/1.05 var(--display);background:linear-gradient(90deg,#ffcf5a,#fff6d8,#ffc94a,#fff3c4,#ffcf5a);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rareshine 2.5s linear infinite}
+.showline{font:600 18px var(--cond);animation:showfade .6s ease-out both}
+.showreveal{display:flex;flex-direction:column;align-items:center;gap:4px;animation:showpop .7s cubic-bezier(.2,1.4,.4,1) .9s both}
+.showreveal img{width:150px;height:165px;filter:drop-shadow(0 0 22px var(--tc,#ffd23a))}
+.showname{font:400 24px/1.1 var(--display);overflow-wrap:anywhere;max-width:100%}.showreveal{max-width:100%}.showline{max-width:100%}
+.showverdict{margin-top:4px;padding:3px 12px;border-radius:999px;border:1px solid currentColor;font:700 14px var(--cond)}
+.showgrade{font:400 64px/1 var(--display);color:#ffd23a;text-shadow:0 0 22px rgba(255,210,58,.6)}
+.showball{width:120px;height:120px;border-radius:50%;display:grid;place-items:center;font:400 34px var(--display);color:#fff;background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.55),transparent 45%),var(--tc);box-shadow:0 0 30px var(--tc)}
+.dstage{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;padding:14px 10px 10px;border-radius:14px;background:radial-gradient(120% 80% at 50% 0%,rgba(120,90,255,.3),transparent 70%),#090a14;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.dstage > *{position:relative;z-index:1}.dstage > .beam{position:absolute;z-index:0}
+.dtitle{font:400 30px/1 var(--display);letter-spacing:.04em;background:linear-gradient(90deg,#b9a6ff,#fff,#8fd3ff,#fff,#b9a6ff);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rareshine 3s linear infinite}
+.dpick{display:flex;align-items:center;gap:10px;text-align:left;width:100%;max-width:440px;padding:8px 10px;border-radius:12px;border-left:6px solid var(--tc);background:rgba(255,255,255,.07);animation:showpop .45s cubic-bezier(.2,1.3,.4,1) both}
+.dpick img{width:64px;height:70px;flex:none}.dpick div{display:flex;flex-direction:column;min-width:0}.dpick b{font-size:18px}
+.dpick.first{border:2px solid #ffd23a;box-shadow:0 0 18px rgba(255,210,58,.4)}.dpick.mine{background:rgba(80,220,130,.16)}.dpick.empty{justify-content:center;border-left:0;font:600 15px var(--cond);opacity:.8}
+.dclock{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;padding:6px 14px;border-radius:999px;border:2px solid var(--tc);background:rgba(0,0,0,.45);font:700 15px var(--cond)}
+.dclock span{font-size:11px;letter-spacing:.14em;opacity:.75}.dclock.mine{border-color:#ffd23a;animation:clockpulse 1.2s ease-in-out infinite}.dclock em{font-style:normal;color:#ffd23a}
+.dticker{display:flex;gap:6px;overflow-x:auto;width:100%;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.dticker span{flex:none;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.07);border-bottom:3px solid var(--tc);font:600 12px var(--cond);white-space:nowrap}.dticker span.me{background:rgba(80,220,130,.2)}
+.lotdrum{display:flex;gap:8px;justify-content:center;padding:6px 0}.lotdrum i{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#ffd23a 60%,#c98a00);animation:ballhop .7s ease-in-out infinite}
+.lotrow.just{animation:showpop .5s cubic-bezier(.2,1.3,.4,1) both}
+.offhero{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;padding:16px 12px;border-radius:14px;background:#0b0c14;background:radial-gradient(120% 80% at 50% 0%,color-mix(in srgb,var(--tc) 38%,transparent),transparent 72%),#0b0c14;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+.offhero > *{position:relative;z-index:1}.offhero > .beam{position:absolute;z-index:0}
+.ohword{font:400 34px/1 var(--display);letter-spacing:.06em}
+.ohchamp{display:flex;flex-direction:column;align-items:center;font-size:30px;line-height:1.1}.ohchamp span{font:700 11px var(--cond);letter-spacing:.16em;opacity:.75}.ohchamp b{font:400 22px var(--display)}
+.ohyou{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.ohyou div{display:flex;flex-direction:column;padding:6px 14px;border-radius:10px;background:rgba(255,255,255,.07);min-width:110px}.ohyou b{font:800 18px var(--cond)}
+.ohleads{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;width:100%}
+.ohlead{display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.05)}.ohlead img{width:44px;height:48px;flex:none}.ohlead div{display:flex;flex-direction:column;min-width:0}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
   background:#0a0908;border:2px solid #ffd23a;color:#ffd23a;font:400 16px var(--display);box-shadow:0 0 16px rgba(255,210,58,.45)}
 .gamebtns{display:grid!important;grid-template-columns:1.3fr 1fr 1fr;gap:8px}.gamebtns .btn{padding-left:6px;padding-right:6px;white-space:nowrap}.gamebtns > :nth-child(n+4){grid-column:1 / -1}
@@ -4188,11 +4225,11 @@ function lotteryPanel(L){
   const Lo = L.lottery, n = Lo.entries.length, shown = Lo.shown;
   // reveal from the last lottery slot up to No. 1
   const rows = Lo.entries.slice().sort((a, b) => b.slot - a.slot).map((e, i) => i < shown ? e : null);
-  return `<div class="panel lottery" style="display:flex;flex-direction:column;gap:10px"><h3>🎱 Draft lottery · Season ${L.season}</h3>
+  return `<div class="panel lottery" style="display:flex;flex-direction:column;gap:10px"><h3>🎱 Draft lottery · Season ${L.season}</h3>${shown < n ? '<div class="lotdrum" aria-hidden="true">' + [0, 1, 2, 3, 4].map(i => `<i style="animation-delay:${i*0.12}s"></i>`).join('') + '</div>' : ''}
     <p class="dim" style="margin:0">${n} teams missed the playoffs. Picks are revealed from No. ${n} up to No. 1.</p>
     <div class="lotlist">${rows.map((e, i) => { const slot = n - i; if(!e) return `<div class="lotrow hidden"><b>#${slot}</b><span class="dim">?</span></div>`;
       const T = L.teams[e.tid], up = e.seed - e.slot, mine = L.picks.some(pk => pk.year === L.season && pk.round === 1 && pk.orig === e.tid && pk.owner === L.user);
-      return `<div class="lotrow ${slot === 1 ? 'top' : ''} ${mine ? 'mine' : ''}"><b>#${slot}</b><span class="swatch" style="background:${T.color}"></span><span>${esc(T.name)}${mine ? ' <b class="gold">(your pick)</b>' : ''}</span><span class="dim cond">${e.odds}% odds for No. 1${up > 0 ? ` · <b style="color:var(--good)">jumped ${up}</b>` : up < 0 ? ` · <span style="color:var(--bad)">fell ${-up}</span>` : ''}</span></div>`; }).join('')}</div>
+      return `<div class="lotrow ${slot === 1 ? 'top' : ''} ${mine ? 'mine' : ''} ${i === shown - 1 ? 'just' : ''}"><b>#${slot}</b><span class="swatch" style="background:${T.color}"></span><span>${esc(T.name)}${mine ? ' <b class="gold">(your pick)</b>' : ''}</span><span class="dim cond">${e.odds}% odds for No. 1${up > 0 ? ` · <b style="color:var(--good)">jumped ${up}</b>` : up < 0 ? ` · <span style="color:var(--bad)">fell ${-up}</span>` : ''}</span></div>`; }).join('')}</div>
     <div class="row">${shown < n ? `<button class="btn hot" data-act="lot-next">Reveal pick #${n - shown}</button><button class="btn" data-act="lot-all">Reveal all</button>` : '<button class="btn hot" data-act="rk-start">Start the rookie draft</button>'}</div></div>`;
 }
 /* ---------- COMBINE AND BIG BOARD ----------
@@ -4218,6 +4255,7 @@ function combinePanel(L){
     </tbody></table></div>`;
 }
 function startRookieDraft(L){
+  L.myDraft = []; L.myDraftS = L.season;   // v187: your class list starts empty each draft
   makeClass(L, L.season);
   if(genDrought(L, L.season) >= 3 && crownClass(L, L.season)) L.news.unshift({ s:L.season, r:0, t:'Scouts: a generational talent emerged late in this draft class.' });
   const scoutPot = L.fac.scout;   // the Scouting Office adds Potential to every rookie it brings in
@@ -4299,21 +4337,112 @@ function myDraftBox(L, big){
   return `<div class="panel" style="display:flex;flex-direction:column;gap:6px;border-color:var(--good)"><h3 style="margin:0">🎓 Your draft class (${ids.length})</h3>
     ${ids.map(id => { const p = L.players[id], d = p.drafted || {}; return `<div class="frow">${faceTile(p, U.color)}<span class="tmain"><b>${pname(p)}</b> <span class="dim">#${p.num} · ${posLabel(p)}</span><br><span class="dim">Pick #${d.n} (round ${d.round}) · Potential ${trainOf(p).mind.pot}/5 · ${p.contract ? fmtM(p.contract.sal) + ' × ' + p.contract.yrs : ''}${U.roster.includes(id) ? '' : ' · <b style="color:var(--bad)">released</b>'}</span> ${talentTags(L, p, cut)}</span><span class="tovr">${ovr(p)}</span></div>`; }).join('')}</div>`;
 }
-function finishRookieDraft(L){ if((L.myDraft || []).length && L.myDraftS === L.season) L.draftRecap = L.season; L.fa.push(...L.rookie.pool); L.picks = L.picks.filter(pk => pk.year !== L.season); makePicks(L, L.season + 2); L.rookieDone = L.season; L.rookie = null; }
+function finishRookieDraft(L){ L.draftLog = { s:L.season, log:L.rookie.log.map(x => ({ tid:x.tid, pid:x.pid, n:x.n })) }; if((L.myDraft || []).length && L.myDraftS === L.season) L.draftRecap = L.season; L.fa.push(...L.rookie.pool); L.picks = L.picks.filter(pk => pk.year !== L.season); makePicks(L, L.season + 2); L.rookieDone = L.season; L.rookie = null; }
+/* ---------- DRAFT NIGHT, AWARDS NIGHT, LOTTERY SHOW, OFFSEASON BANNER (v187) ----------
+   The draft, the lottery and the awards used to be plain lists. Now each one is presented:
+   a lit stage with the team on the clock and the last pick, a spotlight card every time you draft,
+   the awards read out one at a time (MVP last), and a banner that opens the offseason. */
+// a short rising tune for the big reveals (starts when the card pops in)
+function fanfare(big){ if(!AC || !SET.sound) return;
+  try{ const now = AC.currentTime + 0.9; (big ? [523, 659, 784, 1047] : [523, 784]).forEach((f, i) => { const o = AC.createOscillator(), g = AC.createGain(), t = now + i*0.13;
+    o.type = 'triangle'; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3); o.connect(g).connect(AC.destination); o.start(t); o.stop(t + 0.32); }); }catch(e){} }
+const SHOW_BEAMS = '<i class="beam b1" aria-hidden="true"></i><i class="beam b2" aria-hidden="true"></i>';
+// falling confetti in the given colours
+const showConfetti = cols => `<div class="confetti" aria-hidden="true">${Array.from({ length:30 }, (_, i) => `<i style="left:${(i*37) % 100}%;background:${cols[i % cols.length]};animation-delay:${(i % 12)*0.18}s;animation-duration:${2.6 + (i % 5)*0.4}s"></i>`).join('')}</div>`;
+// the spotlight card when YOU draft someone. rank = where your scouts had him among the prospects still available (0 = first)
+function draftReveal(L, pid, n, rank){
+  const p = L.players[pid], U = L.teams[L.user], M = $('#modal'); if(!p){ renderHub(); return; }
+  const v = rank === 0 ? ['Your scouts\' top prospect on the board', 'var(--good)'] : rank > 0 && rank < 3 ? ['Solid pick, say your scouts', 'var(--good)'] : rank >= 8 ? ['A reach, say your scouts', 'var(--bad)'] : ['Your call over the scouts', '#fff'];
+  M.hidden = false; fanfare(n <= 3);
+  M.innerHTML = `<div class="storycard showcard" style="--tc:${U.color}">${SHOW_BEAMS}${showConfetti([U.color, '#ffd23a', '#ffffff'])}
+    <div class="news-kicker">🎓 Draft night · Season ${L.season}</div>
+    <div class="showline">With the <b>No. ${n}</b> pick, the <b style="color:${U.color}">${esc(U.name)}</b> select…</div>
+    <div class="showreveal"><img src="${portrait(p, U.color)}" alt=""><div class="showname">${esc(pname(p))}</div>
+      <div class="cond">${posLabel(p)} · OVR ${ovr(p)} · Potential ${trainOf(p).mind.pot}/5</div><div>${talentTags(L, p, starCut(L))}</div>
+      <div class="showverdict" style="color:${v[1]}">${v[0]}</div></div>
+    <button class="btn hot" id="sh-ok">Welcome to the team</button></div>`;
+  $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
+}
+// the stage at the top of the draft: last pick announced, who is on the clock, and every pick so far
+function draftStage(L){
+  const R = L.rookie, pk = rookieOnClock(L), last = R.log[0], T = pk ? L.teams[pk.owner] : null, mine = pk && pk.owner === L.user;
+  const lastHtml = last ? (() => { const p = L.players[last.pid], LT = L.teams[last.tid];
+    return `<div class="dpick ${last.n === 1 ? 'first' : ''} ${last.tid === L.user ? 'mine' : ''}" style="--tc:${LT.color}"><img src="${portrait(p, LT.color)}" alt=""><div><span class="dim cond">${last.n === 1 ? '⭐ FIRST OVERALL PICK' : 'Pick No. ' + last.n} · ${esc(LT.name)}</span><b>${esc(pname(p))}</b><span class="cond">${posLabel(p)} · OVR ${ovr(p)}${last.tid === L.user ? ' · <b style="color:var(--good)">yours</b>' : ''}</span></div></div>`; })()
+    : '<div class="dpick empty">The commissioner walks to the podium…</div>';
+  return `<div class="dstage">${SHOW_BEAMS}
+    <div class="dtitle">DRAFT NIGHT</div>
+    <div class="cond">Season ${L.season} · Round ${pk ? pk.round : 2} · Pick ${Math.min(R.pick + 1, R.order.length)} of ${R.order.length} ${gradeChip(L.classes[L.season] ? L.classes[L.season].grade : 0)}</div>
+    ${lastHtml}
+    <div class="dclock ${mine ? 'mine' : ''}" style="--tc:${T ? T.color : '#888'}"><span>ON THE CLOCK</span><b>${T ? esc(T.name) : '—'}</b>${mine ? '<em>⏰ Your pick</em>' : ''}</div>
+    ${R.log.length ? `<div class="dticker">${R.log.slice(0, 40).map(x => `<span class="${x.tid === L.user ? 'me' : ''}" style="--tc:${L.teams[x.tid].color}">#${x.n} ${L.teams[x.tid].abbr} · ${esc(pname(L.players[x.pid]))}</span>`).join('')}</div>` : ''}</div>`;
+}
+// after the draft: a letter grade for your class, the first pick and the steal of the draft.
+// Each rookie is ranked by OVR plus Potential; a pick taken later than its rank is a steal, earlier is a reach.
+function draftGrade(L){
+  const D = L.draftLog; if(!D || D.s !== L.season) return null;
+  const log = D.log.filter(x => L.players[x.pid]), sc = id => { const p = L.players[id]; return ovr(p) + trainOf(p).mind.pot*3; };
+  const rk = new Map(log.slice().sort((a, b) => sc(b.pid) - sc(a.pid)).map((x, i) => [x.pid, i + 1])), diff = x => x.n - rk.get(x.pid);
+  const mine = log.filter(x => x.tid === L.user), avg = mine.length ? mine.reduce((t, x) => t + diff(x), 0)/mine.length : 0;
+  return { letter: !mine.length ? null : avg >= 6 ? 'A+' : avg >= 2 ? 'A' : avg >= -2 ? 'B' : avg >= -6 ? 'C' : 'D',
+    steal: log.filter(x => x.n > 3).sort((a, b) => diff(b) - diff(a))[0], first: log.find(x => x.n === 1) };
+}
+// awards night: one award at a time, MVP last
+function awardsCeremony(L){
+  const ord = ['scoring', 'mip', 'dpoy', 'roy', 'mvp'], A = ((L.awards && L.awards[L.season]) || []).slice().sort((a, b) => ord.indexOf(a.key) - ord.indexOf(b.key));
+  const i = UI.awardIdx || 0, M = $('#modal');
+  const end = () => { L.awardShow = null; UI.awardIdx = 0; saveLeague(true); M.hidden = true; renderHub(); };
+  if(!A.length || i >= A.length) return end();
+  const a = A[i], T = L.teams[a.tid], p = L.players[a.pid], mine = a.tid === L.user, lastOne = i + 1 >= A.length;
+  M.hidden = false; fanfare(lastOne || mine);
+  M.innerHTML = `<div class="storycard showcard" style="--tc:${mine ? '#ffd23a' : T.color}">${SHOW_BEAMS}${mine ? showConfetti([T.color, '#ffd23a', '#ffffff']) : ''}
+    <div class="news-kicker">🏆 Awards night · Season ${L.season} · ${i + 1} of ${A.length}</div>
+    <div class="showaward">${esc(a.name)}</div>
+    <div class="showline">And the award goes to…</div>
+    <div class="showreveal"><img src="${portrait(p || a.sp, T.color)}" alt=""><div class="showname">${esc(a.who)}</div>
+      <div class="cond" style="color:${T.color}"><b>${esc(T.name)}</b></div><div class="cond">${esc(a.line || '')}</div>
+      ${mine ? '<div class="showverdict" style="color:#ffd23a">Your team · +150 coins</div>' : ''}</div>
+    <div class="row" style="justify-content:center;gap:8px"><button class="btn hot" id="sh-ok">${lastOne ? 'Done' : 'Next award'}</button>${lastOne ? '' : '<button class="btn" id="sh-skip">Skip the show</button>'}</div></div>`;
+  $('#sh-ok').onclick = () => { UI.awardIdx = i + 1; awardsCeremony(L); };
+  if(!lastOne) $('#sh-skip').onclick = end;
+}
+// the lottery's last envelope: who got the No. 1 pick
+function lotteryWinner(L){
+  const e = L.lottery.entries.find(x => x.slot === 1), T = L.teams[e.tid], M = $('#modal'), up = e.seed - 1;
+  const mine = L.picks.some(pk => pk.year === L.season && pk.round === 1 && pk.orig === e.tid && pk.owner === L.user);
+  M.hidden = false; fanfare(true);
+  M.innerHTML = `<div class="storycard showcard" style="--tc:${T.color}">${SHOW_BEAMS}${mine ? showConfetti([T.color, '#ffd23a', '#ffffff']) : ''}
+    <div class="news-kicker">🎱 Draft lottery · Season ${L.season}</div>
+    <div class="showline">The No. 1 pick goes to…</div>
+    <div class="showreveal"><div class="showball">${T.abbr}</div><div class="showname" style="color:${T.color}">${esc(T.name)}</div>
+      <div class="cond">${e.odds}% odds${up > 0 ? ` · jumped ${up} spot${up > 1 ? 's' : ''}` : ' · the favorite held on'}</div>
+      ${mine ? '<div class="showverdict" style="color:#ffd23a">That is YOUR pick</div>' : ''}</div>
+    <button class="btn hot" id="sh-ok">On to the draft</button></div>`;
+  $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
+}
+// the banner that opens the offseason: champions, your finish, your team leaders
+function offHero(L){
+  const champ = L.champs[L.champs.length - 1]; if(!champ) return '';
+  const C = champ.was || L.teams[champ.tid], U = L.teams[L.user], ps = U.roster.map(id => L.players[id]).filter(p => p && p.season && p.season.gp);
+  const lead = k => { const p = ps.slice().sort((a, b) => b.season[k]/b.season.gp - a.season[k]/a.season.gp)[0];
+    return p ? `<div class="ohlead"><img src="${portrait(p, U.color)}" alt=""><div><span class="dim cond">${{ pts:'Points', reb:'Rebounds', ast:'Assists' }[k]}</span><b>${esc(pname(p))}</b><span class="cond">${(p.season[k]/p.season.gp).toFixed(1)} a game</span></div></div>` : ''; };
+  return `<div class="offhero" style="--tc:${C.color}">${SHOW_BEAMS}
+    <div class="ohword">OFFSEASON</div><div class="cond">Season ${champ.season} is in the books</div>
+    <div class="ohchamp">🏆<span>CHAMPIONS</span><b style="color:${C.color}">${esc(C.name)}</b>${champ.tid === L.user ? '<span style="color:#ffd23a;opacity:1">THAT IS YOUR TITLE</span>' : ''}</div>
+    <div class="ohyou"><div><span class="dim cond">Your record</span><b>${U.w}-${U.l}</b></div><div><span class="dim cond">Your finish</span><b>${finishOf(L)}</b></div></div>
+    <div class="ohleads">${['pts', 'reb', 'ast'].map(lead).join('')}</div></div>`;
+}
 function rookiePanel(L){
   const R = L.rookie, pk = rookieOnClock(L), U = L.teams[L.user], mine = pk && pk.owner === L.user;
   if(UI.rookieRelease) return `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>Make room: release one creature</h3><p class="dim" style="margin:0">Rosters hold ${ROSTER}. The released creature goes to free agency.</p>${myDraftBox(L)}<div class="row" style="gap:8px"><button class="btn sm cool" data-act="rk-auto" data-id="all">Auto: release my weakest and finish the draft</button></div>
     <div class="grid">${U.roster.filter(id => !locked(L, id)).map(id => playerCard(L, id, { team:U, actions:`<button class="btn sm" data-act="rk-release" data-id="${id}">Release</button>` })).join('')}</div></div>`;
   const myPicks = R.order.slice(R.pick).map((id, i) => ({ pk:L.picks.find(k => k.id === id), n:R.pick + i + 1 })).filter(x => x.pk.owner === L.user);
   return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
-    <div class="row" style="justify-content:space-between"><h3>Rookie draft · pick ${Math.min(R.pick + 1, R.order.length)} of ${R.order.length} ${gradeChip(L.classes[L.season] ? L.classes[L.season].grade : 0)}</h3>
-      <span class="cond">On the clock: <b style="color:${pk ? L.teams[pk.owner].color : 'inherit'}">${pk ? esc(L.teams[pk.owner].name) : '—'}</b></span></div>
+    ${draftStage(L)}
     ${mine ? '<div class="msg" style="margin:0;border-color:var(--good)"><b>⏰ You are on the clock.</b> Tap Draft on a scouts\' suggestion below, or on any prospect.</div>' : ''}
     <div class="dim cond">Your picks: ${myPicks.length ? myPicks.map(x => '#' + x.n).join(', ') : 'none left'}</div>
     ${genReport(L, L.season) ? `<div class="msg cond" style="margin:0">${genReport(L, L.season)}</div>` : ''}
-    <div class="row" style="gap:8px"><button class="btn sm hot" data-act="rk-auto" data-id="mine" ${mine ? '' : 'disabled'}>Auto-pick for me</button><button class="btn sm cool" data-act="rk-auto" data-id="all">Auto-draft the rest</button></div>
+    <div class="row" style="gap:8px"><button class="btn sm hot" data-act="rk-auto" data-id="mine" ${mine ? '' : 'disabled'}>Auto-pick for me</button><button class="btn sm" data-act="rk-skip" ${mine || !myPicks.length ? 'disabled' : ''}>Skip to my pick</button><button class="btn sm cool" data-act="rk-auto" data-id="all">Auto-draft the rest</button></div>
     ${myDraftBox(L)}
-    ${R.log.length ? `<div class="cond"><b>Latest picks</b><br>${R.log.slice(0, 6).map(x => `<span class="${x.tid === L.user ? 'mypick' : ''}">#${x.n} <b style="color:${L.teams[x.tid].color}">${L.teams[x.tid].abbr}</b> ${pname(L.players[x.pid])}${x.tid === L.user ? ' ← you' : ''}</span>`).join('<br>')}</div>` : ''}
     ${(() => { const ranked = rankByScouts(L, R.pool); UI.rkRank = ranked;
       return `<div class="panel" style="display:flex;flex-direction:column;gap:6px;border-color:var(--cool)"><h3 style="margin:0">🔭 Your scouts suggest</h3><div class="dim cond">Scouting Office level ${L.fac.scout}: their read is ${scoutGrade(L, L.players[ranked[0]]).sure}. A workout (40 coins) makes any prospect certain.</div>
         ${ranked.slice(0, 3).map((id, i) => { const p = L.players[id], sg = scoutGrade(L, p); return `<div class="frow"><span class="pickbig ${i === 0 ? 'top' : ''}">${i + 1}</span>${faceTile(p, null)}<span class="tmain"><b>${pname(p)}</b> <span class="dim">${posLabel(p)}</span><br><span class="dim">${sg.why.join(' · ')}</span></span><button class="btn sm hot" data-act="rk-pick" data-id="${id}" ${mine ? '' : 'disabled'}>Draft</button></div>`; }).join('')}</div>`; })()}
@@ -5751,9 +5880,15 @@ function hubModals(L){
   { const K = L.kaine; if(K && K.queue && K.queue.length){ const key = K.queue.shift(); UI.inCut = true; return showKaineScene(L, key, () => { UI.inCut = false; renderHub(); }); } }
   if(pendingAscensions(L).length){ UI.inCut = true; return runAscensions(() => { UI.inCut = false; renderHub(); }); }
   if(UI.outcome){ const o = UI.outcome; UI.outcome = null; return showOutcome(o); }
-  if(L.draftRecap === L.season && !L.rookie){ L.draftRecap = null; saveLeague(true); const M = $('#modal'); M.hidden = false;
-    M.innerHTML = `<div class="storycard newscard"><div class="news-kicker">🎓 Rookie draft done</div><h2>Meet your rookies</h2>${myDraftBox(L, true)}<div class="dim cond">They're on your Roster with a 🎓 Rookie tag.</div><button class="btn hot" id="dr-ok" style="align-self:center">Welcome them</button></div>`;
+  if(UI.pendingReveal){ const r = UI.pendingReveal; UI.pendingReveal = null; return draftReveal(L, r.pid, r.n, r.rank); }   // you just drafted someone
+  if(L.draftRecap === L.season && !L.rookie){ L.draftRecap = null; saveLeague(true); const M = $('#modal'), G = draftGrade(L), U = L.teams[L.user]; M.hidden = false; fanfare(true);
+    const pickLine = (x, label) => x && L.players[x.pid] ? `<div class="cond">${label}: <b>${esc(pname(L.players[x.pid]))}</b> <span class="dim">No. ${x.n} · </span><b style="color:${L.teams[x.tid].color}">${L.teams[x.tid].abbr}</b></div>` : '';
+    M.innerHTML = `<div class="storycard showcard" style="--tc:${U.color};text-align:left;align-items:stretch">${SHOW_BEAMS}<div class="news-kicker" style="text-align:center">🎓 Draft night is over</div>
+      ${G && G.letter ? `<div style="text-align:center"><div class="dim cond">YOUR DRAFT GRADE</div><div class="showgrade">${G.letter}</div></div>` : ''}
+      ${myDraftBox(L, true)}${G ? pickLine(G.first, '⭐ First overall') + pickLine(G.steal, '💎 Steal of the draft') : ''}
+      <div class="dim cond">Your rookies are on your Roster with a 🎓 Rookie tag. The grade compares where each one was picked with how good it looks now (OVR plus Potential).</div><button class="btn hot" id="dr-ok" style="align-self:center">Welcome them</button></div>`;
     $('#dr-ok').onclick = () => { M.hidden = true; renderHub(); }; return; }
+  if(L.awardShow === L.season && L.phase === 'offseason' && !L.champShow) return awardsCeremony(L);   // awards night, once per season
   if(L.endingShow){ const k = L.endingShow; L.endingShow = null; saveLeague(true); return showEnding(L, k); }
   if(L.event && !L.event.popped && L.phase !== 'draft'){ L.event.popped = true; saveLeague(true); return showEventPopup(L.event); }
   const f = storyCheck(L);
@@ -6235,7 +6370,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   hubModals(L);
   if(L.rookie && !UI.rookieRelease && UI.tab === 'play' && !UI.rkTimer){
     const pk = rookieOnClock(L);
-    if(pk && pk.owner !== L.user) UI.rkTimer = setTimeout(() => { UI.rkTimer = null; if(LEAGUE && LEAGUE.rookie && rookieOnClock(LEAGUE) && rookieOnClock(LEAGUE).owner !== LEAGUE.user && $('#modal').hidden){ rookieDraftPick(LEAGUE, cpuRookieChoice(LEAGUE)); saveLeague(); } if(LEAGUE && UI.tab === 'play' && !view().hidden) renderHub(); }, 450);
+    if(pk && pk.owner !== L.user) UI.rkTimer = setTimeout(() => { UI.rkTimer = null; if(LEAGUE && LEAGUE.rookie && rookieOnClock(LEAGUE) && rookieOnClock(LEAGUE).owner !== LEAGUE.user && $('#modal').hidden){ rookieDraftPick(LEAGUE, cpuRookieChoice(LEAGUE)); saveLeague(); } if(LEAGUE && UI.tab === 'play' && !view().hidden) renderHub(); }, 1100);
   }
   view().querySelectorAll('select[data-avpos]').forEach(sel => sel.addEventListener('change', () => {
     const p = L.players[+sel.dataset.avpos]; p.avatarPos = +sel.value; UI.msg = `${pname(p)} now plays ${POS_NAMES[p.avatarPos]}. Use the arrows to put yourself in that slot. (Auto lineup moves you to whatever spot fills the five best.)`; saveLeague(); renderHub();
@@ -6450,7 +6585,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 186;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 187;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7435,7 +7570,7 @@ function giveAwards(L){
   add('mip', 'Most Improved', mip, mip && `OVR ${mip.p.ovrStart} → ${ovr(mip.p)}`);
   const sc = best(all, x => per(x, 'pts'));
   add('scoring', 'Scoring Champ', sc, sc && `${per(sc, 'pts').toFixed(1)} points a game`);
-  L.awards = L.awards || {}; L.awards[L.season] = A;
+  L.awards = L.awards || {}; L.awards[L.season] = A; L.awardShow = L.season;
   const mine = A.filter(a => a.tid === L.user); if(mine.length && L.coins != null) L.coins += 150*mine.length;
   // season records
   L.records = L.records || { game:{}, season:{} };
@@ -7585,7 +7720,7 @@ function hubPlay(L){
   let main = '';
   if(L.phase === 'offseason'){
     const champ = L.champs[L.champs.length - 1], C = champ.was || L.teams[champ.tid];
-    main = `<div class="panel" style="display:flex;flex-direction:column;gap:12px"><span class="dim cond">Season ${champ.season} champions</span><div class="big" style="color:${C.color}">${esc(C.name)}</div>${champ.tid === L.user ? '<p style="margin:0">That\'s your title. Run it back.</p>' : ''}<div class="row">${L.rookieDone === L.season ? `<button class="btn hot" data-act="nextseason">Start season ${L.season + 1}${(() => { const n = expiring(L, L.user).filter(id => !L.players[id].resign).length; return n ? ` (${n} undecided contract${n > 1 ? 's' : ''} will leave)` : ''; })()}</button>` : L.rookie ? '' : lotteryDone(L) ? '' : '<button class="btn hot" data-act="lot-run">Run the draft lottery</button>'}</div><p class="dim" style="margin:0">${L.rookieDone === L.season ? 'Records and season stats reset. Levels, evolutions and career stats carry over.' : 'First the draft lottery: teams that missed the playoffs draw for the top picks. Then the rookie draft, two rounds. The No. 1 prospect is always a rare archetype. Check the combine on the Scouting tab.'}</p></div>${!L.rookie && L.rookieDone !== L.season && lotteryDone(L) ? lotteryPanel(L) : ''}${L.rookie ? rookiePanel(L) : ''}${L.rookieDone === L.season ? resignPanel(L) : ''}`;
+    main = `<div class="panel" style="display:flex;flex-direction:column;gap:12px"><div class="row">${L.rookieDone === L.season ? `<button class="btn hot" data-act="nextseason">Start season ${L.season + 1}${(() => { const n = expiring(L, L.user).filter(id => !L.players[id].resign).length; return n ? ` (${n} undecided contract${n > 1 ? 's' : ''} will leave)` : ''; })()}</button>` : L.rookie ? '' : lotteryDone(L) ? '' : '<button class="btn hot" data-act="lot-run">Run the draft lottery</button>'}</div><p class="dim" style="margin:0">${L.rookieDone === L.season ? 'Records and season stats reset. Levels, evolutions and career stats carry over.' : 'First the draft lottery: teams that missed the playoffs draw for the top picks. Then the rookie draft, two rounds. The No. 1 prospect is always a rare archetype. Check the combine on the Scouting tab.'}</p></div>${!L.rookie && L.rookieDone !== L.season && lotteryDone(L) ? lotteryPanel(L) : ''}${L.rookie ? rookiePanel(L) : ''}${L.rookieDone === L.season ? resignPanel(L) : ''}`;
     main += movePanel(L);   // 🧳 leave for the worst team
   } else {
     const g = userGame(L);
@@ -7618,7 +7753,7 @@ function hubPlay(L){
   const recent = L.log.filter(x => x.a === L.user || x.b === L.user).slice(-6).reverse();
   const recentHtml = `<div class="panel"><h3>Recent results</h3>${recent.length ? `<table style="margin-top:6px"><tbody>${recent.map(x => { const me = x.a === L.user, us = me ? x.sa : x.sb, them = me ? x.sb : x.sa, opp = L.teams[me ? x.b : x.a]; return `<tr><td>${x.playoff ? 'Playoff ' : ''}vs ${opp.abbr}</td><td style="color:${us > them ? 'var(--good)' : 'var(--bad)'}">${us > them ? 'W' : 'L'} ${us}-${them}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No games yet.</p>'}</div>`;
   const titles = L.champs.filter(c => c.tid === L.user).length;
-  return (L.phase === 'offseason' ? offseasonSteps(L) + awardsPanel(L) : '') + eventPanel(L) + main + eraBar(L) + storyPanel(L) + echoPanel(L, false) + storylinePanel(L, false) + todoPanel(L) + newsPanel(L) + `<div class="split">${recentHtml}${bracket}${titles ? `<div class="panel"><h3>Trophy case</h3><div class="big" style="color:var(--hot)">${titles}×</div><div class="dim cond">${L.champs.filter(c => c.tid === L.user).map(c => 'Season ' + c.season).join(' · ')}</div></div>` : ''}</div>`;
+  return (L.phase === 'offseason' ? offHero(L) + offseasonSteps(L) + awardsPanel(L) : '') + eventPanel(L) + main + eraBar(L) + storyPanel(L) + echoPanel(L, false) + storylinePanel(L, false) + todoPanel(L) + newsPanel(L) + `<div class="split">${recentHtml}${bracket}${titles ? `<div class="panel"><h3>Trophy case</h3><div class="big" style="color:var(--hot)">${titles}×</div><div class="dim cond">${L.champs.filter(c => c.tid === L.user).map(c => 'Season ' + c.season).join(' · ')}</div></div>` : ''}</div>`;
 }
 /* "What should I trade for?" For each position, the game tries real players from other teams who play that spot
    (natural position), about as good as your weakest starter up to 12 OVR better (the kind you can actually trade for).
@@ -10301,11 +10436,14 @@ if(typeof document !== 'undefined'){
       case 'tree-auto-now': { const me = L.players[L.avatar], A = autoOf(L); if(!me) break; const n = autoFillTree(me, A.tree !== 'off' ? A.tree : 'all');
         UI.msg = n ? `Took ${n} skill-tree node${n > 1 ? 's' : ''}.` : 'No points to spend.'; saveLeague(); renderHub(); break; }
       case 'hire': { const st = hireStaff(L, +id); if(!st) break; UI.msg = `Hired ${st.name} as your ${STAFF_ROLES[st.role].name.toLowerCase()} (${st.r}★): ${STAFF_ROLES[st.role].what(st.r)}.`; saveLeague(); renderHub(); break; }
-      case 'lot-next': L.lottery.shown = Math.min(L.lottery.entries.length, L.lottery.shown + 1); sfx(L.lottery.shown === L.lottery.entries.length ? 'fire' : 'swish'); saveLeague(); renderHub(); break;
-      case 'lot-all': L.lottery.shown = L.lottery.entries.length; saveLeague(); renderHub(); break;
+      case 'lot-next': { const was = L.lottery.shown; L.lottery.shown = Math.min(L.lottery.entries.length, was + 1); sfx('swish'); saveLeague(); renderHub(); if(was < L.lottery.entries.length && L.lottery.shown === L.lottery.entries.length) lotteryWinner(L); break; }
+      case 'lot-all': { const was = L.lottery.shown; L.lottery.shown = L.lottery.entries.length; saveLeague(); renderHub(); if(was < L.lottery.entries.length) lotteryWinner(L); break; }
       case 'workout': { if(L.coins < 40) break; const q = L.players[+id]; L.coins -= 40; q.workout = L.season; UI.msg = `Private workout: ${pname(q)} shows its true numbers (OVR ${ovr(q)}, Potential ${trainOf(q).mind.pot}/5).${q.generational ? ' 👑 It IS the generational talent.' : (classOfPid(L, q.id) && classOfPid(L, q.id).C.pool.some(id => L.players[id].generational) ? ' Not the generational talent.' : '')}`; saveLeague(); renderHub(); break; }
-      case 'rk-auto': { if(!L.rookie) break; UI.msg = autoRookieDraft(L, id === 'mine'); saveLeague(); renderHub(); break; }
-      case 'rk-pick': { const pk = rookieOnClock(L); if(pk && pk.owner === L.user){ const n = L.rookie.pick + 1; rookieDraftPick(L, +id); const p = L.players[+id]; UI.toast = `🎓 With pick #${n} you drafted ${pname(p)} (${posLabel(p)}, OVR ${ovr(p)}).`; saveLeague(); } renderHub(); break; }
+      case 'rk-auto': { if(!L.rookie) break; const n0 = L.rookie.pick + 1, had = (L.myDraft || []).length; UI.msg = autoRookieDraft(L, id === 'mine');
+        if(id === 'mine' && L.myDraftS === L.season && (L.myDraft || []).length > had){ const pid = L.myDraft[L.myDraft.length - 1]; if(L.teams[L.user].roster.includes(pid)) UI.pendingReveal = { pid, n:n0, rank:0 }; } saveLeague(); renderHub(); break; }
+      case 'rk-pick': { const pk = rookieOnClock(L); if(pk && pk.owner === L.user){ const n = L.rookie.pick + 1, rank = (UI.rkRank || []).filter(x => L.rookie.pool.includes(x)).indexOf(+id);
+        rookieDraftPick(L, +id); UI.pendingReveal = { pid:+id, n, rank }; saveLeague(); } renderHub(); break; }   // the spotlight card opens from hubModals
+      case 'rk-skip': { let guard = 200; while(L.rookie && !UI.rookieRelease && guard--){ const pk = rookieOnClock(L); if(!pk || pk.owner === L.user) break; rookieDraftPick(L, cpuRookieChoice(L)); } saveLeague(); renderHub(); break; }   // CPU teams pick until it is your turn
       case 'rk-release': {
         const U = L.teams[L.user]; U.roster = U.roster.filter(x => x !== +id); unequip(L, L.players[+id]); stripUltimate(L, L.players[+id]); L.players[+id].contract = null; L.fa.push(+id);
         UI.rookieRelease = false; if(L.rookie && L.rookie.pick >= L.rookie.order.length) finishRookieDraft(L);
