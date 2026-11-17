@@ -5864,6 +5864,21 @@ function showEnding(L, key){
     <button class="btn hot" id="end-ok" style="align-self:center">On to the offseason</button></div>`;
   $('#end-ok').onclick = () => { M.hidden = true; renderHub(); };
 }
+// Load a franchise from a backup code. 'EH1:' = compressed code; anything else = the older plain code.
+function restoreFromCode(raw){
+  const bad = () => { UI.restoreErr = "That code didn't work. Make sure you copied all of it."; renderSettings(UI.setBack || 'menu'); };
+  try{
+    const code = String(raw || '').trim().replace(/\s+/g, '');
+    (code.startsWith('EH1:') ? unpackText('gz64', code.slice(4)) : Promise.resolve(decodeURIComponent(escape(atob(code))))).then(txt => {
+      const L2 = JSON.parse(txt); if(!L2 || !L2.teams || !L2.players) throw 0;
+      migrate(L2); LEAGUE = L2; saveLeague(); UI.restoring = false; UI.backup = null;
+      UI.msg = 'Franchise restored.'; renderHub();
+    }).catch(bad);
+  }catch(e){ bad(); }
+}
+// picking a backup file loads it right away
+if(typeof document !== 'undefined') document.addEventListener('change', e => { const t = e.target; if(!t || t.id !== 'rs-file' || !t.files || !t.files[0]) return;
+  const fr = new FileReader(); fr.onload = () => restoreFromCode(fr.result); fr.onerror = () => { UI.restoreErr = 'Could not read that file.'; renderSettings(UI.setBack || 'menu'); }; fr.readAsText(t.files[0]); });
 function hubModals(L){
   if(!$('#modal').hidden || UI.busy || UI.inCut) return;   // never pop a scene mid-sim or on top of a running cutscene
   if(L.nemesis != null && !L.nemesisMet && L.phase !== 'draft'){   // meet your rival
@@ -5999,8 +6014,8 @@ function agoText(t){ const s = Math.round((Date.now() - t)/1000); return s < 10 
 // a short status line used in the menu, the ☰ sheet and Settings
 function cloudStatus(){
   if(CLOUD.state === 'checking') return '☁️ Connecting to cloud save…';
-  if(CLOUD.state === 'off' && window.EVO_WEB) return '💾 Your game saves on this device. To move it to another phone or computer: Settings → Show backup code → Copy, then Paste backup code there.';   // the GitHub website
-  if(CLOUD.state === 'off' && location.protocol === 'file:') return '💾 You opened a downloaded copy, so it can\'t reach your cloud save. It saves in this browser only. To play your iPhone league here: on iPhone, Settings → Show backup code → Copy; here, Paste backup code below.';
+  if(CLOUD.state === 'off' && window.EVO_WEB) return '💾 Your game saves on this device. To move it to another phone or computer: Settings → Back up my franchise → Save backup file, then Restore a backup there.';   // the GitHub website
+  if(CLOUD.state === 'off' && location.protocol === 'file:') return '💾 You opened a downloaded copy, so it can\'t reach your cloud save. It saves in this browser only. To play your iPhone league here: on iPhone, Settings → Back up my franchise → Save backup file; here, Restore a backup below.';
   if(CLOUD.state === 'off') return '☁️ Cloud save is off here (only on the published page while signed in). Saving in this browser only.';
   if(CLOUD.state === 'error' || CLOUD.err) return `☁️ Cloud save hit a problem (${CLOUD.err || 'error'}). Your browser copy is still saved; it will try again on your next move.`;
   if(CLOUD.newer) return '☁️ Your cloud save is newer than this browser\'s copy. Load it in Settings.';
@@ -6066,7 +6081,7 @@ function renderMenu(){
       <button class="btn ${LEAGUE ? '' : 'hot'}" data-act="newfr">New franchise<small>Pick one of 30 teams, draft 12 creatures, play the season and the 16-team playoffs</small></button>
       <button class="btn" data-act="help">How to play<small>Game plans, types, supercharge, evolution</small></button>
       <button class="btn" data-act="settings">Settings<small>Quarter length ${SET.qlen} min · Difficulty ${diffName()}</small></button>
-      ${CLOUD.state === 'off' && (location.protocol === 'file:' || window.EVO_WEB) ? `<button class="btn" data-act="restore">Paste backup code<small>${window.EVO_WEB ? 'Bring a league over from another device' : 'Bring your iPhone league to this computer'}</small></button>` : ''}
+      ${CLOUD.state === 'off' && (location.protocol === 'file:' || window.EVO_WEB) ? `<button class="btn" data-act="restore">Restore a backup<small>${window.EVO_WEB ? 'Bring a league over from another device' : 'Bring your iPhone league to this computer'}</small></button>` : ''}
     </div>${UI.msg && UI.msg.startsWith('☁️') ? `<div class="msg">${UI.msg}</div>` : ''}<p class="dim cond cloudline" style="margin:0">${cloudStatus()}</p></div></div>`);
 }
 const diffName = () => SET.diff < 1 ? 'Rookie' : SET.diff > 1 ? 'All-Star' : 'Pro';
@@ -6133,10 +6148,10 @@ function renderSettings(back){
       <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:8px">
         <b>Cloud save</b><span class="cond cloudline">${cloudStatus()}</span>
         ${CLOUD.state === 'on' ? `<div class="row">${LEAGUE ? '<button class="btn sm hot" data-act="cloud-save">Save now</button>' : ''}${CLOUD.meta && !CLOUD.meta.none ? `<button class="btn sm" data-act="cloud-load">Load cloud save (Season ${CLOUD.meta.season}, ${esc(CLOUD.meta.team || '')}, ${agoText(CLOUD.meta.savedAt)})</button>` : ''}</div>` : ''}
-        <span class="dim" style="margin-top:6px">Extra safety: a backup code you can keep in Notes. Paste it back here to restore it on any device or browser.</span>
-        <div class="row">${LEAGUE ? '<button class="btn sm" data-act="backup">Show backup code</button>' : ''}<button class="btn sm" data-act="restore">Restore from code</button></div>
-        ${UI.backup ? `<button class="btn hot" data-act="copy-backup">Copy backup code</button><span class="dim cond">Paste it into Notes. On iPhone, Safari can erase a site's saved data if you don't open it for 7 days; this code brings your franchise back.</span><textarea id="bk-code" readonly rows="4" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px monospace">${esc(UI.backup)}</textarea><span class="dim cond">Tap the box, select all, and copy.</span>` : ''}
-        ${UI.restoring ? `<textarea id="rs-code" rows="4" placeholder="Paste your backup code" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px monospace"></textarea><div class="row"><button class="btn sm hot" data-act="restore-go">Load this franchise</button>${UI.restoreErr ? `<span class="bad cond">${esc(UI.restoreErr)}</span>` : ''}</div>` : ''}
+        <span class="dim" style="margin-top:6px">Extra safety: a backup you can keep as a file or as a code in Notes. It restores your franchise on any device or browser.</span>
+        <div class="row">${LEAGUE ? '<button class="btn sm" data-act="backup">Back up my franchise</button>' : ''}<button class="btn sm" data-act="restore">Restore a backup</button></div>
+        ${UI.backup ? `<div class="row" style="gap:8px"><button class="btn hot" data-act="file-backup">💾 Save backup file</button><button class="btn" data-act="copy-backup">Copy backup code</button></div><span class="dim cond"><b>Easiest: Save backup file.</b> On iPhone pick "Save to Files"; on a computer it lands in Downloads. To bring it back: Restore a backup → Choose backup file. Or copy the code and paste it into Notes. On iPhone, Safari can erase a site's saved data if you don't open it for 7 days; this code brings your franchise back.</span><textarea id="bk-code" readonly rows="4" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px monospace">${esc(UI.backup)}</textarea>` : ''}
+        ${UI.restoring ? `<div class="row" style="gap:8px"><label class="btn hot" style="cursor:pointer">📂 Choose backup file<input type="file" id="rs-file" accept=".txt,text/plain" style="display:none"></label><button class="btn" data-act="paste-backup">📋 Paste from clipboard</button></div><span class="dim cond">Or paste the code in the box yourself, then tap Load.</span><textarea id="rs-code" rows="4" placeholder="Paste your backup code" style="width:100%;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:12px monospace"></textarea><div class="row"><button class="btn sm hot" data-act="restore-go">Load this franchise</button>${UI.restoreErr ? `<span class="bad cond">${esc(UI.restoreErr)}</span>` : ''}</div>` : ''}
       </div>
       ${LEAGUE ? `<div class="row" style="border-top:1px solid var(--line);padding-top:14px"><span style="flex:1" class="dim">Delete the saved franchise and start over.</span>${UI.confirmReset ? `<button class="btn" data-act="reset-no">Keep it</button><button class="btn hot" data-act="reset-yes">Delete franchise</button>` : `<button class="btn" data-act="reset">Reset franchise</button>`}</div>` : ''}
     </div></div>`);
@@ -6585,7 +6600,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 188;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 189;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -10103,17 +10118,16 @@ if(typeof document !== 'undefined'){
       case 'cloud-save': clearTimeout(CLOUD.timer); CLOUD.busy ? (CLOUD.again = true) : cloudSave().then(() => renderSettings(UI.setBack || 'menu')); renderSettings(UI.setBack || 'menu'); break;
       case 'cloud-load': cloudLoad(false).catch(e => { UI.restoreErr = 'Could not load the cloud save (' + ((e && e.code) || 'error') + ').'; renderSettings(UI.setBack || 'menu'); }); break;
       case 'restore': UI.restoring = true; UI.restoreErr = ''; renderSettings(UI.setBack || 'menu'); break;
-      case 'restore-go': {
-        try{
-          const code = $('#rs-code').value.trim().replace(/\s+/g, '');   // 'EH1:' = compressed code; anything else = the older plain code
-          (code.startsWith('EH1:') ? unpackText('gz64', code.slice(4)) : Promise.resolve(decodeURIComponent(escape(atob(code))))).then(txt => {
-            const L2 = JSON.parse(txt); if(!L2 || !L2.teams || !L2.players) throw 0;
-            migrate(L2); LEAGUE = L2; saveLeague(); UI.restoring = false; UI.backup = null;
-            UI.msg = 'Franchise restored.'; renderHub();
-          }).catch(() => { UI.restoreErr = "That code didn't work. Make sure you copied all of it."; renderSettings(UI.setBack || 'menu'); });
-        }catch(e){ UI.restoreErr = "That code didn't work. Make sure you copied all of it."; renderSettings(UI.setBack || 'menu'); }
-        break;
-      }
+      case 'restore-go': restoreFromCode($('#rs-code').value); break;
+      case 'paste-backup': {   // one tap: read the clipboard and load it (iPhone shows a small "Paste" bubble to confirm)
+        const fail = () => { UI.restoreErr = 'Your browser did not allow reading the clipboard. Paste into the box instead.'; renderSettings(UI.setBack || 'menu'); };
+        if(navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(t => t && t.trim() ? restoreFromCode(t) : fail(), fail); else fail(); break; }
+      case 'file-backup': {   // save the code as a small text file: the share sheet on phones, a download on computers
+        if(!UI.backup) break; const name = `evo-hoops-backup-S${LEAGUE ? LEAGUE.season : 0}.txt`, btn = $('[data-act=file-backup]'), say = t => { if(btn) btn.textContent = t; };
+        const download = () => { try{ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([UI.backup], { type:'text/plain' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); say('Saved to Downloads ✓'); }catch(e){ say('Could not save: use Copy'); } };
+        let file = null; try{ file = new File([UI.backup], name, { type:'text/plain' }); }catch(e){}
+        if(file && navigator.canShare && navigator.canShare({ files:[file] }) && SET.touch !== 'off' && matchMedia('(pointer:coarse)').matches) navigator.share({ files:[file], title:'Evo Hoops backup' }).then(() => say('Saved ✓'), e => { if(!e || e.name !== 'AbortError') download(); });
+        else download(); break; }
       case 'settings-hub': UI.confirmReset = false; UI.backup = null; UI.restoring = false; renderSettings('continue'); break;
       case 'reset': UI.confirmReset = true; renderSettings('menu'); break;
       case 'reset-no': UI.confirmReset = false; renderSettings('menu'); break;
