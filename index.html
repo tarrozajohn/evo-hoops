@@ -309,6 +309,15 @@ body.coaching #modal{padding-bottom:16px}body.coaching #modal .storycard{margin-
 .coachgrp > b{flex-basis:100%}.coachgrp > .btn{flex:1 1 auto}
 .watchbox .coachpanel .moments{display:none}
 .watchbox .watchfeed{min-height:2.4em;font-size:12px}.watchhead{display:flex;justify-content:space-between;align-items:center;font:800 18px var(--cond)}.watchhead .dim{font-size:14px}
+.courtwrap{position:relative}
+.startov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border-radius:10px;background:rgba(5,6,15,.55);z-index:3}
+.startov[hidden]{display:none}.startov.mid{background:rgba(5,6,15,.3)}
+.startbtn{display:flex;align-items:center;gap:12px;padding:16px 30px;border:0;border-radius:999px;color:#1a0c00;font:400 26px/1 var(--display);background:linear-gradient(180deg,#ffb35a,#ff6b2c);box-shadow:0 6px 0 #a83a08,0 0 30px rgba(255,107,44,.7);animation:startpulse 1.1s ease-in-out infinite;cursor:pointer}
+.startov.mid .startbtn{padding:10px 20px;font-size:18px}
+.starttri{font-size:1.2em}
+.startalt{padding:8px 16px;border-radius:999px;border:2px solid #8fd3ff;background:rgba(8,10,20,.85);color:#fff;font:700 15px var(--cond);cursor:pointer}
+.startnote{padding:4px 12px;border-radius:999px;background:rgba(8,10,20,.8);color:#fff;font:600 14px var(--cond)}
+@keyframes startpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 #w-court{width:100%;height:auto;border-radius:10px;display:block;touch-action:manipulation}
 .wteam b.bump{animation:scorebump .5s ease-out}@keyframes scorebump{0%{transform:scale(1.6);color:#fff}100%{transform:scale(1)}}.wteam b{display:inline-block}
 .watchfeed{min-height:3.6em;font-size:13px;line-height:1.2}
@@ -6600,7 +6609,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 190;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 191;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9038,7 +9047,7 @@ function showPlayHelp(){
 }
 function closePlayHelp(quiet){
   const d = document.getElementById('playhelp'); if(d) d.remove();
-  const LV = UI.live; if(!quiet && LV && LV.helpPaused){ LV.helpPaused = false; LV.paused = false; watchRefresh(false); }
+  const LV = UI.live; if(!quiet && LV && LV.helpPaused){ LV.helpPaused = false; LV.paused = false; LV.started = true; watchRefresh(false); }
 }
 // the PASS and SHOOT buttons say what they'll do right now (offense or defense), and ULT shows its meter
 function padLabels(G){
@@ -9210,7 +9219,10 @@ function watchScreen(){
       <div class="jt wteam r" style="--tc:${T[op].color}"><b id="w-s1">${G.score[op]}</b><span class="jabbr">${esc(T[op].abbr)}</span></div>
     </div>
     <div class="jmom" title="Momentum: who scored more over the last 10 baskets" style="--c0:${T[me].color};--c1:${T[op].color}"><i id="w-mom" style="width:50%"></i></div>
-    <canvas id="w-court" width="940" height="500"></canvas>
+    <div class="courtwrap"><canvas id="w-court" width="940" height="500"></canvas>
+      <div class="startov ${LV.started ? 'mid' : ''}" id="w-start" ${LV.paused && !G.over ? '' : 'hidden'}>
+        <button class="startbtn" data-act="live" data-id="pause"><span class="starttri">▶</span><span id="w-starttxt">${LV.started ? 'RESUME' : 'TAP TO START'}</span></button>
+        ${LV.started ? '' : LV.play ? '<span class="startnote">You control the player with the ring and arrow</span>' : '<button class="startalt" data-act="live" data-id="playstart">🎮 Play it yourself instead</button>'}</div></div>
     <div class="watchfeed cond" id="w-feed">${LV.feed.slice(-2).reverse().map(esc).join('<br>') || '<span class="dim">Tip-off. Tap ▶ when you\'re ready.</span>'}</div>
     <div class="watchctl">
       <button class="btn sm hot" data-act="live" data-id="pause" id="w-pause">${LV.paused ? '▶ Play' : '⏸ Pause'}</button>
@@ -9281,6 +9293,7 @@ function watchRefresh(full){
   set('w-s0', G.score[me]); set('w-s1', G.score[1 - me]); set('w-clock', periodTxt(G));
   set('w-feed', LV.feed.slice(-2).reverse().map(esc).join('<br>'));
   set('w-pause', G.over ? '🏁 See the result' : LV.paused ? '▶ Play' : '⏸ Pause');
+  { const so = document.getElementById('w-start'); if(so){ so.hidden = !LV.paused || G.over; so.classList.toggle('mid', !!LV.started); set('w-starttxt', LV.started ? 'RESUME' : 'TAP TO START'); if(LV.started) so.querySelectorAll('.startnote, .startalt').forEach(e => e.remove()); } }   // the big button over the court
   const C = G.coach, to = document.getElementById('w-to'), rf = document.getElementById('w-refs');
   if(to){ to.textContent = '⏱ ' + C.tos; to.disabled = !C.tos || G.over; } if(rf) rf.disabled = !C.refs || G.over;
   const run = scoringRun(G); set('w-run', run && run.pts >= 6 ? `🔥 ${esc(LV.teams[run.team].abbr)} ${run.pts}-0 run` : '');
@@ -9950,7 +9963,8 @@ function liveCall(id, silent){
     case 'helpclose': closePlayHelp(false); return;
     case 'playtoggle': LV.play = !LV.play; if(LV.play){ if(G.user == null){ G.user = G.mine; G.playAutoSub = true; } LV.speed = 1; PIN.tTurbo = SET.turboOn === true; } else LV.speed = SET.watchSpeed || 2;
       PIN.keys.clear(); PIN.tx = PIN.ty = 0; PIN.tTurbo = false; watchScreen(); return;   // with no input your player goes back to playing on his own
-    case 'pause': if(G.over){ liveFinish(); return; } LV.paused = !LV.paused; watchRefresh(false); return;
+    case 'pause': if(G.over){ liveFinish(); return; } LV.paused = !LV.paused; if(!LV.paused) LV.started = true; watchRefresh(false); return;
+    case 'playstart': if(!LV.play) liveCall('playtoggle'); LV.paused = false; LV.started = true; watchRefresh(false); return;   /* take control and tip off in one tap */
     case 'speedcycle': { const sp = [1, 2, 4, 8]; LV.speed = sp[(sp.indexOf(LV.speed) + 1) % sp.length]; SET.watchSpeed = LV.speed; saveSettings(); const el = document.getElementById('w-speed'); if(el) el.textContent = LV.speed + 'x'; return; }
     case 'speed': LV.speed = +v; SET.watchSpeed = LV.speed; saveSettings(); document.querySelectorAll('.watchctl [data-id^="speed:"]').forEach(b => b.classList.toggle('cool', b.dataset.id === id)); return;
     case 'tab': C.tab = v; C.sel = null; break;
