@@ -563,6 +563,7 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .fivecard{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;font:600 11px var(--cond)}.fivecard img{width:100%!important;max-width:74px;height:auto!important;aspect-ratio:10/11}
 .fivecard b{font-size:13px}.fivecard .gold{color:#ffd23a}.fiveline{display:none}
 @media (min-width:700px){.fiveline{display:block;opacity:.75;text-align:center}}
+.fivequotes{display:flex;flex-direction:column;gap:3px;text-align:left;font:600 14px var(--cond);padding:6px 10px;border-left:3px solid #ffd23a;background:rgba(255,255,255,.05);border-radius:6px;width:100%}
 .fivefaces{display:flex;gap:8px;flex-wrap:wrap}.fivefaces span{display:flex;align-items:center;gap:4px;font:600 13px var(--cond)}.fivefaces img{width:30px;height:33px}.fivefaces i{font-style:normal;color:#ffd23a}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
   background:#0a0908;border:2px solid #ffd23a;color:#ffd23a;font:400 16px var(--display);box-shadow:0 0 16px rgba(255,210,58,.45)}
@@ -804,18 +805,18 @@ const LINES = [
   { arch:'shooter', shape:'tall',  feat:'ears',    names:['Frostkit','Glaciera','Avalynx'],       types:[['Ice'],['Ice'],['Ice']] },
   { arch:'big',     shape:'bulky', feat:'horns',   names:['Pebblit','Bouldox','Monolorn'],        types:[['Earth'],['Earth'],['Earth','Metal']] },
   { arch:'guard',   shape:'round', feat:'crest',   names:['Fluttle','Zephyrel','Galecrest'],      types:[['Wind'],['Wind'],['Wind']] },
-  { arch:'guard',   shape:'slim',  feat:'ears',    names:['Murkit','Gloomcat','Umbrafang'],       types:[['Shadow'],['Shadow'],['Shadow']] },
+  { arch:'guard',   shape:'slim',  feat:'ears',    names:['Murkit','Gloomcat','Umbrafang'],       types:[['Wind'],['Wind'],['Wind','Metal']] },
   { arch:'wing',    shape:'tall',  feat:'horns',   names:['Jabbit','Southpaw','Champaw'],         types:[['Metal'],['Metal'],['Metal']] },
-  { arch:'shooter', shape:'round', feat:'antenna', names:['Glimmote','Lumisprite','Aurorae'],     types:[['Light'],['Light'],['Light']] },
+  { arch:'shooter', shape:'round', feat:'antenna', names:['Glimmote','Lumisprite','Aurorae'],     types:[['Lightning'],['Lightning'],['Lightning','Ice']] },
   { arch:'slasher', shape:'slim',  feat:'flame',   names:['Kindlebug','Scorchmoth','Solarflare'], types:[['Fire'],['Fire','Wind'],['Fire','Wind']] },
   { arch:'big',     shape:'bulky', feat:'fins',    names:['Puddlop','Marshmaw','Bogtitan'],       types:[['Water'],['Water','Earth'],['Water','Earth']] },
   { arch:'wing',    shape:'tall',  feat:'fins',    names:['Sparkfin','Ampereel','Leviathunder'],  types:[['Lightning'],['Lightning','Water'],['Lightning','Water']] },
-  { arch:'wing',    shape:'round', feat:'crest',   names:['Snowpip','Flurrowl','Blizzarch'],      types:[['Ice'],['Ice','Light'],['Ice','Light']] },
+  { arch:'wing',    shape:'round', feat:'crest',   names:['Snowpip','Flurrowl','Blizzarch'],      types:[['Ice'],['Ice','Wind'],['Ice','Wind']] },
 ];
 // Legends: single-stage, rare, strong. Only a few exist in each league.
 const LEGENDS = [
-  { name:'Solstarr',  types:['Fire','Light'], arch:'wing',  shape:'tall',  feat:'flame' },
-  { name:'Abyssion',  types:['Water','Shadow'],   arch:'big',   shape:'bulky', feat:'fins' },
+  { name:'Solstarr',  types:['Fire','Lightning'], arch:'wing',  shape:'tall',  feat:'flame' },
+  { name:'Abyssion',  types:['Water','Earth'],   arch:'big',   shape:'bulky', feat:'fins' },
   { name:'Terrahorn', types:['Earth','Plant'],  arch:'big',   shape:'bulky', feat:'horns' },
   { name:'Stormarch', types:['Lightning','Wind'],    arch:'guard', shape:'slim',  feat:'antenna' },
 ];
@@ -853,9 +854,9 @@ const HERO_SP4 = SPECIES.length; SPECIES.push({ id:HERO_SP4, name:'Legendary', t
 // Six newer evolution lines. They are added after everything else so species numbers in old saves never change.
 const LINES2 = [
   { arch:'wing',    shape:'slim',  feat:'horns',   names:['Rustlet','Ironhide','Steelwyrm'],   types:[['Metal'],['Metal'],['Metal','Fire']] },
-  { arch:'slasher', shape:'tall',  feat:'ears',    names:['Shadepup','Duskfang','Nocthowl'],   types:[['Shadow'],['Shadow'],['Shadow','Ice']] },
+  { arch:'slasher', shape:'tall',  feat:'ears',    names:['Shadepup','Duskfang','Nocthowl'],   types:[['Wind'],['Wind'],['Wind','Ice']] },
   { arch:'guard',   shape:'round', feat:'leaf',    names:['Budbit','Bramblet','Thornado'],     types:[['Plant'],['Plant'],['Plant','Wind']] },
-  { arch:'big',     shape:'bulky', feat:'ears',    names:['Glowcub','Radibear','Solursa'],     types:[['Light'],['Light'],['Light','Earth']] },
+  { arch:'big',     shape:'bulky', feat:'ears',    names:['Glowcub','Radibear','Solursa'],     types:[['Fire'],['Fire'],['Fire','Earth']] },
   { arch:'shooter', shape:'slim',  feat:'antenna', names:['Dustmite','Sandstrike','Dunescor'], types:[['Earth'],['Earth'],['Earth','Lightning']] },
   { arch:'slasher', shape:'bulky', feat:'horns',   names:['Chillhorn','Frostram','Glaciram'],  types:[['Ice'],['Ice'],['Ice','Metal']] },
 ];
@@ -869,6 +870,13 @@ LINES2.forEach(Ln => {
       evo: si < 2 ? id + 1 : null, evoLvl: si < 2 ? EVO_LVL[si] : null, legend:false });
   });
 });
+
+/* The Five Crowns and Vex: one-of-a-kind creatures, the only ones besides you and Kaine with the Light or Shadow type.
+   CROWN_SP + 0..4 = Zenith, Mirage, Onyx, Tempest, Colossus; CROWN_SP + 5 = Vex. They never evolve. */
+const CROWN_SP = SPECIES.length;
+[ ['Zenith', ['Light'], 'guard', 'slim', 'crest'], ['Mirage', ['Shadow'], 'shooter', 'tall', 'antenna'], ['Onyx', ['Shadow'], 'wing', 'tall', 'horns'],
+  ['Tempest', ['Light'], 'slasher', 'slim', 'ears'], ['Colossus', ['Light', 'Shadow'], 'big', 'bulky', 'horns'], ['Vex', ['Shadow'], 'slasher', 'tall', 'ears'] ]
+  .forEach(([name, types, arch, shape, feat]) => SPECIES.push({ id:SPECIES.length, name, types, stage:3, line:-5, shape, feat, arch, base: mkBase(ARCH[arch], 1.06, STATS.map(() => 0)), evo:null, evoLvl:null, legend:false, crownSp:true }));
 
 /* ---------- 4. PLAYERS & XP ----------
    A player is one creature on a roster: species + level + xp + jersey number. */
@@ -4514,7 +4522,7 @@ function nickFor(L, p){
   return pick(NICKS) + ' ' + Math.floor(rand()*90 + 10);
 }
 // how a creature is called everywhere: its own name + species ("Nova Zappip"); you and Kaine keep your names
-function pname(p){ if(!p) return '?'; const sp = SPECIES[p.sp].name; if(p.avatar || p.nemesis || !p.nick) return sp; return p.nick + ' ' + sp; }
+function pname(p){ if(!p) return '?'; const sp = SPECIES[p.sp].name; if(p.avatar || p.nemesis || !p.nick || SPECIES[p.sp].crownSp) return sp; return p.nick + ' ' + sp; }
 function genPlayer(L, opt){
   let sp, lvl;
   const dev = () => 1 + Math.floor(Math.pow(rand(), 1.5)*30);   // random development, used only for Quick game rosters
@@ -4685,6 +4693,7 @@ function applyGame(L, a, b, res, playoff){
     else S.rivalL++;
     S.taunt = fillStory(L, pick(won ? RIVAL_LOSS_LINES : RIVAL_WIN_LINES));
     reports.rival = { won, line:S.taunt };
+    if(isFiveTeam(L, L.rival)){ const q = fiveSay(L, won ? 'youWon' : 'theyWon', (L.gameNo || 0) + sa + sb); reports.rival = { won, line:q.text, who:q.who }; }
   }
   L.log.push({ season:L.season, a, b, sa, sb, playoff:!!playoff });
   checkGameRecords(L, res, a, b);
@@ -4732,7 +4741,7 @@ function simRestOfRound(L){
     if(L.round >= L.schedule.length) startPlayoffs(L);
   } else if(L.phase === 'playoffs'){
     for(const s of L.playoffs.series){ if(s.winner != null || s.playedToday) continue; if(s.a === L.user || s.b === L.user){ continue; }
-      const res = quickSim(L, s.a, s.b); applyGame(L, s.a, s.b, res, true); recordSeriesGame(L, s, s.a, res); }
+      const res = vexQuick(L, s.a, s.b); applyGame(L, s.a, s.b, res, true); recordSeriesGame(L, s, s.a, res); }
     L.playoffs.series.forEach(s => s.playedToday = false);
     advancePlayoffs(L);
   }
@@ -4751,10 +4760,11 @@ function startPlayoffs(L){
   L.phase = 'playoffs';
   if(n === 16){   // top 8 in each conference; each conference has its own bracket, the champions meet in the Finals
     const E = confStandings(L, 'East').slice(0, 8).map(t => t.id), W = confStandings(L, 'West').slice(0, 8).map(t => t.id), pairs = [[0, 7], [3, 4], [1, 6], [2, 5]];
+    vexSeed(L, E, confStandings(L, 'East').map(t => t.id)); vexSeed(L, W, confStandings(L, 'West').map(t => t.id));   // Vex's team: always in, always on the other side of your bracket
     L.playoffs = { round:0, size:n, seeds:E.concat(W), confSeeds:{ East:E, West:W }, series:[], done:[] };
     L.playoffs.series = pairs.map(([x, y]) => newSeries(L, E[x], E[y], 0)).concat(pairs.map(([x, y]) => newSeries(L, W[x], W[y], 0)));
   } else {
-    const st = standings(L).map(t => t.id), seeds = st.slice(0, n);
+    const st = standings(L).map(t => t.id), seeds = st.slice(0, n); vexSeed(L, seeds, st);
     L.playoffs = { round:0, size:n, seeds, series:[], done:[] };
     const pairs = n === 8 ? [[0, 7], [3, 4], [1, 6], [2, 5]] : [[0, 3], [1, 2]];   // bracket order: winners of neighbours meet next
     L.playoffs.series = pairs.map(([x, y]) => newSeries(L, seeds[x], seeds[y], 0));
@@ -4770,6 +4780,7 @@ function recordSeriesGame(L, S, a, res){
   const need = Math.ceil(S.bestOf/2);
   if(S.wa >= need) S.winner = S.a; else if(S.wb >= need) S.winner = S.b;
   if(S.winner != null){ S.score = [S.wa, S.wb];
+    { const vt = vexTeam(L); if(vt != null && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(vt)) vexSeriesOver(L, S.winner === L.user); }
     if(fiveOn(L) && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.five.tid)){ const F = L.five; if(S.winner === L.user){ F.sw++; if(!F.joined) F.offer = true; L.coins += 500; L.news.unshift({ s:L.season, r:0, t:'👑 You knocked the Five Crowns out of the playoffs. +500 coins.', me:true }); } else { F.sl++; L.news.unshift({ s:L.season, r:0, t:'👑 The Five Crowns knocked you out of the playoffs.', rival:true }); } }
     if(L.nemesis != null && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.rival) && L.teams[L.rival].roster.includes(L.nemesis)) kaineSeriesOver(L, S.winner === L.user); }
 }
@@ -5630,6 +5641,8 @@ function migrate(L){
   }
   // playbooks split into offense and defense: old defensive playbooks move to the defense side
   if(L.plan){ if(OLD_DEF_BOOK[L.plan.book]){ L.plan.defense = OLD_DEF_BOOK[L.plan.book]; L.plan.book = 'balanced'; } if(!PLAYBOOKS[L.plan.book]) L.plan.book = 'balanced'; if(!DEF_BOOKS[L.plan.defense]) L.plan.defense = 'man'; }
+  if(L.players){ if(L.kaine && L.kaine.vex != null && L.players[L.kaine.vex]) L.players[L.kaine.vex].sp = CROWN_SP + 5;
+    Object.values(L.players).forEach(p => { if(p.crown >= 1 && p.crown <= 6) p.sp = CROWN_SP + p.crown - 1; }); }
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
   if(L.kaine && L.kaine.ending === 'ally' && L.kaine.allyS == null){ L.kaine.allyS = L.season; L.kaine.allyG = L.gameNo || 0; }   // saves from before the Shadow and Light storyline start it from now
   if(L.avatar != null && L.players && L.players[L.avatar]){ const fixed = cleanTree(L.players[L.avatar]); if(fixed) L.keyNote = `Your skill tree had ${fixed} node${fixed > 1 ? 's' : ''} from an older version of the tree. ${fixed > 1 ? 'They were' : 'It was'} removed and the skill point${fixed > 1 ? 's' : ''} refunded.`; }
@@ -5912,6 +5925,7 @@ function hubModals(L){
   { const K = L.kaine; if(K && K.queue && K.queue.length){ const key = K.queue.shift(); UI.inCut = true; return showKaineScene(L, key, () => { UI.inCut = false; renderHub(); }); } }
   if(pendingAscensions(L).length){ UI.inCut = true; return runAscensions(() => { UI.inCut = false; renderHub(); }); }
   if(UI.outcome){ const o = UI.outcome; UI.outcome = null; return showOutcome(o); }
+  if(L.kaine && L.kaine.vexShow) return vexScene(L);   // Vex after a playoff series
   if(fiveDue(L)) return fiveIntro(L);
   if(L.five && L.five.offer && !L.five.joined) return fiveOffer(L);   // you beat them in a playoff series   // Kaine is yours: his old team answers with the Five Crowns
   if(UI.pendingReveal){ const r = UI.pendingReveal; UI.pendingReveal = null; return draftReveal(L, r.pid, r.n, r.rank); }   // you just drafted someone
@@ -6619,7 +6633,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 193;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 194;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -6905,11 +6919,11 @@ const SCN = {
     make(L, d){ const R = L.teams[L.rival], U = L.teams[L.user];
       // Vex: a 👑 Generational prodigy, a few levels above your team's average, signed to Kaine's old team
       const lv = Math.round(U.roster.map(id => L.players[id].lvl || 0).reduce((a, b) => a + b, 0)/U.roster.length) + 4;
-      const v = genPlayer(L, { lvl:lv, rareChance:1 }); autoEvolve(v); v.nick = 'Vex'; v.generational = true; v.gift = Math.max(v.gift || 0, 10); v.tr.mind.pot = 5; v.prodigy = true;
+      const v = genPlayer(L, { lvl:lv, rareChance:1 }); autoEvolve(v); v.sp = CROWN_SP + 5; v.nick = 'Vex'; v.generational = true; v.gift = Math.max(v.gift || 0, 10); v.tr.mind.pot = 5; v.prodigy = true;
       if(R.roster.length >= ROSTER){ const out = R.roster.slice().sort((a, b) => value(L.players[a]) - value(L.players[b]))[0]; R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); }
       R.roster.push(v.id); v.contract = { sal:Math.min(MAX_SAL, 20), yrs:5 }; assignNumber(L, R, v); sortRosterByOvr(L, R);
       L.kaine.vex = v.id; L.kaine.vexW = 0; d.v = v.id;
-      return { title:"Shadow and Light: Pryce's Revenge", text:`Pryce called a press conference: "You took my creation. So I made a better one." Meet Vex, a 👑 Generational prodigy (OVR ${ovr(v)}), now on the ${R.name}. Beat him 3 times to see what he's made of.`,
+      return { title:"Shadow and Light: Pryce's Revenge", text:`Pryce called a press conference: "You took my creation. So I made a better one." Meet Vex, a 👑 Generational prodigy (OVR ${ovr(v)}), now on the ${R.name}. Pryce promises Vex will be waiting for you deep in the playoffs every year. Knock him out twice.`,
         opts:[['"Welcome to the league, kid"', 'Fans +3, chemistry +3'], ['"Pryce is finished"', 'Fans +6, but Vex heard it: +3 on every rating for good']] }; },
     pick(L, i, d){ const v = P_(L, d.v);
       if(i === 0){ bump(L, 'hype', 3); L.morale += 3; } else { bump(L, 'hype', 6); v.gift = (v.gift || 0) + 3; }
@@ -6918,16 +6932,9 @@ const SCN = {
   sl_vex:{ thread:'Shadow and Light', make(L, d, c){ const K = L.kaine, v = K.vex != null ? P_(L, K.vex) : null; if(!c || !v || !L.teams[L.rival].roster.includes(v.id)) return null;
       const R = L.teams[L.rival];
       if(c.won){ K.vexW = (K.vexW || 0) + 1;
-        if(K.vexW >= 3) return { title:'Shadow and Light: The Warning', text:`That's 3 losses to you. After the game Vex found you in the tunnel: "You think I was Pryce's answer? I was the warm-up. He has five more, and every one of them is better than me. Get ready."`,
-          opts:[['"Who are they?"', 'Vex says nothing and walks out. He leaves the league'], ['"Let them come"', 'Fans +5. Vex leaves the league']], d:{ final:1 } };
-        return { title:`Shadow and Light: Vex, round ${K.vexW}`, text:`You beat Vex and the ${R.name}. That's ${K.vexW} of 3. Kaine: "He's good. He's not ready."`, opts:[['Next time', '+150 coins']], d:{ w:1 } }; }
+        return { title:`Shadow and Light: Vex, round ${K.vexW}`, text:`You beat Vex and the ${R.name}. Kaine: "Good. It only counts when we knock him out of the playoffs. He'll be there."`, opts:[['Next time', '+150 coins']], d:{ w:1 } }; }
       return { title:'Shadow and Light: Vex gets one', text:`Vex and the ${R.name} beat you. Pryce was laughing courtside. Kaine took it personally.`, opts:[['We get him next time', 'Kaine +3 for the next 4 games']], d:{ l:1 } }; },
     pick(L, i, d){ const K = L.kaine, v = P_(L, K.vex), N = P_(L, L.nemesis), rearm = () => (L.scnWatch = L.scnWatch || []).push({ id:'sl_vex', tid:L.rival, d:{} });
-      if(d.final){ K.vexDone = 1; K.vexGone = L.season;   // v193: he vanishes; the Five Crowns arrive next season and he comes back as their sixth man
-        const R = L.teams[L.rival]; R.roster = R.roster.filter(x => x !== v.id); v.contract = null; fillRosters(L); sortRosterByOvr(L, R); R.star = R.roster[0];
-        if(i === 1) bump(L, 'hype', 5);
-        L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Vex has left the ${R.name} and the league. Nobody knows where he went.`, rival:true });
-        return { text:'Vex cleared out his locker that night. Nobody has seen him since. Kaine: "Five. Pryce has been busy."' }; }
       if(d.w){ L.coins += 150; rearm(); return { text:'One step closer.' }; }
       setForm(N, 3, 4, 'Revenge'); rearm(); return { text:'Kaine stayed after practice for two hours.' }; } },
   sl_down:{ thread:'Shadow and Light', when:L => kaineAlly(L) && !L.kaine.sl4 && L.phase === 'season' && L.round >= 10 && L.round <= 22 && L.season - (L.kaine.allyS ?? L.season) >= 1 && onTeam(L, L.nemesis) && !(P_(L, L.nemesis).inj > 0) && rand() < 0.2,
@@ -7408,8 +7415,53 @@ function kaineSeasonStart(L){
   R.roster.unshift(N.id); R.star = N.id; N.kaineEdge = (N.kaineEdge || 0) + 4; N.contract = { sal:MAX_SAL, yrs:5 }; sortRosterByOvr(L, R); R.star = N.id;
   K.away = null; K.ending = null; K.act++; K.stage = 1; K.wins = 0; K.queue.push('returns');
 }
+/* ---------- VEX IN THE PLAYOFFS (v194) ----------
+   While Vex is Pryce's prodigy, his team is always waiting for you deep in the playoffs: the conference finals
+   if they are in your conference, the Finals if not. Three things make that happen:
+   his team always gets a playoff seed, it sits in the other half of your bracket, and it wins every series
+   that is not against you. Knock him out twice and he warns you about the Five Crowns and leaves. */
+const vexTeam = L => { const K = L.kaine; if(!K || K.vex == null || K.vexDone || !kaineAlly(L)) return null; const T = L.teams.find(t => !t.user && t.roster.includes(K.vex)); return T ? T.id : null; };
+const vexRound = L => { const t = vexTeam(L); return t != null && L.teams[t].conf && L.teams[t].conf !== L.teams[L.user].conf ? 'Finals' : (L.teams.length >= 16 ? 'conference finals' : 'Finals'); };
+// seeds = the 8 playoff teams of one bracket, best first. Pairings are 1v8, 4v5 (top half) and 2v7, 3v6 (bottom half).
+function vexSeed(L, seeds, pool){
+  const vt = vexTeam(L); if(vt == null || seeds.length !== 8 || !pool.includes(vt)) return;
+  if(!seeds.includes(vt)){ const i = seeds[7] === L.user ? 6 : 7; seeds[i] = vt; }   // his team takes the last seed if it missed out
+  if(!seeds.includes(L.user)) return;
+  const top = [0, 7, 3, 4], mirror = { 0:1, 1:0, 7:6, 6:7, 3:2, 2:3, 4:5, 5:4 }, vi = seeds.indexOf(vt), ui = seeds.indexOf(L.user);
+  if(top.includes(vi) === top.includes(ui)){ const j = mirror[vi]; seeds[vi] = seeds[j]; seeds[j] = vt; }   // same half as you: swap with the matching seed in the other half
+}
+// a playoff game between two CPU teams: Vex's team does not lose it
+function vexQuick(L, a, b){ let res = quickSim(L, a, b); const vt = vexTeam(L); if(vt == null || (a !== vt && b !== vt)) return res;
+  const won = r => (r.score[0] > r.score[1]) === (a === vt);
+  for(let i = 0; i < 8 && !won(res); i++) res = quickSim(L, a, b);
+  if(!won(res)) res.score.reverse();   // still lost after 8 tries: flip the final score
+  return res; }
+// what Vex says after a playoff series between you (shown from the hub)
+function vexSeriesOver(L, youWon){
+  const K = L.kaine; if(youWon){ K.vexS = (K.vexS || 0) + 1; K.vexShow = K.vexS >= 2 ? 'warn' : 'one'; } else K.vexShow = 'lost';
+}
+function vexScene(L){
+  const K = L.kaine, kind = K.vexShow, v = L.players[K.vex], M = $('#modal'); K.vexShow = null;
+  const T = v ? L.teams.find(t => t.roster.includes(v.id)) : null; if(!v || !T){ saveLeague(true); return renderHub(); }
+  const card = (kick, title, line, body, btns) => { M.hidden = false; M.innerHTML = `<div class="storycard showcard" style="--tc:${T.color}">${SHOW_BEAMS}<div class="news-kicker">${kick}</div><div class="showaward">${title}</div>
+    <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(v, T.color)}" alt=""><div class="showname">Vex</div></div><div class="showline">${line}</div><div class="cond" style="text-align:left">${body}</div>
+    <div class="eventopts" style="justify-content:center">${btns.map((t, i) => `<button class="btn ${i ? '' : 'hot'}" data-vx="${i}"><b>${t[0]}</b><span class="dim">${t[1]}</span></button>`).join('')}</div></div>`; };
+  const done = () => { saveLeague(); M.hidden = true; renderHub(); };
+  if(kind === 'lost'){ card('Shadow and Light', 'VEX KNOCKS YOU OUT', 'Vex: "Pryce was right about you. Same time next year."', `Vex and the ${esc(T.name)} ended your season. Kaine has not said a word since the buzzer.`, [['Next year', 'Kaine plays +2 on every rating for good']]);
+    M.querySelector('[data-vx]').onclick = () => { const N = L.players[L.nemesis]; if(N) N.kaineEdge = (N.kaineEdge || 0) + 2; done(); }; return; }
+  if(kind === 'one'){ card('Shadow and Light', 'VEX GOES DOWN', 'Vex: "Once is luck. I\'ll be right here next year."', `You knocked Vex and the ${esc(T.name)} out of the playoffs. That is 1 of 2. He will be waiting in the ${vexRound(L)} again next season.`, [['See you there', '+300 coins']]);
+    M.querySelector('[data-vx]').onclick = () => { L.coins += 300; done(); }; return; }
+  // the second time: the warning, and he is gone
+  fanfare(false);
+  card('Shadow and Light: The Warning', 'VEX IS FINISHED', 'Vex, in the tunnel: "You think I was Pryce\'s answer? I was the warm-up."', `"He has five more. They are younger than me, they are better than me, and they will not shut up about it. Get ready." That is twice you have knocked him out. He is leaving the league tonight.`,
+    [['"Who are they?"', 'Vex says nothing and walks out'], ['"Let them come"', 'Fans +5']]);
+  M.querySelectorAll('[data-vx]').forEach(bn => bn.onclick = () => { if(bn.dataset.vx === '1') bump(L, 'hype', 5);
+    K.vexDone = 1; K.vexGone = L.season; T.roster = T.roster.filter(x => x !== v.id); v.contract = null; fillRosters(L); sortRosterByOvr(L, T); T.star = T.roster[0];
+    L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Vex has left the ${T.name} and the league. Nobody knows where he went.`, rival:true });
+    UI.msg = 'Vex cleared out his locker that night. Kaine: "Five. Pryce has been busy."'; done(); });
+}
 function kaineGoal(L){
-  const K = kaineOf(L); if(K.ending === 'ally' && K.vexGone != null && !L.five) return 'Vex is gone. He said five more are coming.'; if(K.ending === 'ally') return K.vex != null && !K.vexDone && L.teams[L.rival].roster.includes(K.vex) ? `Kaine plays for you now. Beat Pryce's new prodigy Vex ${3 - (K.vexW || 0)} more time${3 - (K.vexW || 0) === 1 ? '' : 's'}.` : 'Kaine plays for you now.'; if(K.away) return 'Kaine is away training alone. He will be back next season.';
+  const K = kaineOf(L); if(K.ending === 'ally' && K.vexGone != null && !L.five) return 'Vex is gone. He said five more are coming.'; if(K.ending === 'ally') return K.vex != null && !K.vexDone && L.teams[L.rival].roster.includes(K.vex) ? `Kaine plays for you now. Knock Vex out of the playoffs ${2 - (K.vexS || 0) === 1 ? 'once more' : 'twice'}: he waits in the ${vexRound(L)}.` : 'Kaine plays for you now.'; if(K.away) return 'Kaine is away training alone. He will be back next season.';
   return K.stage === 0 ? 'Beat Kaine\'s team once.' : K.stage === 1 ? `Beat Kaine\'s team ${5 - K.wins} more time${5 - K.wins === 1 ? '' : 's'} to earn his respect.` : 'Meet Kaine in a playoff series: the Showdown.';
 }
 // show the next queued scene (called from the hub)
@@ -7719,6 +7771,14 @@ const FIVE = [
   { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.' },
   { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.' },
   { nick:'Vex',      arch:'slasher', title:'The Sixth Man', line:'The one who warned you. First off their bench.' } ];   /* Vex is not one of the five: he is entry 6 */
+// what they say. who = index into FIVE (0 Zenith, 1 Mirage, 2 Onyx, 3 Tempest, 4 Colossus)
+const FIVE_TALK = {
+  pre: [[0, "I already saw how this game ends. You lose."], [1, "Guard me at half court. It won't matter."], [2, "Tell your star to bring a second jersey. I'll be wearing the first one."], [3, "Blink and I'm at the rim. Try not to blink."],
+    [4, "The paint is mine. You can visit."], [0, "You beat Vex? He carries our bags."], [1, "I'm not even going to warm up for this."], [3, "They said you were the best. They say a lot of things."]],
+  theyWon: [[1, "That was the easy version of us."], [3, "Was that your best? We were told you were good."], [4, "Come back when you're taller."], [2, "I didn't even sweat."], [0, "We're the future. You're the before picture."]],
+  youWon: [[0, "One game. Enjoy it. It's the last one."], [1, "I missed twice. That's the only reason."], [3, "Fine. Now I'm awake."], [2, "Remember this feeling. You won't get it again."], [4, "You got lucky. Luck runs out."]] };
+// one line from one of them: { who, text }. n picks which line (same n = same line, so it doesn't change on every redraw)
+function fiveSay(L, kind, n){ const list = FIVE_TALK[kind], t = list[Math.abs(n | 0) % list.length], id = L.five.ids[t[0]], p = id != null ? L.players[id] : null; return { who:p && p.nick ? p.nick : FIVE[t[0]].nick, text:t[1], p }; }
 const fiveOn = L => !!(L.five && L.teams[L.five.tid]);
 const fiveIds = L => fiveOn(L) ? L.five.ids.filter(id => L.players[id]) : [];
 const fiveAll = L => fiveOn(L) ? L.five.ids.concat(L.five.six != null ? [L.five.six] : []).filter(id => L.players[id]) : [];   // the five plus Vex
@@ -7730,19 +7790,18 @@ function formFive(L){
   const lv = Math.max(Av.lvl || 0, Math.round(U.roster.reduce((t, id) => t + (L.players[id].lvl || 0), 0)/U.roster.length)) + 2;
   // what makes someone one of the Five: generational, top potential, your level, a deal that never ends, and the Crowned trait (p.crown):
   // no decline, no retirement, and +6 on every rating plus 1 more per 10 levels. No Eternal Youth or Ultimate Edge: those are your team's items.
-  const crown = (p, i) => { p.crown = i + 1; p.generational = true; p.gift = Math.max(p.gift || 0, 12); p.tr.mind.pot = 5;
+  const crown = (p, i) => { p.crown = i + 1; p.generational = true; p.gift = Math.max(p.gift || 0, 12); p.tr.mind.pot = 5; if(i < 5) p.age = 0;   /* the five are rookies */
     p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); CATS.forEach(c => addTP(p, c, 10)); autoTrain(p); p.contract = { sal:0, yrs:99, legend:true }; ids.push(p.id); };
   const room = p => { const out = R.roster.filter(id => !ids.includes(id) && id !== L.nemesis && id !== p.id).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0];   // their weakest makes room
     if(out != null && R.roster.length >= ROSTER){ R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); } };
   FIVE.slice(0, 5).forEach((F, i) => {
-    const lines = SPECIES.filter(sp => sp.stage === 1 && sp.arch === F.arch && sp.evo != null && sp.line >= 0 && !sp.legend && !sp.avatar && !sp.nemesis).map(sp => sp.line);
-    const p = genPlayer(L, { lvl:lv, line:lines.length ? pick(lines) : undefined, rareChance:1 }); p.nick = F.nick; crown(p, i);
+    const p = genPlayer(L, { lvl:lv, rareChance:1 }); p.sp = CROWN_SP + i; p.nick = F.nick; crown(p, i);   // its own Light or Shadow species
     room(p); R.roster.push(p.id); assignNumber(L, R, p);
   });
   // Vex: back as their sixth man, unless he is on your team or gone from the save
   let six = null; const vex = K.vex != null ? L.players[K.vex] : null;
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
-    const five = ids.slice(); crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
+    const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
   L.five = { tid:R.id, ids, six, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 40 : (L.heat || 0) >= 50 ? 20 : 8 };
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
@@ -7790,9 +7849,10 @@ function fiveIntro(L){
     <div class="showaward">THE FIVE CROWNS</div>
     <div class="showline">GM ${esc(rivalGM(L))}: "You took my creation. So I built five."</div>
     <div class="fiverow showreveal">${fiveIds(L).map(id => { const p = L.players[id], F = FIVE[(p.crown || 1) - 1]; return `<div class="fivecard"><img src="${portrait(p, R.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><span class="gold">${F.title}</span><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span><span class="fiveline">${F.line}</span></div>`; }).join('')}</div>
-    <div class="cond" style="text-align:left">Five 👑 Generational players nobody scouted, one at every position, all on the ${esc(R.name)}. They are Crowned: they never decline, they level up with you, and each one is rated above a normal Generational. No trade or signing will ever bring one to your side. <b>They exist for one thing: to take you down.</b> Nobody has beaten all five in a playoff series.</div>
+    <div class="cond" style="text-align:left">Five 👑 Generational rookies nobody scouted, one at every position, each one Light or Shadow like you and Kaine, all on the ${esc(R.name)}. They are Crowned: they never decline, they level up with you, and each one is rated above a normal Generational. No trade or signing will ever bring one to your side. <b>They exist for one thing: to take you down.</b> Nobody has beaten all five in a playoff series.</div>
     ${L.five.six != null ? `<div class="cond" style="text-align:left">👁 And first off their bench: <b>Vex</b> (OVR ${ovr(L.players[L.five.six])}). He tried to warn you.</div>` : ''}
-    <div class="cond" style="color:#ffb0bd">Kaine: "Five of me. Good. I was getting bored."</div>
+    <div class="fivequotes">${[5, 1, 4].map(n => fiveSay(L, 'pre', n)).map(q => `<div><b>${esc(q.who)}:</b> "${q.text}"</div>`).join('')}</div>
+    <div class="cond" style="color:#ffb0bd">Kaine: "Five of me, and they never stop talking. Good. I was getting bored."</div>
     <button class="btn hot" id="sh-ok">Bring them on</button></div>`;
   $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
 }
@@ -7863,6 +7923,7 @@ function hubPlay(L){
       main = `<div class="panel" style="display:flex;flex-direction:column;gap:14px">
         <span class="${g.playoff ? 'cond' : 'dim cond'}">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} · <b>${seriesYou(L, g.s)}</b> <span class="dim">· first to ${Math.ceil(g.s.bestOf/2)} wins</span>` : (g.b === L.rival ? `<b style="color:var(--bad)">${isFiveTeam(L, g.b) ? '👑 Five Crowns game' : 'Rivalry game'}</b> · +60 coins for a win` : 'Next game')}</span>
         ${matchupPoster(L, g)}
+        ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
@@ -8568,7 +8629,7 @@ function renderPost(teams, res, reports, onContinue){
     ${potgPanel(teams, res)}
     ${reports && reports.injuries ? `<div class="panel"><h3 style="color:#ff8fa3">Injury report</h3>${reports.injuries.map(j => `<div>${pname(LEAGUE.players[j.pid])}: ${esc(j.name)}, out ${j.games} game${j.games > 1 ? 's' : ''}.</div>`).join('')}<p class="dim" style="margin:4px 0 0">The healthy bench fills in automatically. A Medical Kit from the Shop heals a creature right away.</p></div>` : ''}
     ${reports && reports.econ ? econPanel(reports.econ) : ''}
-    ${reports && reports.rival ? `<div class="panel rivalquote"><span class="speaker rival">${esc(rivalGM(LEAGUE))}</span><p>“${esc(reports.rival.line)}”</p></div>` : ''}
+    ${reports && reports.rival ? `<div class="panel rivalquote"><span class="speaker rival">${esc(reports.rival.who || rivalGM(LEAGUE))}</span><p>“${esc(reports.rival.line)}”</p></div>` : ''}
     ${reports ? '<div class="msg">Spend training points on the Train tab.</div>' : ''}
     ${reports ? `<div class="panel tablewrap"><h3>XP earned</h3><table style="margin-top:6px"><thead><tr><th>Creature</th><th>XP</th><th>Level</th><th>TP earned</th><th></th></tr></thead><tbody>
       ${reports.map(r => { const p = LEAGUE.players[r.pid]; return `<tr><td>${pname(p)} <span class="dim">#${p.num}</span>${r.line ? '' : ' <span class="dim cond">did not play</span>'}</td><td>+${r.gain}</td><td>${r.after > r.before ? `<b style="color:var(--hot)">${r.before} → ${r.after}</b>` : r.after}</td><td class="cond">${CATS.filter(c => r.tp[c]).map(c => `<span style="color:${TRAIN[c].color}">+${r.tp[c]} ${TRAIN[c].name}</span>`).join(' ') || '<span class="dim">0</span>'}</td><td>${r.evo ? '<b style="color:var(--cool)">Ready to evolve</b>' : ''}</td></tr>`; }).join('')}
