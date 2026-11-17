@@ -933,9 +933,27 @@ function catMaxed(p, c){ return catLevels(p, c) >= catMax(c); }
 function auraTier(p){ return CATS.filter(c => catMaxed(p, c)).length; }
 // Ratings grow about 0.8% of base per level, plus Stats training (+2 per level) and +2 per aura tier, capped at 99.
 // (your avatar grows much faster with level and has no rating cap)
+/* The story's power order (v196): the bonus on every rating for Kaine, the Five Crowns, Vex and your best friend.
+   Before you beat the Five in a playoff series:  the Five > Kaine > your best friend.
+   After you beat them:                           Kaine > your best friend > the Five.
+   Kaine's bonus is 8 + 1 per 8 levels + whatever he has gained from the rivalry (kaineEdge).
+   Everyone else is measured against Kaine: the Five sit 3 above him until they are beaten, then 6 below;
+   your best friend always sits 3 below him; Vex sits 3 below the Five. */
+function storyBonus(p){
+  const L = typeof LEAGUE !== 'undefined' ? LEAGUE : null, friend = !!(L && L.friend != null && L.friend === p.id && L.players && L.players[p.id] === p);
+  if(!p.nemesis && !p.crown && !friend) return 0;
+  const kb = q => 8 + Math.floor(q.lvl/8) + (q.kaineEdge || 0);
+  if(p.nemesis) return kb(p);
+  const N = L && L.nemesis != null && L.players ? L.players[L.nemesis] : null;
+  const k = N ? kb(N) : 8 + Math.floor(p.lvl/8);                                   // Kaine's real bonus right now
+  const kRef = N ? 8 + Math.floor(N.lvl/8) + Math.min(N.kaineEdge || 0, 10) : k;   // the same, without the huge extra he gets as the final boss
+  if(p.crown){ const beaten = !!(L && L.five && (L.five.joined || L.five.beatS != null)); return Math.max(4, (beaten ? kRef - 6 : k + 3) - (p.crown === 6 ? 3 : 0)); }
+  return Math.max(0, kRef - 3);   // your best friend
+}
+
 function ratings(p){
   const S = SPECIES[p.sp], f = p.avatar ? 0.80 + p.lvl*0.02 : p.nemesis ? 0.84 + Math.min(p.lvl, 60)*0.012 : 0.80 + p.lvl*0.008, T = trainOf(p).stats, aura = auraTier(p)*2 + (isEternal(p) ? 4 : 0) + (p.gift || 0) - declineOf(p), o = {};   // gift: natural talent from the draft class
-  for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + (p.nemesis ? 8 + Math.floor(p.lvl/8) + (p.kaineEdge || 0) : 0) + (p.crown ? 6 + Math.floor(p.lvl/10) : 0) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0), 20, p.avatar ? 999 : 99);   // boost = Star treatment   // Endurance training raises STA
+  for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0), 20, p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
   return o;
 }
 /* Badges (your player only, like 2K): 16 badges in 4 groups, each with Bronze, Silver, Gold and Hall of Fame tiers.
@@ -4652,7 +4670,7 @@ function applyGame(L, a, b, res, playoff){
   const [sa, sb] = res.score, A = L.teams[a], B = L.teams[b];
   if(a === L.user || b === L.user){ const opp = a === L.user ? b : a, m = a === L.user ? sa - sb : sb - sa;
     if(kaineFinalOn(L) && opp === L.rival){ const X = L.kaine.final; m > 0 ? X.w++ : X.l++; X.edge = clamp((X.edge || 0) + (m > 0 ? clamp(m*0.5, 3, 10) : -3), 50, 250); }   /* climbs fast when you win, eases slowly when you lose, never below 50 */
-    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + clamp((m - 2)*0.25, -4, 4), 0, 200); }   /* small steps: their boost is touchy, big jumps made blowouts both ways */
+    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + (m > 0 ? clamp(m*0.4, 2, 8) : -3), 20, 200); }   /* climbs when you win (more after a blowout), eases by 3 when you lose, never below 20 */
     if(isSuper(L, opp)) L.era.edge = clamp((L.era.edge || 0) + clamp((m - 2)*0.8, -12, 12), 0, 200);   // superteams keep adjusting until games with you are close
     else updateHeat(L, a === L.user ? sa : sb, a === L.user ? sb : sa); }
   if(!playoff){ if(sa > sb){ A.w++; B.l++; } else { B.w++; A.l++; } A.pf += sa; A.pa += sb; B.pf += sb; B.pa += sa; }
@@ -4784,7 +4802,7 @@ function recordSeriesGame(L, S, a, res){
   if(S.winner != null){ S.score = [S.wa, S.wb];
     { const vt = vexTeam(L); if(vt != null && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(vt)) vexSeriesOver(L, S.winner === L.user); }
     if(kaineFinalOn(L) && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.rival)) L.kaine.finalShow = S.winner === L.user ? 'won' : 'lost';   // the last series
-    if(fiveOn(L) && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.five.tid)){ const F = L.five; if(S.winner === L.user){ F.sw++; if(F.beatS == null) F.beatS = L.season; if(!F.joined) F.offer = true; L.coins += 500; L.news.unshift({ s:L.season, r:0, t:'👑 You knocked the Five Crowns out of the playoffs. +500 coins.', me:true }); } else { F.sl++; L.news.unshift({ s:L.season, r:0, t:'👑 The Five Crowns knocked you out of the playoffs.', rival:true }); } }
+    if(fiveOn(L) && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.five.tid)){ const F = L.five; if(S.winner === L.user){ F.sw++; if(F.beatS == null){ F.beatS = L.season; memoClear(); } if(!F.joined) F.offer = true; L.coins += 500; L.news.unshift({ s:L.season, r:0, t:'👑 You knocked the Five Crowns out of the playoffs. +500 coins.', me:true }); } else { F.sl++; L.news.unshift({ s:L.season, r:0, t:'👑 The Five Crowns knocked you out of the playoffs.', rival:true }); } }
     if(L.nemesis != null && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.rival) && L.teams[L.rival].roster.includes(L.nemesis)) kaineSeriesOver(L, S.winner === L.user); }
 }
 const seriesTxt = (L, S) => { const lead = S.wa === S.wb ? `tied ${S.wa}-${S.wb}` : `${L.teams[S.wa > S.wb ? S.a : S.b].abbr} ${S.winner != null ? 'wins' : 'leads'} ${Math.max(S.wa, S.wb)}-${Math.min(S.wa, S.wb)}`; return lead; };
@@ -6638,7 +6656,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 195;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 196;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7855,7 +7873,7 @@ function formFive(L){
   const R = !third ? L.teams[L.rival] : (L.teams.filter(T => !T.user && T.id !== L.rival && T.conf === U.conf).sort((a, b) => teamOVR(L, b.id) - teamOVR(L, a.id))[0] || L.teams[L.rival]);
   const lv = Math.max(Av.lvl || 0, Math.round(U.roster.reduce((t, id) => t + (L.players[id].lvl || 0), 0)/U.roster.length)) + 2;
   // what makes someone one of the Five: generational, top potential, your level, a deal that never ends, and the Crowned trait (p.crown):
-  // no decline, no retirement, and +6 on every rating plus 1 more per 10 levels. No Eternal Youth or Ultimate Edge: those are your team's items.
+  // no decline, no retirement, and a bonus on every rating set by storyBonus() (above Kaine until you beat them, below your best friend after). No Eternal Youth or Ultimate Edge: those are your team's items.
   const crown = (p, i) => { p.crown = i + 1; p.generational = true; p.gift = Math.max(p.gift || 0, 12); p.tr.mind.pot = 5; if(i < 5) p.age = 0;   /* the five are rookies */
     p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); CATS.forEach(c => addTP(p, c, 10)); autoTrain(p); p.contract = { sal:0, yrs:99, legend:true }; ids.push(p.id); };
   const room = p => { const out = R.roster.filter(id => !ids.includes(id) && id !== L.nemesis && id !== p.id).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0];   // their weakest makes room
@@ -7869,7 +7887,7 @@ function formFive(L){
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
     const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
-  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 40 : (L.heat || 0) >= 50 ? 20 : 8 };
+  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 60 : (L.heat || 0) >= 50 ? 40 : 25 };
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
 }
@@ -8153,7 +8171,7 @@ const rareBoostText = r => RARE[r].boost === 'all' ? '+5 all' : Object.entries(R
 function talentTags(L, p, cut){
   const out = [], pot = trainOf(p).mind.pot || 0;
   if(p.generational && genIntel(L, p) === 'known') out.push('<span class="ttag gen" title="Generational: permanent. At least +10 natural talent on every rating and Potential 4+/5. Other teams value it highly.">👑 Generational · +10 every rating</span>');
-  if(p.crown) out.push(`<span class="ttag gen" title="One of the Five Crowns. Crowned: never declines or retires, +${6 + Math.floor(p.lvl/10)} on every rating on top of Generational. ${FIVE[p.crown - 1].line}">👑 Five Crowns · ${FIVE[p.crown - 1].title} · Crowned +${6 + Math.floor(p.lvl/10)}</span>`);
+  if(p.crown) out.push(`<span class="ttag gen" title="One of the Five Crowns. Crowned: never declines or retires, +${storyBonus(p)} on every rating on top of Generational. ${FIVE[p.crown - 1].line}">👑 Five Crowns · ${FIVE[p.crown - 1].title} · Crowned +${storyBonus(p)}</span>`);
   if(pot >= 4 && (p.age || 0) <= 2) out.push(`<span class="ttag pot" title="High potential: in its first 3 seasons with Potential ${pot}/5. Each Potential point is about 8% more XP and training points from games, so it grows fastest.">💎 High potential · Pot ${pot}/5, grows fast</span>`);
   if(p.rare) out.push(`<span class="ttag rare" title="${esc(RARE[p.rare].name + ': ' + RARE[p.rare].desc)}">★ ${RARE[p.rare].name} · ${rareBoostText(p.rare)}</span>`);
   if(p.ultimate) out.push('<span class="ttag edge" title="Ultimate Edge: element matchups never work against it">🌈 Ultimate Edge</span>');
@@ -10603,7 +10621,7 @@ if(typeof document !== 'undefined'){
       }
       case 'unequip': { const p = L.players[+id]; unequip(L, p); saveLeague(); renderHub(); break; }
       case 'train-sel': UI.trainSel = +id; renderHub(); break;
-      case 'friend': { if(L.friend != null) break; const p = L.players[+id]; if(!p || p.avatar) break; L.friend = p.id; L.morale = clamp((L.morale ?? 60) + 5, 0, 100); p.friendGen = !p.generational; p.giftPre = p.gift || 0; const up = makeGenerational(p); friendDeal(p);
+      case 'friend': { if(L.friend != null) break; const p = L.players[+id]; if(!p || p.avatar) break; L.friend = p.id; memoClear(); L.morale = clamp((L.morale ?? 60) + 5, 0, 100); p.friendGen = !p.generational; p.giftPre = p.gift || 0; const up = makeGenerational(p); friendDeal(p);
         UI.msg = `${pname(p)} is your best friend now. Friends for life. 👑 Playing next to you unlocked a generational talent: +${up} OVR now, Potential ${trainOf(p).mind.pot}/5. It signed a friends-for-life deal: no cap hit, ever.`; saveLeague(); renderHub(); break; }
       /* Switch best friends (once a season, tap twice to confirm). The old friend loses the friendship perks:
          the Generational boost goes away if the friendship gave it (a drafted Generational keeps it), he moves to a
@@ -10617,7 +10635,7 @@ if(typeof document !== 'undefined'){
         if(fromFriend && old.generational){ old.generational = false; old.gift = old.giftPre != null ? old.giftPre : Math.max(0, (old.gift || 0) - 10); }
         old.contract = { sal:marketSalary(L, old), yrs:2 }; delete old.friendGen; delete old.giftPre;
         addBond(L, old.id, -30); L.morale = clamp((L.morale ?? 60) - 5, 0, 100);
-        L.friend = p.id; p.friendGen = !p.generational; p.giftPre = p.gift || 0; const up = makeGenerational(p); friendDeal(p);
+        L.friend = p.id; memoClear(); p.friendGen = !p.generational; p.giftPre = p.gift || 0; const up = makeGenerational(p); friendDeal(p);
         UI.msg = `♥ ${pname(p)} is your best friend now${up ? `: 👑 Generational, +${up} OVR` : ''}. ${pname(old)} feels replaced: ${fromFriend ? `lost the Generational boost (OVR ${ovr0} → ${ovr(old)}), ` : ''}now on a ${fmtM(old.contract.sal)} 2-year deal, bond −30, chemistry −5.`;
         saveLeague(); renderHub(); break; }
       case 'event': {
