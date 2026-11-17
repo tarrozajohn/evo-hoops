@@ -559,6 +559,17 @@ img[src*="#pk"]{visibility:hidden}
 }
 .tablewrap.wide{position:relative}
 .tablewrap.wide::after{content:'← swipe to see more →';display:block;position:sticky;left:0;text-align:center;font:600 12px var(--cond);color:var(--dim);padding:6px 0 0;letter-spacing:.04em}
+/* Free Agents: each card's answer, and the highlighted cards that are yours */
+.fawrap{display:flex;flex-direction:column;min-width:0}.fawrap .card{border-top-left-radius:0;border-top-right-radius:0;flex:1}
+.fastat{display:flex;flex-direction:column;gap:2px;padding:7px 12px;border-radius:10px 10px 0 0;border:1px solid var(--line);border-bottom:none;font:500 13px/1.3 var(--cond)}
+.fastat b{font-size:15px}.fastat span{opacity:.85}
+.fastat.yes{border-color:rgba(79,220,138,.55);background:rgba(79,220,138,.1)}.fastat.yes b{color:#7df0ae}
+.fastat.mine{border-color:var(--gold,#ffcf4a);background:rgba(255,207,74,.13)}.fastat.mine b{color:var(--gold,#ffcf4a)}
+.fastat.cap{border-color:rgba(255,190,70,.5);background:rgba(255,190,70,.08)}.fastat.cap b{color:#ffcf7a}
+.fastat.no{border-color:rgba(255,90,110,.5);background:rgba(255,90,110,.08)}.fastat.no b{color:#ff8a9a}
+.card.fa-mine{border-color:var(--gold,#ffcf4a);box-shadow:0 0 0 2px rgba(255,207,74,.35),0 0 18px rgba(255,207,74,.18)}
+.card.fa-no,.card.fa-cap{opacity:.8}
+.fahead{margin:10px 2px 0;font:800 17px var(--cond)}.fahead.mine{color:var(--gold,#ffcf4a)}
 .upgchip.ring{background:rgba(255,210,58,.14);color:#ffd23a;border:1px solid #ffd23a}
 .champcard{position:relative;overflow:hidden!important;text-align:center;align-items:stretch;border:2px solid #ffd23a!important;box-shadow:0 0 40px rgba(255,210,58,.35)!important;background:radial-gradient(120% 60% at 50% 0%,rgba(255,210,58,.22),transparent 70%),#0e0d0c!important;clip-path:none!important;border-radius:14px!important}
 .champtop{display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -6246,6 +6257,8 @@ function todoList(L){
   const add = (text, act, id, label, warn, alt) => out.push({ text, act, id, label, warn, alt, quick:QUICK_ACTS.includes(act), key:act + '|' + text.slice(0, 40) });
   if(L.friend == null && L.phase !== 'draft') add('Pick a best friend on your team (it can never be traded, and you both play better together).', 'tab', 'roster', 'Roster');
   if(L.event) add(`Franchise news needs your decision: ${L.event.title}.`, 'tab', 'play', 'Decide', true);
+  { const mine = (L.fa || []).map(id => L.players[id]).filter(q => q && q.reserved === L.user).sort((x, y) => (y.bred ? 1 : 0) - (x.bred ? 1 : 0));
+    if(mine.length) add(`${mine[0].bred ? '🥚 Your hatchling' : '⏳ Reserved for you:'} ${pname(mine[0])}${mine.length > 1 ? ' and ' + (mine.length - 1) + ' more' : ''} ${mine.length > 1 ? 'are' : 'is'} waiting in Free Agents. Only you can sign ${mine.length > 1 ? 'them' : 'it'}, for the minimum.`, 'tab', 'fa', 'Free agents'); }
   if(L.phase !== 'draft' && L.hangGame !== (L.gameNo || 0) && !autoOf(L).bonds) add('💞 Hangout available: spend time with a teammate, the coach, the owner, the fans or Kaine.', 'tab', 'bonds', 'Bonds');
   if(offerN) add(`${offerN} trade offer${offerN > 1 ? 's are' : ' is'} waiting for your answer.`, 'tab', 'trade', 'See offers', true);
   if(L.phase === 'season' || L.phase === 'playoffs'){
@@ -6426,7 +6439,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 182;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 183;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7887,6 +7900,22 @@ function hubTradeBody(L){
   ${capBar(L, L.user)}
   <div style="height:150px" aria-hidden="true"></div>`;
 }
+/* Will this free agent sign with you? Signing means releasing one of yours, and the answer can depend on who
+   you release (salary coming off, and the role the newcomer would get). This checks every creature you could release.
+   k: 'mine' (reserved for you: your hatchling, or one brought back for you), 'yes', 'cap' (can't afford), 'no' (refuses). */
+function faStatus(L, pid){
+  const p = L.players[pid], U = L.teams[L.user];
+  if(p.reserved === L.user) return { k:'mine', label: p.bred ? '🥚 Your hatchling' : '⏳ Reserved for you', why: (p.bred ? `Hatched on your farm from ${p.bred.a} and ${p.bred.b}. ` : '') + 'Only you can sign it, for the $' + MIN_SAL + 'M minimum (3 years).' };
+  if(p.grudge === L.user) return { k:'no', label:'🚫 Won\'t sign with you', why:'Holds a grudge: ' + (p.grudgeWhy || 'it remembers') + '.' };
+  const outs = U.roster.filter(id => !locked(L, id)); let ok = 0, min = false, buried = 0, over = Infinity;
+  for(const out of outs){ const c = signCheck(L, L.user, pid, out);
+    if(c.ok){ ok++; if(c.min) min = true; }
+    else if(/wants to play/.test(c.why || '')) buried++;
+    else { const ask = faAsk(L, p, L.user, out); over = Math.min(over, r1(payroll(L, L.user) - capHit(L.players[out]) + ask.sal - CAP)); } }
+  if(ok) return { k:'yes', label:'✅ Will sign' + (min ? ' for the minimum' : ''), why: ok < outs.length ? `Works if you release one of ${ok} of your ${outs.length} creatures (the rest keep you over the cap, or would leave it buried on the bench).` : 'Works whoever you release.' };
+  if(buried && over === Infinity) return { k:'no', label:'🚫 Won\'t sign with you', why:'A prospect that wants to play. On your roster it would be buried on the bench.' };
+  return { k:'cap', label:'💰 Can\'t afford', why:`Asks ${fmtM(faAsk(L, p).sal)} a year. Even releasing your most expensive creature you would be ${fmtM(Math.max(0.1, over))} over the cap. Clear salary first.` };
+}
 function hubFA(L){
   const U = L.teams[L.user];
   const fa = L.fa.slice().sort((a, b) => ovr(L.players[b]) - ovr(L.players[a]));
@@ -7896,8 +7925,24 @@ function hubFA(L){
     <div class="grid">${U.roster.filter(id => !locked(L, id)).map(id => { const c = signCheck(L, L.user, UI.faPick, id); return playerCard(L, id, { team:U, actions:`<button class="btn sm" data-act="release" data-id="${id}" ${c.ok ? '' : 'disabled'}>Release</button><span class="dim cond">${c.ok ? `payroll after: ${fmtM(c.after)}${c.min ? ' (minimum deal)' : ''}` : 'over the cap'}</span>${releaseRipples(L, id, false).filter(t => !t.startsWith('Revenge')).map(t => `<span class="cond" style="color:#ffb0bd">↪ ${esc(t)}</span>`).join('')}` }); }).join('')}</div>
     <div class="row"><button class="btn" data-act="fa-cancel">Cancel</button></div></div>`;
   }
-  return `${capBar(L, L.user)}<div class="cond">${fa.length} creatures available.</div>${howto('Signing one means releasing one of yours. Under the cap you can pay what they ask; over it, only creatures asking $2.5M or less will sign, for the minimum.', 'How signing works')}
-  <div class="grid">${fa.map(id => { const a = faAsk(L, L.players[id]); return playerCard(L, id, { actions:`<span class="rolechip" style="border-color:${ROLES[a.role].c};color:${ROLES[a.role].c}" title="Where it would rank on your roster">Role with you: ${a.role}</span><span class="paychip">Wants ${fmtM(a.sal)} a year for ${a.yrs} yr${a.yrs > 1 ? 's' : ''}</span><button class="btn sm cool" data-act="sign" data-id="${id}">Sign</button>` }); }).join('')}</div>`;
+  // every free agent's answer up front, grouped: yours first, then who will sign, who you can't afford, who refuses
+  const st = {}; fa.forEach(id => st[id] = faStatus(L, id));
+  const groups = [['mine', '⭐ Reserved for you', 'Only you can sign these, for the minimum. The reservation ends at the next offseason.'],
+    ['yes', '✅ Will sign with you', 'Tap Sign, then pick who to release.'],
+    ['cap', '💰 You can\'t afford these right now', 'They would sign, but their salary puts you over the cap whoever you release.'],
+    ['no', '🚫 Won\'t sign with you', 'A grudge, or a prospect that would be buried on your bench.']];
+  const count = k => fa.filter(id => st[id].k === k).length, f = UI.faFilter && count(UI.faFilter) ? UI.faFilter : 'all';
+  const chip = (k, label) => `<button class="btn sm ${f === k ? 'hot' : ''}" data-act="fa-filter" data-id="${k}">${label}</button>`;
+  const card = id => { const a = faAsk(L, L.players[id]), S = st[id], p = L.players[id];
+    return `<div class="fawrap"><div class="fastat ${S.k}"><b>${S.label}</b><span>${esc(S.why)}</span></div>` + playerCard(L, id, { cls:'fa-' + S.k, actions:`
+      <span class="rolechip" style="border-color:${ROLES[a.role].c};color:${ROLES[a.role].c}" title="Where it would rank on your roster">Role with you: ${a.role}</span><span class="paychip">Wants ${fmtM(a.sal)} a year for ${a.yrs} yr${a.yrs > 1 ? 's' : ''}</span>
+      ${S.k === 'yes' || S.k === 'mine' ? `<button class="btn sm ${S.k === 'mine' ? 'hot' : 'cool'}" data-act="sign" data-id="${id}">${S.k === 'mine' ? 'Sign ' + esc(pname(p)) : 'Sign'}</button>` : ''}` }) + '</div>'; };
+  return `${capBar(L, L.user)}
+  <div class="panel" style="display:flex;flex-direction:column;gap:8px"><div class="cond"><b>${fa.length}</b> free agents. <b style="color:var(--good)">${count('yes') + count('mine')}</b> would sign with you today.</div>
+    <div class="row" style="gap:6px">${chip('all', `All ${fa.length}`)}${count('mine') ? chip('mine', `⭐ Yours ${count('mine')}`) : ''}${chip('yes', `✅ Will sign ${count('yes')}`)}${count('cap') ? chip('cap', `💰 Can't afford ${count('cap')}`) : ''}${count('no') ? chip('no', `🚫 Won't sign ${count('no')}`) : ''}</div></div>
+  ${howto('Signing one means releasing one of yours. Under the cap you can pay what they ask; over it, only creatures asking $2.5M or less will sign, for the minimum. Prospects won\'t sign if they would be buried on your bench, and a creature you wronged may refuse you.', 'How signing works')}
+  ${groups.filter(([k]) => (f === 'all' || f === k) && count(k)).map(([k, title, sub]) => `<h3 class="fahead ${k}">${title} <span class="dim cond">(${count(k)})</span></h3><div class="dim cond" style="margin:-4px 2px 2px">${sub}</div>
+    <div class="grid">${fa.filter(id => st[id].k === k).sort((x, y) => (L.players[y].bred ? 1 : 0) - (L.players[x].bred ? 1 : 0)).map(card).join('')}</div>`).join('')}`;   // hatchlings first
 }
 
 // The two permanent shop upgrades, spelled out (the aura alone didn't make it clear which ones a creature has)
@@ -10260,6 +10305,7 @@ if(typeof document !== 'undefined'){
       }
       case 'setstar': { const U = L.teams[L.user]; U.star = +id; UI.msg = `${pname(L.players[+id])} is your team star: +${STAR_BUFF} to every rating in games, and teammates will look for it more.`; saveLeague(); renderHub(); break; }
       case 'sign': UI.faPick = +id; renderHub(); break;
+      case 'fa-filter': UI.faFilter = id; renderHub(); break;   // Free Agents: show one group or all
       case 'sign-reserved': UI.tab = 'fa'; UI.faPick = +id; renderHub(); window.scrollTo(0, 0); break;   // Roster reminder → Free Agents with him picked (choose who to release there)
       case 'fa-cancel': UI.faPick = null; renderHub(); break;
       case 'release': {
