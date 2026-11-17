@@ -4600,7 +4600,7 @@ const ROUND_NAMES = { 16:['First round', 'Conference semifinals', 'Conference fi
 const confStandings = (L, c) => standings(L).filter(t => confOf(L, t.id) === c);
 const roundName = L => L.playoffs ? ROUND_NAMES[L.playoffs.size || 4][L.playoffs.round] || 'Finals' : '';
 function seriesLen(L, round){ const last = round === ROUND_NAMES[L.playoffs.size].length - 1, m = SET.series || 'normal';
-  return m === 'short' ? (last ? 5 : 3) : m === 'long' ? 7 : (last ? 7 : 5); }
+  return m === 'short' ? (last ? 5 : 3) : m === 'mid' ? (last ? 7 : 5) : 7; }   /* 'normal' (and the old 'long') = best of 7 every round */
 const newSeries = (L, a, b, round) => ({ a, b, wa:0, wb:0, games:[], winner:null, bestOf:seriesLen(L, round) });
 function startPlayoffs(L){
   const n = playoffTeams(L);
@@ -5463,6 +5463,7 @@ function migrate(L){
   if(L.friend != null && L.players && L.players[L.friend]){ makeGenerational(L.players[L.friend]); friendDeal(L.players[L.friend]); }   // best friends are generational talents on a no-cap deal
   if(L.teams && L.phase !== 'draft') ensureStaff(L);
   if(L.phase !== 'draft' && L.teams && L.teams.some(T => T.roster.some(id => L.players[id] && !L.players[id].contract))) ensureContracts(L);   // older saves: hand out contracts
+  if(L.phase === 'playoffs' && L.playoffs && L.playoffs.size != null) L.playoffs.series.forEach(x => { if(x.winner == null && x.bestOf > 1) x.bestOf = Math.max(x.bestOf, seriesLen(L, L.playoffs.round)); });   // v185: unfinished series pick up best of 7
   if(L.playoffs && L.playoffs.size == null){   // saves from before playoff series: treat old games as best-of-1
     L.playoffs.size = L.playoffs.seeds.length;
     L.playoffs.series.concat(...L.playoffs.done).forEach(x => { x.bestOf = 1; x.wa = x.winner === x.a ? 1 : 0; x.wb = x.winner === x.b ? 1 : 0; x.games = x.games || []; });
@@ -5988,8 +5989,8 @@ function renderSettings(back){
       <label class="row"><span style="flex:1">Quarter length (sims use this too)</span><select id="s-qlen">${[1, 2, 3].map(v => `<option value="${v}" ${SET.qlen == v ? 'selected' : ''}>${v} min</option>`).join('')}</select></label>
       <label class="row"><span style="flex:1">CPU difficulty (how sharp opponents play in sims)</span><select id="s-diff">${[[0.8, 'Rookie'], [1, 'Pro'], [1.2, 'All-Star']].map(([v, n]) => `<option value="${v}" ${SET.diff == v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       <label class="row"><span style="flex:1">Competitive balance (teams get fired up when you blow them out)</span><select id="s-bal"><option value="1" ${SET.balance !== false ? 'selected' : ''}>On</option><option value="0" ${SET.balance === false ? 'selected' : ''}>Off</option></select></label>
-      <label class="row"><span style="flex:1">Season length (from next season)</span><select id="s-len"><option value="std" ${SET.seasonLen !== 'long' ? 'selected' : ''}>Standard: 29 games</option><option value="long" ${SET.seasonLen === 'long' ? 'selected' : ''}>Long: 58 games</option></select></label>
-      <label class="row"><span style="flex:1">Playoff series length</span><select id="s-series"><option value="short" ${SET.series === 'short' ? 'selected' : ''}>Short (best of 3, Finals 5)</option><option value="normal" ${(SET.series || 'normal') === 'normal' ? 'selected' : ''}>Normal (best of 5, Finals 7)</option><option value="long" ${SET.series === 'long' ? 'selected' : ''}>Long (best of 7)</option></select></label>
+      <label class="row"><span style="flex:1">Season length (from next season)</span><select id="s-len"><option value="std" ${SET.seasonLen !== 'long' ? 'selected' : ''}>Standard: 29 games</option></select></label>
+      <label class="row"><span style="flex:1">Playoff series length</span><select id="s-series"><option value="short" ${SET.series === 'short' ? 'selected' : ''}>Short (best of 3, Finals 5)</option><option value="mid" ${SET.series === 'mid' ? 'selected' : ''}>Medium (best of 5, Finals 7)</option><option value="normal" ${!['short', 'mid'].includes(SET.series) ? 'selected' : ''}>Full (best of 7 every round)</option><option value="long" ${SET.series === 'long' ? 'selected' : ''}>Long (best of 7)</option></select></label>
       <label class="row"><span style="flex:1">Look</span><select id="s-look"><option value="arena" ${(SET.look || 'arena') === 'arena' ? 'selected' : ''}>Arena (new)</option><option value="classic" ${SET.look === 'classic' ? 'selected' : ''}>Classic</option></select></label>
       <label class="row"><span style="flex:1">Screen size (smaller fits more on the screen)</span><select id="s-ui">${UI_SIZES.map(([v, n]) => `<option value="${v}" ${(SET.ui || 'auto') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       <label class="row"><span style="flex:1">Coach games live</span><select id="s-live">${[['big', 'Ask before big games'], ['all', 'Ask before every game'], ['never', 'Never ask (buttons still on Play tab)']].map(([v, n]) => `<option value="${v}" ${(SET.live || 'big') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
@@ -6449,7 +6450,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 184;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 185;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
