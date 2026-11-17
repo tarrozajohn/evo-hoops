@@ -559,6 +559,11 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .ohyou{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.ohyou div{display:flex;flex-direction:column;padding:6px 14px;border-radius:10px;background:rgba(255,255,255,.07);min-width:110px}.ohyou b{font:800 18px var(--cond)}
 .ohleads{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;width:100%}
 .ohlead{display:flex;align-items:center;gap:8px;text-align:left;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.05)}.ohlead img{width:44px;height:48px;flex:none}.ohlead div{display:flex;flex-direction:column;min-width:0}
+.fiverow{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:100%}
+.fivecard{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;font:600 11px var(--cond)}.fivecard img{width:100%!important;max-width:74px;height:auto!important;aspect-ratio:10/11}
+.fivecard b{font-size:13px}.fivecard .gold{color:#ffd23a}.fiveline{display:none}
+@media (min-width:700px){.fiveline{display:block;opacity:.75;text-align:center}}
+.fivefaces{display:flex;gap:8px;flex-wrap:wrap}.fivefaces span{display:flex;align-items:center;gap:4px;font:600 13px var(--cond)}.fivefaces img{width:30px;height:33px}.fivefaces i{font-style:normal;color:#ffd23a}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
   background:#0a0908;border:2px solid #ffd23a;color:#ffd23a;font:400 16px var(--display);box-shadow:0 0 16px rgba(255,210,58,.45)}
 .gamebtns{display:grid!important;grid-template-columns:1.3fr 1fr 1fr;gap:8px}.gamebtns .btn{padding-left:6px;padding-right:6px;white-space:nowrap}.gamebtns > :nth-child(n+4){grid-column:1 / -1}
@@ -3989,7 +3994,7 @@ function optimalLineup(L, ids){
   // minutes settings only apply when this is your actual roster (not a what-if roster in trade math)
   const UR = L.teams[L.user] ? L.teams[L.user].roster : [], yours = ids.length === UR.length && ids.every(id => UR.includes(id));
   const mins = p => !yours ? 0 : (p.mins === 'start' ? 300 : 0) + (L.playKids && !p.avatar && (p.age || 0) <= 2 ? 8 : 0);
-  const eff = p => (p.inj > 0 ? -500 : 0) + ovr(p) + (p.form && p.form.games > 0 ? p.form.mod : 0) + (L.friend === p.id ? 2 : 0) + (p.avatar ? 1000 : 0) + mins(p);
+  const eff = p => (p.inj > 0 ? -500 : 0) + ovr(p) + (p.form && p.form.games > 0 ? p.form.mod : 0) + (L.friend === p.id ? 2 : 0) + (p.avatar ? 1000 : 0) + (p.crown ? 300 : 0) + mins(p);   /* the Five Crowns always start */
   const fit = (p, slot) => p.avatar ? 0 : -12*posGap(p, slot);   // you adapt (any slot, no penalty); everyone else: fill natural positions first
   // dp over players: state = which of the 5 slots are filled (a 5-bit mask, 32 states); keep the best score for each state.
   // Plain number arrays instead of lists of objects: same answer, far less work (this runs thousands of times in trade math).
@@ -4575,7 +4580,7 @@ const LEAGUE_PLAYERS = id => (CUR_L && CUR_L.players[id]);
 let CUR_L = null;
 function sortRosterByOvr(L, T){
   CUR_L = L;
-  const key = id => ovr(L.players[id]) + (L.players[id].avatar || L.players[id].nemesis ? 1000 : 0);   // you (and Kaine) always start
+  const key = id => ovr(L.players[id]) + (L.players[id].avatar || L.players[id].nemesis ? 1000 : 0) + (L.players[id].crown ? 500 : 0);   // you (and Kaine) always start; so do the Five Crowns
   T.roster.sort((a, b) => key(b) - key(a));
   if(!T.user || T.star == null || !T.roster.includes(T.star)) T.star = T.roster[0];
   const av = T.roster.find(id => LEAGUE_PLAYERS(id) && LEAGUE_PLAYERS(id).avatar); if(T.user && av != null) T.star = av;   // you are always the star   // CPU teams always star their best creature
@@ -4638,6 +4643,7 @@ const injTag = p => p.inj > 0 ? `<span class="injchip" title="${esc(p.injName ||
 function applyGame(L, a, b, res, playoff){
   const [sa, sb] = res.score, A = L.teams[a], B = L.teams[b];
   if(a === L.user || b === L.user){ const opp = a === L.user ? b : a, m = a === L.user ? sa - sb : sb - sa;
+    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + clamp((m - 2)*0.25, -4, 4), 0, 200); }   /* small steps: their boost is touchy, big jumps made blowouts both ways */
     if(isSuper(L, opp)) L.era.edge = clamp((L.era.edge || 0) + clamp((m - 2)*0.8, -12, 12), 0, 200);   // superteams keep adjusting until games with you are close
     else updateHeat(L, a === L.user ? sa : sb, a === L.user ? sb : sa); }
   if(!playoff){ if(sa > sb){ A.w++; B.l++; } else { B.w++; A.l++; } A.pf += sa; A.pa += sb; B.pf += sb; B.pa += sa; }
@@ -4764,6 +4770,7 @@ function recordSeriesGame(L, S, a, res){
   const need = Math.ceil(S.bestOf/2);
   if(S.wa >= need) S.winner = S.a; else if(S.wb >= need) S.winner = S.b;
   if(S.winner != null){ S.score = [S.wa, S.wb];
+    if(fiveOn(L) && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.five.tid)){ const F = L.five; if(S.winner === L.user){ F.sw++; L.coins += 500; L.news.unshift({ s:L.season, r:0, t:'👑 You knocked the Five Crowns out of the playoffs. +500 coins.', me:true }); } else { F.sl++; L.news.unshift({ s:L.season, r:0, t:'👑 The Five Crowns knocked you out of the playoffs.', rival:true }); } }
     if(L.nemesis != null && [S.a, S.b].includes(L.user) && [S.a, S.b].includes(L.rival) && L.teams[L.rival].roster.includes(L.nemesis)) kaineSeriesOver(L, S.winner === L.user); }
 }
 const seriesTxt = (L, S) => { const lead = S.wa === S.wb ? `tied ${S.wa}-${S.wb}` : `${L.teams[S.wa > S.wb ? S.a : S.b].abbr} ${S.winner != null ? 'wins' : 'leads'} ${Math.max(S.wa, S.wb)}-${Math.min(S.wa, S.wb)}`; return lead; };
@@ -5415,7 +5422,7 @@ function makeCpuOffer(L, steal, onlyTid){
     const aim = steal ? tv + 6 : tv - 2;   // a steal offers players a good bit better than yours
     // players who fill your needs count as 5 value points closer to the target, so offers lean toward what you're missing
     const fitB = id => needTags(L, L.players[id]).length ? 5 : 0;
-    const pool = O.roster.filter(id => !L.players[id].avatar && !L.players[id].nemesis).sort((a, b) => (Math.abs(value(L.players[a]) - aim) - fitB(a)) - (Math.abs(value(L.players[b]) - aim) - fitB(b)));
+    const pool = O.roster.filter(id => !L.players[id].avatar && !L.players[id].nemesis && !L.players[id].crown).sort((a, b) => (Math.abs(value(L.players[a]) - aim) - fitB(a)) - (Math.abs(value(L.players[b]) - aim) - fitB(b)));
     const theirs = pool.slice(0, 6).sort(() => rand() - 0.5).slice(0, mine.length);
     if(theirs.length !== mine.length) continue;
     const cap1 = tradeCapCheck(L, L.user, mine, theirs), cap2 = tradeCapCheck(L, O.id, theirs, mine); if(!cap1.ok || !cap2.ok) continue;
@@ -5904,6 +5911,7 @@ function hubModals(L){
   { const K = L.kaine; if(K && K.queue && K.queue.length){ const key = K.queue.shift(); UI.inCut = true; return showKaineScene(L, key, () => { UI.inCut = false; renderHub(); }); } }
   if(pendingAscensions(L).length){ UI.inCut = true; return runAscensions(() => { UI.inCut = false; renderHub(); }); }
   if(UI.outcome){ const o = UI.outcome; UI.outcome = null; return showOutcome(o); }
+  if(fiveDue(L)) return fiveIntro(L);   // Kaine is yours: his old team answers with the Five Crowns
   if(UI.pendingReveal){ const r = UI.pendingReveal; UI.pendingReveal = null; return draftReveal(L, r.pid, r.n, r.rank); }   // you just drafted someone
   if(L.draftRecap === L.season && !L.rookie){ L.draftRecap = null; saveLeague(true); const M = $('#modal'), G = draftGrade(L), U = L.teams[L.user]; M.hidden = false; fanfare(true);
     const pickLine = (x, label) => x && L.players[x.pid] ? `<div class="cond">${label}: <b>${esc(pname(L.players[x.pid]))}</b> <span class="dim">No. ${x.n} · </span><b style="color:${L.teams[x.tid].color}">${L.teams[x.tid].abbr}</b></div>` : '';
@@ -6609,7 +6617,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 191;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 192;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -6891,7 +6899,7 @@ const SCN = {
       if(i === 1){ addBond(L, f.id, 8); setForm(N, -2, 4, 'Sulking'); return { text:`${nmP(f)} has your back now. Kaine is sulking in the film room.` }; }
       if(rand() < 0.5){ L.teamFx = { mod:2, games:6, label:'Brothers' }; return { text:'They played one-on-one until midnight. Now they will not stop passing to each other.' }; }
       L.morale -= 5; return { text:'They "worked it out" by not speaking for a week.' }; } },
-  sl_pryce:{ thread:'Shadow and Light', when:L => kaineAlly(L) && L.kaine.vex == null && L.phase === 'season' && L.round <= 4 && L.season - (L.kaine.allyS ?? L.season) >= 1 && L.rival != null && L.teams[L.rival],
+  sl_pryce:{ thread:'Shadow and Light', when:L => kaineAlly(L) && !L.five && L.kaine.vex == null && L.phase === 'season' && L.round <= 4 && L.season - (L.kaine.allyS ?? L.season) >= 1 && L.rival != null && L.teams[L.rival],
     make(L, d){ const R = L.teams[L.rival], U = L.teams[L.user];
       // Vex: a 👑 Generational prodigy, a few levels above your team's average, signed to Kaine's old team
       const lv = Math.round(U.roster.map(id => L.players[id].lvl || 0).reduce((a, b) => a + b, 0)/U.roster.length) + 4;
@@ -7306,6 +7314,7 @@ function afterUserGame(L, won, margin){
   memoClear();
   const N = L.nemesis != null ? L.players[L.nemesis] : null, Av = L.avatar != null ? L.players[L.avatar] : null;
   if(N && Av && N.lvl < Av.lvl - 1){ N.lvl = Av.lvl - 1; N.xp = xpFor(N.lvl); }   // Kaine trains as hard as you do
+  fiveLevel(L);   // and so do the Five Crowns
   L.morale = L.morale == null ? 60 : L.morale; L.owner = L.owner == null ? 60 : L.owner;
   L.streak = won ? Math.max(1, (L.streak || 0) + 1) : Math.min(-1, (L.streak || 0) - 1);
   L.morale += won ? 3 : -3; L.morale += (55 - L.morale)*0.05;   // drifts back toward steady
@@ -7692,12 +7701,79 @@ function hubLegacyMain(L){
   <div class="panel"><h3>Awards history</h3>${Object.keys(L.awards || {}).length ? Object.entries(L.awards).reverse().map(([s, A]) => `<div style="margin-bottom:6px"><b>Season ${s}:</b> ${A.map(a => `${a.name} <span class="${a.tid === L.user ? 'gold' : ''}">${esc(a.who)} (${L.teams[a.tid].abbr})</span>`).join(' · ')}</div>`).join('') : '<span class="dim">Awards are handed out when each season ends.</span>'}</div>`;
 }
 // Rival banner: always visible at the top of the hub
+/* ---------- THE FIVE CROWNS (v192) ----------
+   Once Kaine plays for you, his old team answers: five 👑 Generational players, one at every position.
+   They never age, never leave that team, level up with you, and stay your rivals for the rest of your career.
+   L.five = { tid, ids, s, w, l, sw, sl, edge }: their team, the five players, the season they formed,
+   your wins and losses against them, playoff series won and lost, and their extra boost against you. */
+const FIVE = [
+  { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.' },
+  { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.' },
+  { nick:'Onyx',     arch:'wing',    title:'The Lockdown',  line:'Guards your best player all night.' },
+  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.' },
+  { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.' } ];
+const fiveOn = L => !!(L.five && L.teams[L.five.tid]);
+const fiveIds = L => fiveOn(L) ? L.five.ids.filter(id => L.players[id]) : [];
+const isFiveTeam = (L, tid) => fiveOn(L) && L.five.tid === tid;
+// they show up 5 games after Kaine joins you (right away on a save where he joined long ago)
+const fiveDue = L => kaineAlly(L) && !L.five && L.phase === 'season' && L.rival != null && !!L.teams[L.rival] && L.rival !== L.user && L.avatar != null && !!L.players[L.avatar] && (L.gameNo || 0) - (L.kaine.allyG || 0) >= 5;
+function formFive(L){
+  const R = L.teams[L.rival], U = L.teams[L.user], Av = L.players[L.avatar], K = L.kaine, ids = [];
+  const lv = Math.max(Av.lvl || 0, Math.round(U.roster.reduce((t, id) => t + (L.players[id].lvl || 0), 0)/U.roster.length)) + 2;
+  // what makes someone one of the Five: generational, top potential, Eternal Youth, Ultimate Edge, your level, and a deal that never ends
+  const crown = (p, i) => { p.crown = i + 1; p.generational = true; p.gift = Math.max(p.gift || 0, 12); p.youth = true; p.ultimate = true; p.tr.mind.pot = 5;
+    p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); CATS.forEach(c => addTP(p, c, 10)); autoTrain(p); p.contract = { sal:0, yrs:99, legend:true }; ids.push(p.id); };
+  const vex = K.vex != null && !K.vexDone && R.roster.includes(K.vex) ? L.players[K.vex] : null;   // Pryce's prodigy Vex, if he is there, is one of them
+  FIVE.forEach((F, i) => {
+    if(vex && i === 3){ crown(vex, i); return; }
+    const lines = SPECIES.filter(sp => sp.stage === 1 && sp.arch === F.arch && sp.evo != null && sp.line >= 0 && !sp.legend && !sp.avatar && !sp.nemesis).map(sp => sp.line);
+    const p = genPlayer(L, { lvl:lv, line:lines.length ? pick(lines) : undefined, rareChance:1 }); p.nick = F.nick; crown(p, i);
+    const out = R.roster.filter(id => !ids.includes(id) && id !== L.nemesis).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0];   // their weakest makes room
+    if(out != null && R.roster.length >= ROSTER){ R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); }
+    R.roster.push(p.id); assignNumber(L, R, p);
+  });
+  sortRosterByOvr(L, R); R.star = ids[0];
+  L.five = { tid:R.id, ids, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 40 : (L.heat || 0) >= 50 ? 20 : 8 };
+  L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
+  memoClear();
+}
+// every new season: anyone of the Five who ended up elsewhere goes back, and they keep up with your level
+function fiveSeason(L){
+  if(!fiveOn(L)) return; const R = L.teams[L.five.tid], U = L.teams[L.user];
+  fiveIds(L).forEach(id => { const p = L.players[id]; if(R.roster.includes(id) || U.roster.includes(id) || p.retired) return;
+    L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== id); }); L.fa = L.fa.filter(x => x !== id); p.reserved = null;
+    if(R.roster.length >= ROSTER){ const out = R.roster.filter(x => !L.five.ids.includes(x)).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0]; if(out != null){ R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); } }
+    R.roster.push(id); p.contract = { sal:0, yrs:99, legend:true }; assignNumber(L, R, p); });
+  fiveLevel(L); sortRosterByOvr(L, R);
+}
+function fiveLevel(L){ const Av = L.avatar != null ? L.players[L.avatar] : null; if(!Av) return;
+  fiveIds(L).forEach(id => { const p = L.players[id]; if(p.lvl < Av.lvl){ p.lvl = Av.lvl; p.xp = xpFor(p.lvl); autoEvolve(p); } }); }
+// the reveal
+function fiveIntro(L){
+  formFive(L); saveLeague(true);
+  const R = L.teams[L.five.tid], M = $('#modal'); M.hidden = false; fanfare(true);
+  M.innerHTML = `<div class="storycard showcard" style="--tc:${R.color}">${SHOW_BEAMS}
+    <div class="news-kicker">👑 New rivals · ${esc(R.name)}</div>
+    <div class="showaward">THE FIVE CROWNS</div>
+    <div class="showline">GM ${esc(rivalGM(L))}: "You took my creation. So I built five."</div>
+    <div class="fiverow showreveal">${fiveIds(L).map(id => { const p = L.players[id], F = FIVE[(p.crown || 1) - 1]; return `<div class="fivecard"><img src="${portrait(p, R.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><span class="gold">${F.title}</span><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span><span class="fiveline">${F.line}</span></div>`; }).join('')}</div>
+    <div class="cond" style="text-align:left">Five 👑 Generational players, one at every position, all on the ${esc(R.name)}. They never age, they never leave that team, and they level up with you. <b>They are your rivals for the rest of your career.</b> Your record against them is on the rival bar at the top of the Play tab.</div>
+    <div class="cond" style="color:#ffb0bd">Kaine: "Five of me. Good. I was getting bored."</div>
+    <button class="btn hot" id="sh-ok">Bring them on</button></div>`;
+  $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
+}
 function rivalBar(L){
   if(L.rival == null) return '';
   const R = L.teams[L.rival], S = L.story || {}, st = standings(L).findIndex(t => t.id === R.id) + 1;
   let next = '';
   if(L.phase === 'season'){ for(let r = L.round; r < L.schedule.length; r++){ if(L.schedule[r].some(m => m.includes(L.user) && m.includes(R.id))){ next = r === L.round ? 'NEXT GAME' : `in ${r - L.round} game${r - L.round > 1 ? 's' : ''}`; break; } } }
   const ace = R.roster.slice().sort((a, b) => ovr(L.players[b]) - ovr(L.players[a]))[0], N = L.nemesis != null && R.roster.includes(L.nemesis) ? L.players[L.nemesis] : null, ns = L.nemStats || {};
+  if(isFiveTeam(L, R.id)){ const F = L.five;
+    return `<div class="rivalbar big ${UI.tab === 'play' ? '' : 'offplay'}" data-act="tab" data-id="standings"><div style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1">
+      <div class="row" style="gap:8px"><span class="rivaltag">YOUR RIVALS</span><b style="font-size:20px">👑 The Five Crowns</b><span class="dim"><span class="swatch" style="background:${R.color}"></span> ${esc(R.name)} ${R.w}-${R.l} (${ordinal(st)})</span></div>
+      <div class="fivefaces">${fiveIds(L).filter(id => R.roster.includes(id)).map(id => { const p = L.players[id]; return `<span><img src="${portrait(p, R.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><i>${ovr(p)}</i></span>`; }).join('')}</div>
+      <div class="row" style="gap:12px"><span>You vs the Five: <b>${F.w}-${F.l}</b></span>${F.sw + F.sl ? `<span>Playoff series: <b>${F.sw}-${F.sl}</b></span>` : ''}<span class="dim rv-more">Rivals since season ${F.s}</span></div></div>
+      ${next ? `<span class="rivalnext">Five Crowns game ${next}</span>` : ''}</div>`; }
   if(N) return `<div class="rivalbar big ${UI.tab === 'play' ? '' : 'offplay'}" data-act="tab" data-id="standings"><img src="${portrait(N.sp, R.color)}" class="nemport" alt=""><div style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1">
       <div class="row" style="gap:8px"><span class="rivaltag">YOUR RIVAL</span><b style="font-size:20px">Kaine</b><span class="chips"><span class="chip" style="background:${TYPES.Shadow.c}">Shadow</span></span><span class="dim rv-more">vs your</span><span class="chips"><span class="chip" style="background:${TYPES.Light.c}">Light</span></span><span class="dim">Lv ${N.lvl} · OVR ${ovr(N)} · the prodigy of GM ${esc(rivalGM(L))}</span>${Object.entries(nemesisBadges(N)).map(([k, t]) => `<span title="${BADGES[k].name} ${BADGE_TIERS[t].name}">${medal(t, 16)}</span>`).join('')}</div>
       <div class="row rv-more" style="gap:12px"><span><span class="swatch" style="background:${R.color}"></span> ${esc(R.name)} ${R.w}-${R.l} (${st}${['th','st','nd','rd'][st] || 'th'})</span><span>Head to head: <b>${S.rivalW || 0}-${S.rivalL || 0}</b></span>${ns.games ? `<span>Your points vs his: <b>${ns.youPts}-${ns.hePts}</b></span>` : ''}${ns.last ? `<span class="dim">last time: you ${ns.last.you}, Kaine ${ns.last.he}</span>` : ''}</div><div class="cond" style="color:#ffb0bd">Act ${kaineOf(L).act} · ${kaineGoal(L)}</div></div>
@@ -7751,7 +7827,7 @@ function hubPlay(L){
     if(g){
       const O = L.teams[g.b];
       main = `<div class="panel" style="display:flex;flex-direction:column;gap:14px">
-        <span class="${g.playoff ? 'cond' : 'dim cond'}">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} · <b>${seriesYou(L, g.s)}</b> <span class="dim">· first to ${Math.ceil(g.s.bestOf/2)} wins</span>` : (g.b === L.rival ? '<b style="color:var(--bad)">Rivalry game</b> · +60 coins for a win' : 'Next game')}</span>
+        <span class="${g.playoff ? 'cond' : 'dim cond'}">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} · <b>${seriesYou(L, g.s)}</b> <span class="dim">· first to ${Math.ceil(g.s.bestOf/2)} wins</span>` : (g.b === L.rival ? `<b style="color:var(--bad)">${isFiveTeam(L, g.b) ? '👑 Five Crowns game' : 'Rivalry game'}</b> · +60 coins for a win` : 'Next game')}</span>
         ${matchupPoster(L, g)}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
@@ -7910,6 +7986,7 @@ const rareBoostText = r => RARE[r].boost === 'all' ? '+5 all' : Object.entries(R
 function talentTags(L, p, cut){
   const out = [], pot = trainOf(p).mind.pot || 0;
   if(p.generational && genIntel(L, p) === 'known') out.push('<span class="ttag gen" title="Generational: permanent. At least +10 natural talent on every rating and Potential 4+/5. Other teams value it highly.">👑 Generational · +10 every rating</span>');
+  if(p.crown) out.push(`<span class="ttag gen" title="One of the Five Crowns, your career-long rivals: ${FIVE[p.crown - 1].line}">👑 Five Crowns · ${FIVE[p.crown - 1].title}</span>`);
   if(pot >= 4 && (p.age || 0) <= 2) out.push(`<span class="ttag pot" title="High potential: in its first 3 seasons with Potential ${pot}/5. Each Potential point is about 8% more XP and training points from games, so it grows fastest.">💎 High potential · Pot ${pot}/5, grows fast</span>`);
   if(p.rare) out.push(`<span class="ttag rare" title="${esc(RARE[p.rare].name + ': ' + RARE[p.rare].desc)}">★ ${RARE[p.rare].name} · ${rareBoostText(p.rare)}</span>`);
   if(p.ultimate) out.push('<span class="ttag edge" title="Ultimate Edge: element matchups never work against it">🌈 Ultimate Edge</span>');
@@ -8062,7 +8139,7 @@ function hubTradeBody(L){
     ${(() => { const where = L.teams.filter(t => !t.user && teamTalent(L, t, cut).gen); return where.length ? `<div class="cond">👑 Teams with a generational talent: ${where.map(t => `<button class="linkbtn" data-act="trade-team" data-id="${t.id}">${t.abbr}</button>`).join(' ')}</div>` : '<div class="cond dim">👑 No generational talents on other teams right now.</div>'; })()}
     <div class="cond">${O.abbr} is ${isContender(L, T.team) ? '<b>contending</b> (wants help now)' : '<b>rebuilding</b> (likes young players and picks)'} · needs <b>${needs.length ? needs.map(n => n.label).join(', ') : 'nothing urgent'}</b></div></div>
   <div class="panel tlist"><div class="row" style="justify-content:space-between"><span class="row" style="gap:8px"><span class="step">2</span><h3 style="margin:0">Tap who you want</h3></span><button class="btn sm" data-act="trade-sort">${UI.tradeSort !== 'lineup' ? 'Lineup order' : 'Best OVR first'}</button></div>
-    <div class="dim cond">👑 Generational: permanent +10 to every rating · 💎 High potential: young with Potential 4-5, grows fastest · ★ Rare: special type with a boost and an ability (see Types)</div>${order(O.roster.filter(id => id !== L.nemesis)).map(id => row(id, 'theirs', O)).join('')}</div>
+    <div class="dim cond">👑 Generational: permanent +10 to every rating · 💎 High potential: young with Potential 4-5, grows fastest · ★ Rare: special type with a boost and an ability (see Types)</div>${order(O.roster.filter(id => id !== L.nemesis && !L.players[id].crown)).map(id => row(id, 'theirs', O)).join('')}</div>
   <div class="panel tlist"><div class="row" style="gap:8px"><span class="step">3</span><h3 style="margin:0">Tap who you give</h3></div>${order(U.roster.filter(id => !locked(L, id))).map(id => row(id, 'mine', U)).join('')}
     <div class="dim cond">You, your best friend and Kaine can't be traded.</div></div>
   <details class="panel howto" id="tr-picks" ${T.minePk.length + T.theirsPk.length || UI.pkOpen ? 'open' : ''}><summary>${T.minePk.length + T.theirsPk.length ? `🎟 Draft picks in this deal: you give ${T.minePk.length}, you get ${T.theirsPk.length}` : 'Add draft picks (optional)'}</summary><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px"><b>${O.abbr}'s picks (you get)</b>${theirPicks.map(pk => pkRow(pk, 'theirsPk')).join('') || '<span class="dim">None.</span>'}<b style="margin-top:6px">Your picks (you give)</b>${myPicks.map(pk => pkRow(pk, 'minePk')).join('') || '<span class="dim">None.</span>'}</div></details>
@@ -8644,8 +8721,8 @@ function showUltimate(p, done){
 // ----- Flows -----
 // Play or sim the user's next franchise game, then sim the rest of that round.
 // How a franchise game is simmed: which side is yours, and how hard the other side plays.
-function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a);   // superteams bring extra against you
-  return { mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup ? 0.08 : 0), edge: sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
+function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
+  return { mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
 /* Competitive balance ("the league studies your tape"): after each of your games, L.heat moves toward whatever keeps
    your average winning margin near +7. Blow teams out and opponents get fired up against you (+heat to every rating);
    lose and it cools off. It never goes below 0, so a weak team is never handicapped. */
@@ -10197,7 +10274,7 @@ if(typeof document !== 'undefined'){
       case 'inj-back': { const R = L.teams[L.user].roster, slot = (L.injOut || {})[+id], i = R.indexOf(+id); if(L.injOut) delete L.injOut[+id]; if(i < 0 || slot == null) break;
         const was = L.players[R[slot]]; [R[i], R[slot]] = [R[slot], R[i]]; UI.msg = `${pname(L.players[+id])} is back in the starting five at ${POS_NAMES[slot]}.${was ? ' ' + pname(was) + ' goes back to the bench.' : ''}`; saveLeague(); renderHub(); break; }
       case 'inj-stay': if(L.injOut) delete L.injOut[+id]; UI.msg = `${pname(L.players[+id])} comes off the bench for now.`; saveLeague(); renderHub(); break;
-      case 'nextseason': autoOffseason(L); startNextSeason(L); autoLineup(L); saveLeague(); UI.msg = `Season ${L.season} is here. Check free agency for the new rookies.${L.farmNote ? ' ' + L.farmNote : ''}${L.contractNotes && L.contractNotes.length ? ' ' + L.contractNotes.join(' ') : ''}${L.roleNotes && L.roleNotes.length ? ' ' + L.roleNotes.join(' ') : ''}`; L.contractNotes = null; L.roleNotes = null; renderHub(); break;
+      case 'nextseason': autoOffseason(L); startNextSeason(L); fiveSeason(L); autoLineup(L); saveLeague(); UI.msg = `Season ${L.season} is here. Check free agency for the new rookies.${L.farmNote ? ' ' + L.farmNote : ''}${L.contractNotes && L.contractNotes.length ? ' ' + L.contractNotes.join(' ') : ''}${L.roleNotes && L.roleNotes.length ? ' ' + L.roleNotes.join(' ') : ''}`; L.contractNotes = null; L.roleNotes = null; renderHub(); break;
       case 'resign': { const p = L.players[+id]; if(p.resign && p.resign.ok){ renderHub(); break; }   // already agreed: keep that deal
         const a = resignPrice(L, p); p.resign = { ok:true, sal:a.sal, yrs:a.yrs }; bump(L, 'trust', 3); UI.msg = `${pname(p)} agreed: ${fmtM(p.resign.sal)} × ${a.yrs}.`; saveLeague(); renderHub(); break; }
       case 'lowball': { const p = L.players[+id], a = resignAsk(L, p), U = L.teams[L.user];
