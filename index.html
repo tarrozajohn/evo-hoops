@@ -7033,7 +7033,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 231;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 232;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7825,7 +7825,7 @@ function kaineFinalIntro(L){
   N.lvl = Math.max(N.lvl || 0, lv); N.xp = xpFor(N.lvl); N.kaineEdge = (N.kaineEdge || 0) + 5; N.contract = { sal:0, yrs:99, legend:true }; N.inj = 0;
   R.roster.unshift(N.id); sortRosterByOvr(L, R);
   R.roster.slice(0, STARTERS).forEach(id => { const p = L.players[id]; if(p === N) return; p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); autoTrain(p); });   // his starters train up to your level
-  sortRosterByOvr(L, R); R.star = N.id; K.ending = 'final'; K.final = { s:L.season, edge:(L.five && L.five.joined ? 55 : 45), w:0, l:0 };   /* v229: starts far above anyone before him (more if the Five play for you) */ memoClear();
+  sortRosterByOvr(L, R); R.star = N.id; K.ending = 'final'; K.final = { s:L.season, edge:(L.five && L.five.joined ? 60 : 50), w:0, l:0 };   /* v229: starts far above anyone before him (more if the Five play for you) */ memoClear();
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine is back with the ${R.name}. Nobody has ever seen a creature play like this.`, rival:true, me:true });
   saveLeague(true); M.hidden = false; fanfare(true);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
@@ -7882,17 +7882,17 @@ const vexRound = L => { const t = stalkTeam(L); return t != null && L.teams[t].c
    Whenever YOU make the playoffs, his team is in too, on the other side of your bracket, and it does not lose to
    anyone else. So he is always waiting in the conference finals (same conference) or the Finals (other conference),
    and beating him in that series is how you earn him. If you miss the playoffs, none of this applies. */
-/* v229: the final boss is meant to be very hard. His team's rating edge over you starts at 45 (55 if the Five play
+/* v229: the final boss is meant to be very hard. His team's rating edge over you starts at 50 (60 if the Five play
    for you) and can never fall below this floor, however many times you lose to him. Before, it started at 20 to 30
    and dropped by 4 with every loss, so a few losses turned the last fight into a coin flip. */
-const KAINE_FINAL_FLOOR = 34;
+const KAINE_FINAL_FLOOR = 40;   /* v232: was 34 */
 /* v230: the Five Crowns era is harder too. Three changes:
-     - their rating edge starts 50 higher (75, 100 or 130 depending on how dominant you have been), never drops below
+     - their rating edge starts 60 higher (85, 110 or 140 depending on how dominant you have been), never drops below
        FIVE_FLOOR (it was 20) and eases by 2 after a loss instead of 4
      - their double team on your Legend costs you more (-40 shooting, -32 dunking; it was -24 and -20)
      - Ultimates work on them in full, like on anyone: the stun, and the ball coming loose.
      - their passes are intercepted about a third as often. Colossus alone was having 13 passes a game picked off. */
-const FIVE_FLOOR = 60;
+const FIVE_FLOOR = 70;   /* v232: was 60 */
 const kaineHunt = L => { const K = L.kaine || {}; return !kaineOff(K) && L.nemesis != null && L.rival != null && L.teams[L.rival] && L.teams[L.rival].roster.includes(L.nemesis) && !L.teams[L.user].roster.includes(L.nemesis); };
 const kaineHuntLive = L => kaineHunt(L) && !!(L.playoffs && (L.playoffs.seeds || []).includes(L.user));   // only once the bracket has you in it
 const stalkTeam = L => kaineFinalOn(L) ? L.rival : vexTeam(L) != null ? vexTeam(L) : fiveOn(L) && !L.five.joined ? L.five.tid : kaineHuntLive(L) ? L.rival : null;
@@ -8319,7 +8319,7 @@ function formFive(L){
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
     const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
-  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 130 : (L.heat || 0) >= 50 ? 100 : 75 };   /* v230: each start is 50 higher than before */
+  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 140 : (L.heat || 0) >= 50 ? 110 : 85 };   /* v232: starts at 85, 110 or 140 (60 higher than the original 25, 50, 80) */
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
 }
