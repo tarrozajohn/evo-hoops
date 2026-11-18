@@ -935,21 +935,22 @@ const CROWN_SP = SPECIES.length;
 /* How each of the Five Crowns (and Vex) is drawn, v242. They used to be ordinary creature bodies in two colour schemes.
    Now they are people like you and Kaine, drawn on the same athlete body (drawHero), each with a look of their own:
      skin, hairC (hair), hairHi (shine), tip (glowing hair tips), iris (eyes), acc (accent: trim, band), glow
-     hair   'long' a mane down the back | 'short' | 'flame' long streaming spikes | 'mohawk' | 'hood'
+     hair   'long' a mane down the back | 'short' | 'locks' thick ropes of hair | 'flame' long streaming spikes | 'bald' | 'mohawk' | 'hood'
      band   'cloth' headband with tails | 'goggles' | 'none'
      w, h   body width and height compared with you (Colossus is 38% wider and 14% taller)
      the rest switch on one signature detail each (see crownBack and crownFront, and heroHead for the face ones). */
 const CROWN_STYLE = [
-  /* Zenith, the Conductor: silver mane, gold eyes, a halo, a glowing ring over one eye (he sees the play first), coat tails */
-  { skin:'#f0c9a4', hairC:'#e4e9f5', hairHi:'#ffffff', tip:'#ffd23a', iris:'#ffd23a', acc:'#ffd23a', glow:'#ffe9a0', hair:'long', band:'none', halo:true, monocle:true, tails:true, w:0.95, h:1.04 },
-  /* Mirage, the Marksman: tall and thin, teal hair, violet eyes, a high collar, and two fading afterimages behind him */
-  { skin:'#e8b894', hairC:'#1d6f78', hairHi:'#49c7c9', tip:'#9af5ee', iris:'#9a7bff', acc:'#49c7c9', glow:'#9af5ee', hair:'short', band:'none', ghost:true, collar:true, w:0.9, h:1.12 },
-  /* Onyx, the Lockdown: black hair tipped red, red eyes, a mask over the lower face, shadow tendrils rising off his back */
-  { skin:'#8a5a3c', hairC:'#15131c', hairHi:'#3a3550', tip:'#ff3344', iris:'#ff3344', acc:'#ff3344', glow:'#ff6a75', hair:'short', band:'cloth', mask:true, tendrils:true, w:1.03, h:1.05 },
-  /* Tempest, the Comet: hair like a flame streaming back, goggles pushed up, bolt marks on the cheek, fire off his heels */
-  { skin:'#eeb48a', hairC:'#ff7a1a', hairHi:'#ffd23a', tip:'#fff2a0', iris:'#ff9d2e', acc:'#ff7a1a', glow:'#ffd23a', hair:'flame', band:'goggles', marks:true, trail:true, w:0.95, h:1.0 },
-  /* Colossus, the Mountain: huge, a pale mohawk and beard, slabs of rock on his shoulders */
-  { skin:'#b98d6e', hairC:'#d8dbe6', hairHi:'#ffffff', tip:null, iris:'#c9d2ff', acc:'#9aa3c2', glow:'#dfe6ff', hair:'mohawk', band:'none', beard:true, rocks:true, w:1.38, h:1.14 },
+  /* v243: each of the Five wears a crown (crown:'gold' | 'crystal' | 'iron' | 'flame' | 'stone', drawn by crownHat). Vex is not one of the Five and has none.
+     Zenith, the Conductor: silver mane, gold eyes, a tall gold crown, a glowing ring over one eye (he sees the play first), coat tails */
+  { skin:'#f0c9a4', hairC:'#e4e9f5', hairHi:'#ffffff', tip:'#ffd23a', iris:'#ffd23a', acc:'#ffd23a', glow:'#ffe9a0', hair:'long', band:'none', crown:'gold', monocle:true, tails:true, w:0.95, h:1.04 },
+  /* Mirage, the Marksman: tall and thin, teal hair, violet eyes, a crown of crystal shards, a high collar, and two fading afterimages behind him */
+  { skin:'#e8b894', hairC:'#1d6f78', hairHi:'#49c7c9', tip:'#9af5ee', iris:'#9a7bff', acc:'#49c7c9', glow:'#9af5ee', hair:'short', band:'none', crown:'crystal', ghost:true, collar:true, w:0.9, h:1.12 },
+  /* Onyx, the Lockdown: long black locks tipped red, red eyes, a spiked iron crown, a mask over the lower face, shadow tendrils rising off his back */
+  { skin:'#8a5a3c', hairC:'#15131c', hairHi:'#3a3550', tip:'#ff3344', iris:'#ff3344', acc:'#ff3344', glow:'#ff6a75', hair:'locks', band:'none', crown:'iron', mask:true, tendrils:true, w:1.03, h:1.05 },
+  /* Tempest, the Comet: hair like a flame streaming back, a crown of fire, bolt marks on the cheek, fire off his heels */
+  { skin:'#eeb48a', hairC:'#ff7a1a', hairHi:'#ffd23a', tip:'#fff2a0', iris:'#ff9d2e', acc:'#ff7a1a', glow:'#ffd23a', hair:'flame', band:'none', crown:'flame', marks:true, trail:true, w:0.95, h:1.0 },
+  /* Colossus, the Mountain: huge, a shaved head under a crown of stone blocks, a pale beard, slabs of rock on his shoulders */
+  { skin:'#b98d6e', hairC:'#d8dbe6', hairHi:'#ffffff', tip:null, iris:'#c9d2ff', acc:'#9aa3c2', glow:'#dfe6ff', hair:'bald', band:'none', crown:'stone', beard:true, rocks:true, w:1.38, h:1.14 },
   /* Vex, the Sixth Man: a hood up over violet hair, pink eyes that glow from under it, a scar, a long scarf */
   { skin:'#d9b8c9', hairC:'#7a4ad6', hairHi:'#b89bff', tip:'#ff5ad0', iris:'#ff5ad0', acc:'#8a2be2', glow:'#d79bff', hair:'hood', band:'none', scar:true, scarf:true, w:0.96, h:1.03 } ];
 
@@ -3469,6 +3470,36 @@ function drawHero(ctx, px, py, hpx, o, st){
     ctx.fillText(String(o.num), px - face*hpx*0.02, py + hpx*sq*(C ? C.h : 1)*(shY + hipY)/2 + hpx*0.02);
   }
 }
+/* The crowns of the Five (v243). Each is a band across the top of the head with its own kind of points:
+     gold     Zenith: five tall points with a pearl on each and three gems in the band
+     crystal  Mirage: see-through shards of different heights
+     iron     Onyx: a black band with thin sharp spikes and one red gem
+     flame    Tempest: tongues of fire that flicker
+     stone    Colossus: square blocks like the top of a castle wall, cracked
+   (cx, cy) is the middle of the band's lower edge, r the head radius, t the clock for the flicker. */
+function crownHat(ctx, kind, cx, cy, r, t, ink){
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.07); ctx.strokeStyle = ink; ctx.lineWidth = 0.013; ctx.lineJoin = 'round';
+  const W = r*0.86, bh = r*0.26, fs = () => { ctx.fill(); ctx.stroke(); };
+  const band = fill => { ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(-W, 0); ctx.quadraticCurveTo(0, r*0.14, W, 0); ctx.lineTo(W, -bh); ctx.quadraticCurveTo(0, -bh + r*0.14, -W, -bh); ctx.closePath(); fs(); };
+  const pts = (n, hOf, wMul, fill, tipFn) => { for(let i = 0; i < n; i++){ const x = -W + (i + 0.5)*(2*W/n), hw = W/n*wMul, h = hOf(i), y0 = -bh + r*0.05; ctx.fillStyle = typeof fill === 'function' ? fill(x, y0, h) : fill; ctx.beginPath(); ctx.moveTo(x - hw, y0); ctx.lineTo(x, y0 - h); ctx.lineTo(x + hw, y0); ctx.closePath(); fs(); if(tipFn) tipFn(x, y0 - h); } };
+  if(kind === 'gold'){ pts(5, i => r*(i === 2 ? 0.78 : i % 2 ? 0.5 : 0.62), 1.0, '#ffd23a', (x, y) => { ctx.fillStyle = '#fffbe6'; ctx.beginPath(); ctx.arc(x, y, r*0.075, 0, Math.PI*2); fs(); }); band('#f2b821');
+    for(const [gx, col] of [[-0.5, '#3fd0ff'], [0, '#ff3344'], [0.5, '#3fd0ff']]){ ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(W*gx, -bh*0.45 + r*0.06*(1 - gx*gx), r*0.08, r*0.085, 0, 0, Math.PI*2); fs(); }
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.ellipse(W*0.3, -bh*0.75, r*0.2, r*0.03, 0, 0, Math.PI*2); ctx.fill(); }
+  else if(kind === 'crystal'){ ctx.shadowColor = '#9af5ee'; ctx.shadowBlur = 0.08; pts(6, i => r*[0.5, 0.9, 0.62, 1.05, 0.7, 0.45][i], 0.82, (x, y0, h) => { const g = ctx.createLinearGradient(0, y0, 0, y0 - h); g.addColorStop(0, 'rgba(73,199,201,.9)'); g.addColorStop(1, 'rgba(235,255,255,.95)'); return g; }); ctx.shadowBlur = 0; band('#2b9aa0');
+    ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 0.007; for(const x of [-0.42, 0.14]){ ctx.beginPath(); ctx.moveTo(W*x, -bh); ctx.lineTo(W*x + r*0.03, -bh - r*0.5); ctx.stroke(); } }
+  else if(kind === 'iron'){ pts(7, i => r*(i === 3 ? 0.85 : i % 2 ? 0.66 : 0.42), 0.55, '#23202c'); band('#16141c');
+    ctx.fillStyle = '#ff3344'; ctx.shadowColor = '#ff3344'; ctx.shadowBlur = 0.08; ctx.beginPath(); ctx.moveTo(0, -bh*0.95 + r*0.08); ctx.lineTo(r*0.1, -bh*0.45 + r*0.07); ctx.lineTo(0, r*0.06); ctx.lineTo(-r*0.1, -bh*0.45 + r*0.07); ctx.closePath(); fs(); ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ff3344'; ctx.lineWidth = 0.007; ctx.beginPath(); ctx.moveTo(-W*0.9, -bh*0.5 + r*0.02); ctx.quadraticCurveTo(0, -bh*0.5 + r*0.14, W*0.9, -bh*0.5 + r*0.02); ctx.stroke(); }
+  else if(kind === 'flame'){ ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 0.12;
+    for(let i = 0; i < 6; i++){ const x = -W + (i + 0.5)*(2*W/6), h = r*(0.6 + (i % 2)*0.32 + Math.sin(t*9 + i*1.7)*0.1), lean = Math.sin(t*6 + i)*r*0.1 - r*0.12, y0 = -bh + r*0.06;
+      const g = ctx.createLinearGradient(0, y0, 0, y0 - h); g.addColorStop(0, '#ff5a1a'); g.addColorStop(0.55, '#ffb52e'); g.addColorStop(1, '#fff6c0'); ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(x - W/6*1.05, y0); ctx.quadraticCurveTo(x - W/6*1.2 + lean*0.3, y0 - h*0.55, x + lean, y0 - h); ctx.quadraticCurveTo(x + W/6*0.9 + lean*0.3, y0 - h*0.5, x + W/6*1.05, y0); ctx.closePath(); ctx.fill(); }
+    ctx.shadowBlur = 0; band('#ff7a1a'); ctx.fillStyle = '#fff2a0'; ctx.beginPath(); ctx.ellipse(0, -bh*0.45 + r*0.07, r*0.09, r*0.08, 0, 0, Math.PI*2); fs(); }
+  else if(kind === 'stone'){ for(let i = 0; i < 4; i++){ const x = -W + (i + 0.5)*(2*W/4), hw = W/4*0.72, h = r*(0.42 + (i % 2)*0.1), y0 = -bh + r*0.06; ctx.fillStyle = i % 2 ? '#8b90a3' : '#737889'; ctx.beginPath(); ctx.rect(x - hw, y0 - h, hw*2, h); fs(); }
+    band('#676c7d'); ctx.lineWidth = 0.008; ctx.beginPath(); ctx.moveTo(-W*0.55, -bh); ctx.lineTo(-W*0.45, -bh*0.4); ctx.lineTo(-W*0.6, 0.02); ctx.moveTo(W*0.3, -bh - r*0.3); ctx.lineTo(W*0.38, -bh*0.6); ctx.stroke();
+    ctx.fillStyle = '#dfe6ff'; ctx.shadowColor = '#dfe6ff'; ctx.shadowBlur = 0.08; ctx.beginPath(); ctx.rect(-r*0.08, -bh*0.72 + r*0.07, r*0.16, r*0.13); fs(); ctx.shadowBlur = 0; }
+  ctx.restore();
+}
 /* A Crown's signature piece BEHIND the body (drawn before the legs and torso). g = body measurements from drawHero. */
 function crownBack(ctx, C, g){
   const { shY, hipY, sh, t, wave, ink } = g; ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
@@ -3524,7 +3555,10 @@ function heroHead(ctx, H, part){
       for(const [dy, len, wv] of [[0, 0.3, wave], [0.05, 0.24, -wave]]){ const bx = hcx - r*0.86, by = hcy - r*0.42 + dy;
         ctx.beginPath(); ctx.moveTo(bx, by - 0.012); ctx.quadraticCurveTo(bx - len*0.5, by - 0.05 + wv, bx - len, by + 0.02 + wv*2); ctx.lineTo(bx - len + 0.03, by + 0.06 + wv*2); ctx.quadraticCurveTo(bx - len*0.45, by + 0.0 + wv, bx, by + 0.025); ctx.closePath(); fs(); } }
     const hs = H.hair || 'spike';
-    if(hs === 'mohawk'){ ctx.shadowBlur = 0; return; }                          // shaved sides: nothing behind the head
+    if(hs === 'mohawk' || hs === 'bald'){ ctx.shadowBlur = 0; return; }        // shaved: nothing behind the head
+    if(hs === 'locks'){ for(let i = 0; i < 5; i++){ const x0 = hcx - r*(0.15 + i*0.2), len = r*(2.5 - Math.abs(i - 2)*0.25), sway = Math.sin(t*3 + i)*r*0.06;   // thick ropes of hair hanging to the shoulders
+        const g = ctx.createLinearGradient(0, hcy, 0, hcy + len); g.addColorStop(0, hairC); g.addColorStop(0.7, hairC); g.addColorStop(1, tipC || hairC); ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(x0 - r*0.13, hcy - r*0.7); ctx.quadraticCurveTo(x0 - r*0.5 + sway, hcy + len*0.5, x0 - r*0.42 + sway*2, hcy + len); ctx.quadraticCurveTo(x0 - r*0.3 + sway*2, hcy + len + r*0.12, x0 - r*0.18 + sway*2, hcy + len); ctx.quadraticCurveTo(x0 - r*0.1 + sway, hcy + len*0.5, x0 + r*0.13, hcy - r*0.7); ctx.closePath(); fs(); } return; }
     if(hs === 'hood'){ ctx.fillStyle = shade(acc, -0.5); ctx.beginPath(); ctx.moveTo(hcx - r*0.2, hcy - r*1.45); ctx.bezierCurveTo(hcx - r*1.7, hcy - r*1.3, hcx - r*1.6, hcy + r*0.9, hcx - r*0.75, hcy + r*1.25); ctx.lineTo(hcx + r*0.2, hcy + r*0.9); ctx.lineTo(hcx + r*0.6, hcy - r*1.2); ctx.closePath(); fs(); return; }   // the back of the hood
     if(hs === 'long'){ const g = ctx.createLinearGradient(0, hcy - r, 0, hcy + r*3.2); g.addColorStop(0, hairC); g.addColorStop(0.7, hairC); g.addColorStop(1, tipC || hairC); ctx.fillStyle = g;   // a mane down past the shoulders
       ctx.beginPath(); ctx.moveTo(hcx + r*0.1, hcy - r*1.15); ctx.bezierCurveTo(hcx - r*1.7, hcy - r*1.1, hcx - r*2.1, hcy + r*1.4, hcx - r*1.5 + wave, hcy + r*3.2); ctx.lineTo(hcx - r*1.0 + wave, hcy + r*2.7); ctx.lineTo(hcx - r*0.75 + wave*0.6, hcy + r*3.0);
@@ -3549,7 +3583,8 @@ function heroHead(ctx, H, part){
   ctx.fillStyle = skinD; ctx.beginPath(); ctx.ellipse(hcx - r*0.5, hcy + r*0.2, r*0.11, r*0.17, 0, 0, Math.PI*2); ctx.fill(); ctx.lineWidth = 0.01; ctx.stroke(); ctx.lineWidth = 0.016;   // ear
   const hs = H.hair || 'spike', X = H.cs || {};
   // hair on top of the skull (a mohawk leaves the sides shaved: a strip of stubble and a crest instead)
-  if(hs === 'mohawk'){ ctx.fillStyle = 'rgba(40,30,40,.22)'; ctx.beginPath(); ctx.ellipse(hcx - r*0.1, hcy - r*0.62, r*0.8, r*0.42, -0.05, Math.PI, Math.PI*2); ctx.fill();
+  if(hs === 'bald'){ ctx.fillStyle = 'rgba(40,30,40,.2)'; ctx.beginPath(); ctx.ellipse(hcx - r*0.1, hcy - r*0.62, r*0.8, r*0.42, -0.05, Math.PI, Math.PI*2); ctx.fill(); }   // a shaved head: just stubble
+  else if(hs === 'mohawk'){ ctx.fillStyle = 'rgba(40,30,40,.22)'; ctx.beginPath(); ctx.ellipse(hcx - r*0.1, hcy - r*0.62, r*0.8, r*0.42, -0.05, Math.PI, Math.PI*2); ctx.fill();
     ctx.fillStyle = hairC; for(let i = 0; i < 5; i++){ const bx = hcx - r*0.75 + i*r*0.36, by = hcy - r*(1.0 + Math.sin((i + 0.5)/5*Math.PI)*0.12); ctx.beginPath(); ctx.moveTo(bx - r*0.2, by + r*0.14); ctx.lineTo(bx - r*0.12, by - r*(0.55 + (i % 2)*0.12)); ctx.lineTo(bx + r*0.24, by + r*0.14); ctx.closePath(); fs(); } }
   else {
   ctx.fillStyle = hairC; ctx.beginPath(); ctx.moveTo(hcx - r*0.95, hcy - r*0.1); ctx.bezierCurveTo(hcx - r*1.05, hcy - r*1.32, hcx + r*1.0, hcy - r*1.32, hcx + r*0.93, hcy - r*0.42);
@@ -3587,9 +3622,9 @@ function heroHead(ctx, H, part){
   ctx.lineWidth = 0.014;
   for(const [bx, wv, ln, lean] of [[-0.62, 0.36, 0.5, -0.12], [-0.28, 0.42, 0.62, 0.04], [0.1, 0.44, 0.7, 0.2], [0.48, 0.4, 0.56, 0.32], [0.78, 0.26, 0.38, 0.28]]){
     const x0 = hcx + r*bx, y0 = hcy - r*0.9; if(H.band === 'crown' && bx > -0.3 && bx < 0.3) continue;   // the middle lock is left out so the crown's gem shows
-    if(hs === 'mohawk' || hs === 'hood' || (H.band === 'goggles' && bx > -0.4)) continue;                     // no bangs on a mohawk or under a hood; goggles keep the forehead clear
+    if(hs === 'mohawk' || hs === 'bald' || hs === 'hood' || (H.band === 'goggles' && bx > -0.4)) continue;                     // no bangs on a mohawk or under a hood; goggles keep the forehead clear
     ctx.fillStyle = hairC; ctx.beginPath(); ctx.moveTo(x0 - r*wv*0.5, y0); ctx.quadraticCurveTo(x0 + r*lean*0.3, y0 + r*ln*0.5, x0 + r*lean, y0 + r*ln); ctx.quadraticCurveTo(x0 + r*(wv*0.45 + lean*0.2), y0 + r*ln*0.4, x0 + r*wv*0.5, y0 - r*0.04); ctx.closePath(); fs(); }
-  if(hs !== 'mohawk' && hs !== 'hood'){ ctx.strokeStyle = hairHi; ctx.lineWidth = 0.014; ctx.beginPath(); ctx.moveTo(hcx - r*0.25, hcy - r*1.02); ctx.quadraticCurveTo(hcx + r*0.1, hcy - r*1.12, hcx + r*0.5, hcy - r*0.98); ctx.stroke(); } ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
+  if(hs !== 'mohawk' && hs !== 'bald' && hs !== 'hood'){ ctx.strokeStyle = hairHi; ctx.lineWidth = 0.014; ctx.beginPath(); ctx.moveTo(hcx - r*0.25, hcy - r*1.02); ctx.quadraticCurveTo(hcx + r*0.1, hcy - r*1.12, hcx + r*0.5, hcy - r*0.98); ctx.stroke(); } ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
   /* ----- the Crowns' face details (v242) ----- */
   if(H.band === 'goggles'){ for(const gx of [-0.05, 0.5]){ ctx.fillStyle = '#2a2a36'; ctx.beginPath(); ctx.ellipse(hcx + r*gx, hcy - r*0.5, r*0.27, r*0.22, 0, 0, Math.PI*2); fs(); ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(hcx + r*gx, hcy - r*0.5, r*0.18, r*0.14, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.ellipse(hcx + r*(gx - 0.06), hcy - r*0.55, r*0.06, r*0.04, -0.5, 0, Math.PI*2); ctx.fill(); } }   // Tempest: goggles pushed up
   if(hs === 'hood'){ ctx.fillStyle = shade(acc, -0.35);                         // Vex: the hood's rim over the top of the head, a lock of hair escaping, and shadow on the brow
@@ -3605,6 +3640,7 @@ function heroHead(ctx, H, part){
     ctx.strokeStyle = ink; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(hcx + r*0.2, hcy + r*0.86); ctx.quadraticCurveTo(hcx + r*0.38, hcy + r*0.92, hcx + r*0.58, hcy + r*0.8); ctx.stroke(); ctx.lineWidth = 0.016; }
   if(X.monocle){ const mx = hcx + r*0.1, my = hcy + r*0.16; ctx.strokeStyle = acc; ctx.lineWidth = 0.014; ctx.shadowColor = glow; ctx.shadowBlur = 0.08; ctx.beginPath(); ctx.arc(mx, my, r*0.4, 0, Math.PI*2); ctx.stroke();   // Zenith: a glowing ring over the near eye
     ctx.lineWidth = 0.007; ctx.beginPath(); ctx.arc(mx, my, r*0.52, -0.6, 1.2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(mx - r*0.4, my); ctx.lineTo(mx - r*0.62, my); ctx.moveTo(mx, my - r*0.4); ctx.lineTo(mx, my - r*0.58); ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = ink; ctx.lineWidth = 0.016; }
+  if(X.crown) crownHat(ctx, X.crown, hcx + r*0.02, hcy - r*(hs === 'bald' ? 0.86 : 0.98), r, t, ink);   // v243: the Five wear their crowns
   if(X.halo){ ctx.strokeStyle = acc; ctx.lineWidth = 0.022; ctx.shadowColor = glow; ctx.shadowBlur = 0.12; ctx.beginPath(); ctx.ellipse(hcx - r*0.05, hcy - r*1.62 + Math.sin(t*2)*r*0.05, r*0.82, r*0.2, -0.08, 0, Math.PI*2); ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = ink; ctx.lineWidth = 0.016; }   // Zenith: a halo
   if(H.band === 'crown'){   // the crown's centre gem, and its side pieces: small wings for you, horns for Kaine
     ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = 0.08; ctx.beginPath(); ctx.moveTo(hcx + r*0.22, hcy - r*0.72); ctx.lineTo(hcx + r*0.36, hcy - r*0.48); ctx.lineTo(hcx + r*0.22, hcy - r*0.26); ctx.lineTo(hcx + r*0.08, hcy - r*0.48); ctx.closePath(); fs(); ctx.shadowBlur = 0;
@@ -7121,7 +7157,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 242;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 243;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
