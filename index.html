@@ -1503,7 +1503,6 @@ function createGame(teams, opts){
      -24 and -20 against the Five Crowns, -18 and -15 against Vex's team and final-boss Kaine), and because someone is always left open, each of your teammates shoots +3 (+4 against bosses).
      It is applied after the rating leveling-off, so it bites no matter how strong you are. You do not tire any faster. */
   if(opts.mine != null){ const mine = G.ents.concat(G.bench[opts.mine]).filter(e => e.team === opts.mine), me = mine.find(e => e.avatar);
-    if(opts.boss){ G.bossT = 1 - opts.mine; G.bossK = opts.boss >= 2 ? [0.25, 0.33] : [0.5, 0.6]; }   // steals against this side: strips and picked-off passes work this fraction as often
     if(me){ G.dbl = opts.boss ? 2 : 1; mine.forEach(e => { e.dbl = e === me ? (opts.boss >= 2 ? { sht:-24, dnk:-20 } : opts.boss ? { sht:-18, dnk:-15 } : { sht:-14, dnk:-12 }) : { sht:opts.boss ? 4 : 3 }; e.r = rateFor(e, e.slot); });
       me.S = dblStyle(me.S); } }   // when the computer plays your Legend (sims, Watch), he takes fewer shots and passes out of the double
   for(const ti of [0, 1]){ const me = G.ents.find(e => e.team === ti && e.avatar), kn = G.ents.find(e => e.team === ti && e.p.nemesis); if(me && kn){ for(const e of [me, kn]){ e.mood = (e.mood || 0) + 3; e.r = rateFor(e, e.slot); } } }   // Kaine on your team: light and shadow together
@@ -2282,7 +2281,7 @@ function updateBall(G, dt){
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (o.rare === 'ballhawk' ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((b.passer.rare === 'maestro' ? 0.6 : 1)*(0.1 + (o.rare === 'ballhawk' ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
-        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(G.bossT === b.passer.team ? G.bossK[1] : 1)){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
+        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
     if(u >= 1){
@@ -2394,7 +2393,7 @@ function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
   if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
   const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (e.rare === 'ballhawk' ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
-  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))*(G.bossT === h.team ? G.bossK[0] : 1)){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
+  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
 function shove(G, e, o){
   e.cd = 1.0; e.swipe = 0.3; if(!e.fire) e.turbo = Math.max(0, e.turbo - 30);
@@ -2699,14 +2698,14 @@ function activateUlt(G, e){
     case 'Lightning': e.speedT = 5; break;
     case 'Ice': opp.slice().sort((a, b) => dist(a, e) - dist(b, e)).slice(0, 3).forEach(o => { o.rootT = 3; o.frozen = 3; }); break;
     case 'Earth': near(13).forEach(o => { o.stun = 1.6; o.shooting = null; }); break;
-    case 'Wind': { const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && dist(b.holder, e) < 20 && !hasKey(b.holder, 'handles') && G.bossT !== b.holder.team){   /* v203: the Wind ultimate's swipe does not work on story bosses; it slows them instead */ G.stats[e.id].stl++; G.stats[b.holder.id].to++; giveBall(G, e); } else opp.forEach(o => o.slowT = 2.5); break; }
+    case 'Wind': { const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && dist(b.holder, e) < 20 && !hasKey(b.holder, 'handles')){ G.stats[e.id].stl++; G.stats[b.holder.id].to++; giveBall(G, e); } else opp.forEach(o => o.slowT = 2.5); break; }
     case 'Shadow': e.vanishT = 4.5; break;
     case 'Metal': G.ents.filter(o => o.team === e.team).forEach(o => o.ironT = 6); break;
     case 'Light': opp.forEach(o => o.blindT = 3.5); break;
     case 'Legend': opp.forEach(o => { o.stun = 2; o.shooting = null; knock(o, 8); }); e.hyper = 7; e.judgment = true; break;
   }
   // a stunned ball handler coughs it up
-  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0 && G.bossT !== b.holder.team){ const h = b.holder; G.stats[h.id].to++;   /* v203: story bosses hold on to the ball through an Ultimate */ Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
+  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0){ const h = b.holder; G.stats[h.id].to++; Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
   return true;
 }
 // timers for the effects, ticked every frame for every creature
@@ -4738,7 +4737,7 @@ function applyGame(L, a, b, res, playoff){
   const [sa, sb] = res.score, A = L.teams[a], B = L.teams[b];
   if(a === L.user || b === L.user){ const opp = a === L.user ? b : a, m = a === L.user ? sa - sb : sb - sa;
     if(kaineFinalOn(L) && opp === L.rival){ const X = L.kaine.final; m > 0 ? X.w++ : X.l++; X.edge = clamp((X.edge || 0) + (m > 0 ? clamp(m*0.5, 3, 10) : -4), 0, 250); }   /* climbs fast when you win, eases by 4 when you lose */
-    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + (m > 0 ? clamp(m*0.4, 2, 8) : -5), 0, 200); }   /* climbs when you win (more after a blowout), eases by 5 when you lose */
+    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + (m > 0 ? clamp(m*0.4, 2, 8) : -4), 20, 200); }   /* climbs when you win (more after a blowout), eases by 4 when you lose, never below 20 */
     if(isSuper(L, opp)) L.era.edge = clamp((L.era.edge || 0) + clamp((m - 2)*0.8, -12, 12), 0, 200);   // superteams keep adjusting until games with you are close
     else updateHeat(L, a === L.user ? sa : sb, a === L.user ? sb : sa); }
   if(!playoff){ if(sa > sb){ A.w++; B.l++; } else { B.w++; A.l++; } A.pf += sa; A.pa += sb; B.pf += sb; B.pa += sa; }
@@ -6766,7 +6765,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 203;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 204;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7564,9 +7563,9 @@ function kaineFinalIntro(L){
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
     <div class="news-kicker" style="color:#ff8fa3">The final chapter</div><div class="showaward" style="background:linear-gradient(90deg,#ff3344,#ffb0bd,#ff3344);background-size:250% 100%;-webkit-background-clip:text;background-clip:text">THE LAST SHADOW</div>
     <div class="showreveal"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div><div class="cond">Lv ${N.lvl} · OVR ${ovr(N)} · ${esc(R.name)}</div></div>
-    <div class="showline">Kaine: "You beat the five. Good. They were only ever in my way too."</div>
-    <div class="cond" style="text-align:left">You turned him down twice. He spent those years alone, and he is the strongest thing you will ever face: his whole team plays above itself against you, and he will be waiting in the ${vexRound(L)} every season. <b>Beat him in a playoff series to finish the story.</b></div>
-    <div class="cond" style="color:#ffb0bd">Kaine: "No more offers. Only one of us walks out."</div>
+    <div class="showline">Kaine: "${K.leftForFive ? 'I told you. One last time.' : 'You beat the five. Good. They were only ever in my way too.'}"</div>
+    <div class="cond" style="text-align:left">${K.leftForFive ? 'He left the day the Five joined you. He has been training for this and nothing else' : 'You turned him down twice. He spent those years alone'}, and he is the strongest thing you will ever face: his whole team plays above itself against you, and he will be waiting in the ${vexRound(L)} every season. <b>Beat him in a playoff series to finish the story.</b></div>
+    <div class="cond" style="color:#ffb0bd">Kaine: "${K.leftForFive ? 'High school. College. This is the third time. Show me it was never luck.' : 'No more offers. Only one of us walks out.'}"</div>
     <button class="btn hot" id="sh-ok">Finish it</button></div>`;
   $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
 }
@@ -7577,13 +7576,13 @@ function kaineFinalScene(L){
   M.hidden = false;
   if(kind === 'lost'){ N.kaineEdge = (N.kaineEdge || 0) + 1;
     M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}<div class="news-kicker" style="color:#ff8fa3">The last shadow</div><div class="showaward">HE IS STILL STANDING</div>
-      <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div></div><div class="showline">Kaine: "You should have said yes when you had the chance."</div>
+      <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div></div><div class="showline">Kaine: "${K.leftForFive ? 'Not yet. Again next year.' : 'You should have said yes when you had the chance.'}"</div>
       <div class="cond">He ended your season. He will be waiting again next year.</div><button class="btn hot" id="sh-ok">Next year</button></div>`;
     $('#sh-ok').onclick = done; return; }
   fanfare(true); L.coins += 2000; const me = L.players[L.avatar]; if(me) (me.trophies = me.trophies || []).push(`The Last Shadow (S${L.season})`);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ffd23a">${SHOW_BEAMS}${showConfetti(['#ffd23a', L.teams[L.user].color, '#ffffff'])}<div class="news-kicker">The end of the story</div><div class="showaward">LIGHT PREVAILS</div>
     <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div></div>
-    <div class="showline">Kaine: "Twice I asked to stand next to you. Now I understand why you said no. You never needed anyone."</div>
+    <div class="showline">Kaine: "${K.leftForFive ? 'High school. College. I kept waiting for you to catch up. You went past me. That is all I needed to know.' : 'Twice I asked to stand next to you. Now I understand why you said no. You never needed anyone.'}"</div>
     <div class="cond" style="text-align:left">You beat the strongest opponent of your career in a playoff series. Kaine retires tonight and goes into the Hall of Fame. <b>Nobody is left standing above you.</b> +2,000 coins, and "The Last Shadow" is added to your legacy.</div>
     <button class="btn hot" id="sh-ok">Take a bow</button></div>`;
   $('#sh-ok').onclick = () => { R.roster = R.roster.filter(x => x !== N.id);
@@ -7790,7 +7789,7 @@ function goatList(L){
     { t:'Beat Kaine in a playoff series', ok:beatKaine, now:beatKaine ? 'done' : 'not yet' },
     { t:'Beat the Five Crowns in a playoff series', ok:!!(F && F.beatS != null), now:F ? (F.beatS != null ? `season ${F.beatS}` : `series so far: ${F.sw}-${F.sl}`) : 'they have not arrived' },
     { t:'Hold a winning record against the Five Crowns (10+ games)', ok:!!(F && F.w + F.l >= 10 && F.w > F.l), now:F ? `${F.w}-${F.l}` : 'they have not arrived' },
-    { t:'Finish the story: the Five join you, or you beat the Last Shadow', ok:!!((F && F.joined) || K.ending === 'done'), now:(F && F.joined) || K.ending === 'done' ? 'done' : 'not yet' },
+    { t:'Finish the story: beat Kaine, the Last Shadow, in a playoff series', ok:K.ending === 'done', now:K.ending === 'done' ? 'done' : K.ending === 'final' ? 'he is waiting' : 'not yet' },
     { t:'Play a full 20-season career', ok:T.seasons >= 20, now:`${T.seasons} of 20` } ];
 }
 const goatGrade = n => n >= 10 ? 'The Greatest of All Time' : n >= 8 ? 'An all-time great' : n >= 5 ? 'A Hall of Famer' : 'A good career';
@@ -7806,7 +7805,7 @@ function showCareerSummary(L, done){
     <img src="${portrait(me, L.teams[L.user].color, displayTier(me))}" alt="" style="width:140px;height:154px;align-self:center">
     <div class="careergrid"><div><b>${T.titles}</b><span>titles</span></div><div><b>${T.mvps}</b><span>MVPs</span></div><div><b>${T.awards}</b><span>awards</span></div><div><b>${T.wins}-${T.losses}</b><span>record</span></div>
       <div><b>${T.pts}</b><span>points</span></div><div><b>${T.reb}</b><span>rebounds</span></div><div><b>${T.ast}</b><span>assists</span></div><div><b>${T.dnk}</b><span>dunks</span></div></div>
-    ${L.five && L.five.joined ? '<div class="showaward" style="text-align:center">THE ONE WHO STANDS ABOVE THE REST</div><div class="cond" style="text-align:center">You beat the Five Crowns, and all five followed you to the end.</div>' : ''}
+    ${K.ending === 'done' ? '<div class="showaward" style="text-align:center">THE ONE WHO STANDS ABOVE THE REST</div><div class="cond" style="text-align:center">You beat the Five Crowns, and then you beat Kaine.</div>' : L.five && L.five.joined ? '<div class="cond" style="text-align:center">You beat the Five Crowns, and all five followed you to the end.</div>' : ''}
     ${(() => { const G = goatList(L), n = G.filter(x => x.ok).length; return `<div class="showaward" style="text-align:center">${goatGrade(n).toUpperCase()}</div><div class="cond" style="text-align:center">GOAT checklist: <b>${n} of ${G.length}</b>${n < G.length ? ' · missing: ' + G.filter(x => !x.ok).map(x => x.t).join('; ') : ''}</div>`; })()}
     <div class="msg">Legacy score <b>${score}</b> · ${rank === 1 ? '<b>The highest in league history.</b>' : `${ordinal(rank)} all time among Hall of Famers.`}${ns.games ? ` Head to head with Kaine: ${ns.wins}-${ns.games - ns.wins}.` : ''}${K.ending === 'ally' ? ' You finished as brothers in arms.' : K.ending === 'done' ? ' You beat the Last Shadow.' : ''}</div>
     <p class="dim" style="margin:0">Your number ${me.num} goes up in the rafters and you enter the Hall of Fame. What now?</p>
@@ -8022,7 +8021,7 @@ function formFive(L){
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
     const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
-  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 30 : (L.heat || 0) >= 50 ? 20 : 10 };   /* lower than before v203: the hard double team and the steal protection now do most of the work */
+  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 80 : (L.heat || 0) >= 50 ? 50 : 25 };
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
 }
@@ -8037,6 +8036,23 @@ function fiveSeason(L){
 }
 function fiveLevel(L){ const Av = L.avatar != null ? L.players[L.avatar] : null; if(!Av) return;
   fiveAll(L).forEach(id => { const p = L.players[id]; if(p.lvl < Av.lvl){ p.lvl = Av.lvl; p.xp = xpFor(p.lvl); autoEvolve(p); } }); }
+// Kaine and the Five (v204): the day the Five Crowns join you, Kaine walks away, whether he was your teammate or still your rival.
+// He comes back the next season as the Last Shadow, the final boss. (Not if he is already gone, retired, or the final boss.)
+const kaineLeavesIfFive = L => { const K = L.kaine; return !!(K && L.nemesis != null && L.players[L.nemesis] && !K.retired && !['gone', 'final', 'done'].includes(K.ending)); };
+function kaineLeaves(L){
+  const K = L.kaine, N = L.players[L.nemesis], U = L.teams[L.user], M = $('#modal'), wasAlly = K.ending === 'ally';
+  L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== N.id); }); K.ending = 'gone'; K.goneS = L.season; K.away = null; K.queue = []; K.leftForFive = true;
+  fillRosters(L); sortRosterByOvr(L, U); autoLineup(L); memoClear();
+  L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine has left ${wasAlly ? `the ${U.name}` : 'the league'}. He did not say where he was going.`, me:true });
+  saveLeague(); M.hidden = false;
+  M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}<div class="news-kicker" style="color:#ff8fa3">Light and Shadow</div><div class="showaward">KAINE WALKS AWAY</div>
+    <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, U.color)}" alt=""><div class="showname">Kaine</div></div>
+    <div class="showline">Kaine: "You have five crowns now. You don't need a shadow."</div>
+    <div class="cond" style="text-align:left">${wasAlly ? 'He packed his locker while the Five were still shaking hands.' : 'He was gone from his team by morning.'} "Everyone who ever stood in your way plays for you. Everyone but me. There is one thing left I have to know, and I can't find it out standing next to you."</div>
+    <div class="cond" style="color:#ffb0bd">Kaine: "Next season. One last time. Don't hold back."</div>
+    <button class="btn hot" id="sh-ok">One last time</button></div>`;
+  $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
+}
 // You beat the Five in a playoff series: they ask to join you.
 function fiveOffer(L){
   const F = L.five, R = L.teams[F.tid], U = L.teams[L.user], M = $('#modal'), ids = fiveAll(L).filter(id => R.roster.includes(id));
@@ -8048,6 +8064,7 @@ function fiveOffer(L){
     <div class="showaward">THEY WANT TO JOIN YOU</div>
     <div class="showline">Zenith, for all five: "We were built to take you down. We could not. Let us follow the one who stands above us."</div>
     <div class="fiverow showreveal">${ids.map(id => { const p = L.players[id], X = FIVE[(p.crown || 1) - 1]; return `<div class="fivecard"><img src="${portrait(p, U.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><span class="gold">${X.title}</span><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span></div>`; }).join('')}</div>
+    ${kaineLeavesIfFive(L) ? `<div class="cond" style="text-align:left;color:#ffb0bd"><b>Kaine will not stay.</b> If you welcome them, he leaves${kaineAlly(L) ? ' your team' : ''} and comes back next season as the last opponent of your career.</div>` : ''}
     <div class="cond" style="text-align:left">${ids.length > 5 ? 'All five and Vex' : 'All five'} join the ${esc(U.name)} for free and stay until you retire. They can't be traded or released.${out.length ? ` To make room, your ${out.length} lowest-rated players go to free agency: ${out.map(id => esc(pname(L.players[id]))).join(', ')}.` : ''}</div>
     <div class="eventopts" style="justify-content:center"><button class="btn hot" id="five-yes"><b>Welcome them</b><span class="dim">The Five Crowns are yours</span></button><button class="btn" id="five-no"><b>Stay rivals</b><span class="dim">They ask again the next time you beat them in a playoff series</span></button></div></div>`;
   $('#five-no').onclick = () => { F.offer = false; saveLeague(); M.hidden = true; renderHub(); };
@@ -8057,7 +8074,9 @@ function fiveOffer(L){
     { const me = L.players[L.avatar]; if(me) (me.trophies = me.trophies || []).push(`Above the Rest (S${L.season})`); }   // counts toward your legacy score
     F.offer = false; F.joined = L.season; fillRosters(L); sortRosterByOvr(L, R); R.star = R.roster[0]; sortRosterByOvr(L, U); autoLineup(L); memoClear();
     L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns left the ${R.name} to join the ${U.name}. Nobody stands above you now.`, me:true });
-    UI.msg = 'The Five Crowns are on your roster. They stay until you retire.'; saveLeague(); M.hidden = true; renderHub(); };
+    UI.msg = 'The Five Crowns are on your roster. They stay until you retire.'; saveLeague();
+    if(kaineLeavesIfFive(L)) return kaineLeaves(L);   // the last chapter starts
+    M.hidden = true; renderHub(); };
 }
 // the reveal
 function fiveIntro(L){
@@ -8151,7 +8170,7 @@ function hubPlay(L){
         ${matchupPoster(L, g)}
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
-        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.${lv ? ` <b>They protect the ball:</b> your steals work about ${lv >= 2 ? 'a quarter' : 'half'} as often tonight, and Ultimates no longer knock the ball loose.` : ''}</div>`; })() : ''}
+        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
