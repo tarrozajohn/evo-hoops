@@ -7041,7 +7041,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 237;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 238;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7960,7 +7960,7 @@ function showKaineScene(L, key, done){
     ${sc.lines.map(([who, t]) => `<div class="line"><span class="speaker ${who === 'kaine' ? 'rival' : 'coach'}">${who === 'kaine' ? 'Kaine' : COACH}</span><p>${esc(t)}</p></div>`).join('')}
     ${sc.reward ? `<div class="msg">Reward: ${sc.reward} coins</div>` : ''}
     ${sc.choice ? `<div class="row"><button class="btn hot" id="k-ally">Brothers in arms: bring him to your team</button><button class="btn" id="k-free">${K.act >= 2 ? 'Turn him down again' : 'Turn him down: he leaves the league'}</button></div>
-      <p class="dim cond" style="margin:0"><b>Keep him:</b> he plays for you through Vex and the Five Crowns. When you beat the Five they ask to join you: take them and Kaine leaves to face you alone at the end, turn them down and Kaine joins them, so the last fight is the Five Crowns and Kaine together.<br><b>Turn him down:</b> he disappears. You face Vex and then the Five Crowns without him, and he comes back alone at the very end as the last and strongest opponent of your career.</p>`
+      <p class="dim cond" style="margin:0"><b>Bring him in:</b> he plays for you against Vex and then the Five Crowns. What happens after you beat the Five depends on a choice you make then.<br><b>Turn him down:</b> he disappears. You face Vex and then the Five Crowns without him, and he comes back alone at the very end as the last and strongest opponent of your career.</p>`
       : `<div class="row"><button class="btn hot" id="k-ok">Continue</button></div>`}</div>`;
   const close = next => { saveLeague(); M.hidden = true; if(next) return showKaineScene(L, next, done); done(); };
   if(sc.choice){ $('#k-ally').onclick = () => { kaineAlliance(L); close('ally'); }; $('#k-free').onclick = () => { kaineGone(L); close(K.act >= 2 ? 'gone' : 'gone1'); }; }   /* v236: one "no" is final (it used to send him away for a year first) */
@@ -8337,18 +8337,17 @@ function formFive(L){
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
 }
-/* ---------- THE TWO TIMELINES (v236) ----------
-   Both start the same way: you beat Kaine in a playoff series and he asks to join you.
-     A) You let him go.  He leaves the league (K.ending = 'gone'). Next season Pryce unveils Vex on Kaine's old team.
-        Knock Vex out of the playoffs twice, he warns you and leaves, and the Five Crowns arrive on that team.
-        Beat the Five in a playoff series (they then ask to join you). The season after, Kaine returns alone as the
-        Last Shadow, the final boss.
-     B) You keep him.    Vex, then the Five Crowns, with Kaine at your side. When you beat the Five in a playoff series
-        they ask to join you, and Kaine leaves whatever you answer:
-          - welcome them: Kaine walks away and returns the next season alone as the Last Shadow (same as A's ending)
-          - turn them down (v237): they ask Kaine instead and he goes (K.ending = 'crown', L.five.fin = 1). The final
-            boss is the Five Crowns AND Kaine on one team, with Kaine starting. Beat them in a playoff series to end
-            the story (L.five.fin = 2): Kaine retires, and the Five ask to join you once more.
+/* ---------- THE STORY AND ITS TWO ENDINGS (v238) ----------
+   One road: you face Kaine as a rival and beat him in a playoff series, he joins you, then Vex is the rival (knock him
+   out of the playoffs twice), then the Five Crowns arrive. Vex and the Five are opponents the whole way.
+   The fork comes when you beat the Five in a playoff series and they ask to join you:
+     Ending 1, welcome the Five:  Kaine walks away and returns the next season alone as the Last Shadow, the final boss.
+     Ending 2, keep Kaine:        you turn the Five down. They ask Kaine instead and he goes anyway (K.ending = 'crown',
+                                  L.five.fin = 1). The final boss is the Five Crowns AND Kaine on one team, with Kaine
+                                  starting. This is the harder ending. Beat them in a playoff series to end the story
+                                  (L.five.fin = 2): Kaine retires, and the Five ask to join you once more.
+   Side road: if you turn Kaine down when he first asks, he leaves the league, you face Vex and the Five without him,
+   and he returns alone as the Last Shadow after the Five (the same as ending 1).
    kaineJoinsCrowns moves him. Returns true if he moved. */
 function kaineJoinsCrowns(L){
   const K = L.kaine, N = L.nemesis != null ? L.players[L.nemesis] : null, U = L.teams[L.user], F = L.five, R = F ? L.teams[F.tid] : null;
@@ -8418,9 +8417,9 @@ function fiveOffer(L){
     <div class="showaward">THEY WANT TO JOIN YOU</div>
     <div class="showline">Zenith, for all five: "We were built to take you down. We could not. Let us follow the one who stands above us."</div>
     <div class="fiverow showreveal">${ids.map(id => { const p = L.players[id], X = FIVE[(p.crown || 1) - 1]; return `<div class="fivecard"><img src="${portrait(p, U.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><span class="gold">${X.title}</span><span class="dim">${posLabel(p)} · OVR ${ovr(p)}</span></div>`; }).join('')}</div>
-    ${kaineLeavesIfFive(L) ? `<div class="cond" style="text-align:left;color:#ffb0bd"><b>Kaine will not stay${kaineAlly(L) && !F.fin && !F.third ? ' either way' : ''}.</b> If you welcome them, he leaves${kaineAlly(L) ? ' your team' : ''} and comes back next season, alone, as the last opponent of your career.${kaineAlly(L) && !F.fin && !F.third ? '<br><b>If you turn them down, they ask Kaine instead, and he goes with them.</b> The last fight of your career is then the Five Crowns and Kaine together.' : ''}</div>` : ''}
+    ${kaineLeavesIfFive(L) ? `<div class="cond" style="text-align:left;color:#ffb0bd"><b>${kaineAlly(L) && !F.fin && !F.third ? 'It is them or Kaine.' : 'Kaine will not stay.'}</b> If you welcome them, he leaves${kaineAlly(L) ? ' your team' : ''} and comes back next season, alone, as the last opponent of your career.</div>` : ''}
     <div class="cond" style="text-align:left">${ids.length > 5 ? 'All five and Vex' : 'All five'} join the ${esc(U.name)} for free and stay until you retire. They can't be traded or released.${out.length ? ` To make room, your ${out.length} lowest-rated players go to free agency: ${out.map(id => esc(pname(L.players[id]))).join(', ')}.` : ''}</div>
-    <div class="eventopts" style="justify-content:center"><button class="btn hot" id="five-yes"><b>Welcome them</b><span class="dim">The Five Crowns are yours</span></button><button class="btn" id="five-no"><b>${kaineAlly(L) && !F.fin && !F.third ? 'Turn them down' : 'Stay rivals'}</b><span class="dim">${kaineAlly(L) && !F.fin && !F.third ? 'They take Kaine instead' : 'They ask again the next time you beat them in a playoff series'}</span></button></div></div>`;
+    <div class="eventopts" style="justify-content:center"><button class="btn hot" id="five-yes"><b>Welcome them</b><span class="dim">The Five Crowns are yours</span></button><button class="btn" id="five-no"><b>${kaineAlly(L) && !F.fin && !F.third ? 'Keep Kaine' : 'Stay rivals'}</b><span class="dim">${kaineAlly(L) && !F.fin && !F.third ? 'Turn the Five down' : 'They ask again the next time you beat them in a playoff series'}</span></button></div></div>`;
   $('#five-no').onclick = () => { F.offer = false;
     if(kaineAlly(L) && !F.fin && !F.third){ L.kaine.crownDue = true; saveLeague(); M.hidden = true; return kaineCrownIntro(L); }   // v237, timeline B: you said no, so they ask Kaine, and he goes. The last fight is the Five and Kaine
     saveLeague(); M.hidden = true; renderHub(); };
