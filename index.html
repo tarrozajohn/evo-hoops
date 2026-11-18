@@ -3382,23 +3382,13 @@ function drawHero(ctx, px, py, hpx, o, st){
     ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(x1 + nx*w1, y1 + ny*w1); ctx.lineTo(x2 + nx*w2, y2 + ny*w2); ctx.arc(x2, y2, w2, Math.atan2(ny, nx), Math.atan2(-ny, -nx), true); ctx.lineTo(x1 - nx*w1, y1 - ny*w1); ctx.closePath(); fs(); };
   const wave = Math.sin(t*4)*0.03;
 
-  // 1) headband tails: two ribbons flying back from the knot behind the head
-  ctx.fillStyle = acc;
-  for(const [dy, len, wv] of [[0, 0.3, wave], [0.05, 0.24, -wave]]){ const bx = hcx - r*0.86, by = hcy - r*0.42 + dy;
-    ctx.beginPath(); ctx.moveTo(bx, by - 0.012); ctx.quadraticCurveTo(bx - len*0.5, by - 0.05 + wv, bx - len, by + 0.02 + wv*2); ctx.lineTo(bx - len + 0.03, by + 0.06 + wv*2); ctx.quadraticCurveTo(bx - len*0.45, by + 0.0 + wv, bx, by + 0.025); ctx.closePath(); fs(); }
+  const H = { x:hcx, y:hcy, r, k, DK, skin, skinD, acc, glow, ink, hairC, hairHi, tipC: k === 2 ? glow : null, iris: DK ? '#ff3344' : k === 2 ? '#3fd0ff' : '#b0703c', eyeGlow: k === 2 || DK, band:'cloth', t, blink:o.blink, mouth:o.mouth, marks: k === 2 };   // the head is drawn by heroHead (shared with the armored forms)
   // 2) Awakened: an energy scarf, two long tails streaming behind the shoulders
   if(k === 2){ const g = ctx.createLinearGradient(-0.5, 0, 0, 0); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.5, glow); g.addColorStop(1, acc); ctx.fillStyle = g;
     ctx.beginPath(); ctx.moveTo(-0.03, shY - 0.03); ctx.quadraticCurveTo(-0.24, shY - 0.05 + wave, -0.5, shY + 0.05 + wave*1.8); ctx.lineTo(-0.44, shY + 0.13 + wave*1.8); ctx.quadraticCurveTo(-0.22, shY + 0.06, -0.03, shY + 0.05); ctx.closePath(); fs();
     ctx.beginPath(); ctx.moveTo(-0.04, shY + 0.01); ctx.quadraticCurveTo(-0.2, shY + 0.12 - wave, -0.38, shY + 0.24 - wave); ctx.lineTo(-0.31, shY + 0.28 - wave); ctx.quadraticCurveTo(-0.16, shY + 0.14, -0.03, shY + 0.07); ctx.closePath(); fs(); }
-  // 3) back hair: big spikes swept up and back. Awakened: longer, with glowing tips
-  const nSp = k === 2 ? 6 : 5, spLen = k === 2 ? 1.8 : 1.45;
-  for(let i = 0; i < nSp; i++){
-    const a = Math.PI*0.96 + i*(Math.PI*0.6/(nSp - 1)), L = r*spLen*(i % 2 ? 0.88 : 1.08) + Math.sin(t*6 + i)*r*0.03;
-    const bx = hcx + Math.cos(a)*r*0.7, by = hcy + Math.sin(a)*r*0.75, nx = -Math.sin(a)*r*0.5, ny = Math.cos(a)*r*0.5;
-    const tx = hcx + Math.cos(a - 0.22)*L - r*0.1, ty = hcy + Math.sin(a - 0.22)*L;
-    if(k === 2){ const g = ctx.createLinearGradient(bx, by, tx, ty); g.addColorStop(0, hairC); g.addColorStop(0.6, hairC); g.addColorStop(1, glow); ctx.fillStyle = g; } else ctx.fillStyle = hairC;
-    ctx.beginPath(); ctx.moveTo(bx + nx, by + ny); ctx.quadraticCurveTo((bx + tx)/2 + nx*0.55, (by + ty)/2 + ny*0.55, tx, ty); ctx.lineTo(bx - nx, by - ny); ctx.closePath(); fs();
-  }
+  // 3) headband tails and back hair
+  heroHead(ctx, H, 'back');
 
   // 4) legs: thigh and calf as solid shapes, a sleeve on the front calf, socks and high-top sneakers
   const sw = o.moving ? Math.sin(o.run || 0)*0.09 : 0;
@@ -3438,46 +3428,8 @@ function drawHero(ctx, px, py, hpx, o, st){
   ctx.fillStyle = skin; ctx.beginPath(); ctx.rect(hcx - 0.045, shY - 0.075, 0.075, 0.085); ctx.fill();
   ctx.fillStyle = skinD; ctx.beginPath(); ctx.rect(hcx - 0.045, shY - 0.075, 0.075, 0.03); ctx.fill();
   if(k === 2){ ctx.fillStyle = acc; ctx.beginPath(); ctx.ellipse(0.015, shY - 0.012, 0.09, 0.036, 0, 0, Math.PI*2); fs(); }   // the scarf wraps the neck
-  // 9) head: skull with a cheek and a pointed chin (three-quarter view, looking right), and an ear
-  const head = () => { ctx.beginPath(); ctx.moveTo(hcx - r*0.9, hcy - r*0.2); ctx.bezierCurveTo(hcx - r*0.98, hcy - r*1.2, hcx + r*0.94, hcy - r*1.2, hcx + r*0.88, hcy - r*0.1);
-    ctx.quadraticCurveTo(hcx + r*0.9, hcy + r*0.5, hcx + r*0.46, hcy + r*1.0); ctx.quadraticCurveTo(hcx + r*0.22, hcy + r*1.1, hcx - r*0.08, hcy + r*0.9); ctx.quadraticCurveTo(hcx - r*0.78, hcy + r*0.62, hcx - r*0.9, hcy - r*0.2); ctx.closePath(); };
-  ctx.fillStyle = skin; head(); fs();
-  ctx.save(); head(); ctx.clip(); ctx.fillStyle = 'rgba(60,20,30,.14)'; ctx.fillRect(hcx - r, hcy - r*1.2, r*0.62, r*2.4); ctx.restore();          // shaded back of the head and jaw
-  ctx.fillStyle = skinD; ctx.beginPath(); ctx.ellipse(hcx - r*0.5, hcy + r*0.2, r*0.11, r*0.17, 0, 0, Math.PI*2); ctx.fill(); ctx.lineWidth = 0.01; ctx.stroke(); ctx.lineWidth = 0.016;   // ear
-  // 10) hair on top of the skull, then the headband across the forehead
-  ctx.fillStyle = hairC; ctx.beginPath(); ctx.moveTo(hcx - r*0.95, hcy - r*0.1); ctx.bezierCurveTo(hcx - r*1.05, hcy - r*1.32, hcx + r*1.0, hcy - r*1.32, hcx + r*0.93, hcy - r*0.42);
-  ctx.lineTo(hcx + r*0.5, hcy - r*0.52); ctx.lineTo(hcx - r*0.62, hcy - r*0.42); ctx.lineTo(hcx - r*0.7, hcy - r*0.02); ctx.closePath(); fs();
-  ctx.fillStyle = acc; ctx.beginPath(); ctx.moveTo(hcx - r*0.93, hcy - r*0.5); ctx.quadraticCurveTo(hcx, hcy - r*0.68, hcx + r*0.93, hcy - r*0.5); ctx.lineTo(hcx + r*0.92, hcy - r*0.28); ctx.quadraticCurveTo(hcx, hcy - r*0.46, hcx - r*0.92, hcy - r*0.28); ctx.closePath(); fs();
-  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(hcx + r*0.3, hcy - r*0.49, r*0.3, r*0.04, -0.05, 0, Math.PI*2); ctx.fill();   // shine on the band
-  // 11) face: big anime eyes that slant down toward the nose (a determined look), sharp brows, a small nose, a smirk
-  const ey = hcy + r*0.16, iris = DK ? '#ff3344' : k === 2 ? '#3fd0ff' : '#b0703c';
-  const eye = (x, w, h, d) => {                                                 // d = +1: inner corner on the right (near eye). d = -1: mirrored (far eye)
-    const top = () => { ctx.moveTo(x - w*d, ey - h*0.75); ctx.quadraticCurveTo(x - w*0.1*d, ey - h*1.2, x + w*d, ey - h*0.3); };
-    const shape = () => { ctx.beginPath(); top(); ctx.quadraticCurveTo(x + w*0.95*d, ey + h*0.55, x + w*0.1*d, ey + h*0.8); ctx.quadraticCurveTo(x - w*0.9*d, ey + h*0.75, x - w*d, ey - h*0.75); ctx.closePath(); };
-    shape(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.save(); ctx.clip();
-    const g = ctx.createLinearGradient(0, ey - h, 0, ey + h); g.addColorStop(0, shade(iris, -0.6)); g.addColorStop(0.55, iris); g.addColorStop(1, shade(iris, 0.5));
-    if(k === 2 || DK){ ctx.shadowColor = glow; ctx.shadowBlur = 0.05; }
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x + w*0.12, ey + h*0.02, w*0.62, h*0.95, 0, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
-    ctx.fillStyle = '#0b0714'; ctx.beginPath(); ctx.ellipse(x + w*0.14, ey + h*0.05, w*0.24, h*0.5, 0, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x - w*0.12, ey - h*0.38, w*0.2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x + w*0.34, ey + h*0.4, w*0.09, 0, Math.PI*2); ctx.fill();
-    ctx.restore(); ctx.strokeStyle = ink; ctx.lineWidth = 0.02; ctx.beginPath(); top(); ctx.stroke();                                       // heavy upper lash only: a full outline reads as glasses
-    ctx.lineWidth = 0.006; ctx.beginPath(); ctx.moveTo(x - w*0.5*d, ey + h*0.8); ctx.lineTo(x + w*0.45*d, ey + h*0.72); ctx.stroke();      // a hint of the lower lid
-  };
-  const e1 = hcx + r*0.1, e2 = hcx + r*0.63;
-  if(o.blink){ ctx.lineWidth = 0.018; ctx.beginPath(); ctx.moveTo(e1 - r*0.24, ey - r*0.02); ctx.lineTo(e1 + r*0.22, ey + r*0.05); ctx.moveTo(e2 - r*0.15, ey + r*0.05); ctx.lineTo(e2 + r*0.15, ey - r*0.02); ctx.stroke(); }
-  else { eye(e1, r*0.27, r*0.3, 1); eye(e2, r*0.17, r*0.27, -1); }
-  ctx.strokeStyle = DK ? '#b9b9c6' : hairC; ctx.lineWidth = 0.022;                                                                                   // brows, angled down to the nose
-  ctx.beginPath(); ctx.moveTo(e1 - r*0.34, ey - r*0.62); ctx.lineTo(e1 + r*0.26, ey - r*0.42); ctx.moveTo(e2 - r*0.15, ey - r*0.42); ctx.lineTo(e2 + r*0.2, ey - r*0.58); ctx.stroke();
-  ctx.strokeStyle = shade(skin, -0.4); ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(hcx + r*0.42, ey + r*0.2); ctx.lineTo(hcx + r*0.5, ey + r*0.38); ctx.lineTo(hcx + r*0.4, ey + r*0.4); ctx.stroke();   // nose
-  ctx.strokeStyle = ink; ctx.lineWidth = 0.014;
-  if(o.mouth){ ctx.fillStyle = '#3a1418'; ctx.beginPath(); ctx.ellipse(hcx + r*0.38, ey + r*0.68, r*0.14, r*0.11, 0, 0, Math.PI*2); fs(); }          // shouting
-  else { ctx.beginPath(); ctx.moveTo(hcx + r*0.16, ey + r*0.66); ctx.quadraticCurveTo(hcx + r*0.36, ey + r*0.74, hcx + r*0.58, ey + r*0.58); ctx.stroke(); }   // smirk
-  if(k === 2){ ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = 0.05; ctx.beginPath(); ctx.rect(hcx - r*0.32, ey + r*0.34, r*0.3, r*0.06); ctx.rect(hcx - r*0.27, ey + r*0.48, r*0.24, r*0.06); ctx.fill(); ctx.shadowBlur = 0; }   // Awakened: glowing cheek marks
-  // 12) bangs: jagged locks falling over the headband, with a streak of shine
-  ctx.fillStyle = hairC; ctx.lineWidth = 0.014;
-  for(const [bx, wv, ln, lean] of [[-0.62, 0.36, 0.5, -0.12], [-0.28, 0.42, 0.62, 0.04], [0.1, 0.44, 0.7, 0.2], [0.48, 0.4, 0.56, 0.32], [0.78, 0.26, 0.38, 0.28]]){
-    const x0 = hcx + r*bx, y0 = hcy - r*0.9; ctx.beginPath(); ctx.moveTo(x0 - r*wv*0.5, y0); ctx.quadraticCurveTo(x0 + r*lean*0.3, y0 + r*ln*0.5, x0 + r*lean, y0 + r*ln); ctx.quadraticCurveTo(x0 + r*(wv*0.45 + lean*0.2), y0 + r*ln*0.4, x0 + r*wv*0.5, y0 - r*0.04); ctx.closePath(); fs(); }
-  ctx.strokeStyle = hairHi; ctx.lineWidth = 0.014; ctx.beginPath(); ctx.moveTo(hcx - r*0.25, hcy - r*1.02); ctx.quadraticCurveTo(hcx + r*0.1, hcy - r*1.12, hcx + r*0.5, hcy - r*0.98); ctx.stroke(); ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
+  // 9) to 12) skull, hair, headband, face and bangs
+  heroHead(ctx, H, 'front');
   // 13) front arm last, so it is in front of the body
   heroArm(ctx, sh*0.78, shY + 0.035, armF, skin, ink, k, acc, glow, false);
   ctx.restore();
@@ -3506,127 +3458,207 @@ function heroArm(ctx, x, y, a, fill, ink, k, acc, glow, back){
   ctx.beginPath(); ctx.ellipse(w*0.6, L2 + w*0.35, w*0.3, w*0.42, -0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();                                  // thumb
   ctx.restore();
 }
-// ----- Your majestic form: a white-armored knight with a flowing cape (Ascendant), and its radiant Legendary version -----
-function plateSeg(ctx, x1, y1, x2, y2, w, fill, ink, hi){
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = ink; ctx.lineWidth = w + 0.022; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-  ctx.strokeStyle = fill; ctx.lineWidth = w; ctx.stroke();
-  if(hi){ ctx.strokeStyle = hi; ctx.lineWidth = w*0.28; ctx.beginPath(); ctx.moveTo(x1 - w*0.2, y1); ctx.lineTo(x2 - w*0.2, y2); ctx.stroke(); }
+/* ----- Your head, shared by the athlete (drawHero) and the armored forms (drawKnight), v228 -----
+   H = { x, y, r (head centre and radius), k (1 Rookie, 2 Awakened, 3 Ascendant, 4 Legendary), DK (Kaine's colours),
+         skin, skinD, acc, glow, ink, hairC, hairHi, tipC (colour of glowing hair tips, or null), iris, eyeGlow,
+         band ('cloth' = headband with flying tails, 'crown' = a circlet with a gem), gold, t, blink, mouth, marks }
+   part 'back'  = what sits behind the body: headband tails and the big back spikes of hair
+   part 'front' = skull, ear, hair, band or crown, face and bangs */
+function heroHead(ctx, H, part){
+  const { x:hcx, y:hcy, r, k, DK, skin, skinD, acc, glow, ink, hairC, hairHi, tipC, iris, t } = H, wave = Math.sin(t*4)*0.03;
+  const fs = () => { ctx.fill(); ctx.stroke(); };
+  ctx.strokeStyle = ink; ctx.lineWidth = 0.016; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if(part === 'back'){
+    if(H.band === 'cloth'){ ctx.fillStyle = acc;                              // headband tails: two ribbons flying back from the knot
+      for(const [dy, len, wv] of [[0, 0.3, wave], [0.05, 0.24, -wave]]){ const bx = hcx - r*0.86, by = hcy - r*0.42 + dy;
+        ctx.beginPath(); ctx.moveTo(bx, by - 0.012); ctx.quadraticCurveTo(bx - len*0.5, by - 0.05 + wv, bx - len, by + 0.02 + wv*2); ctx.lineTo(bx - len + 0.03, by + 0.06 + wv*2); ctx.quadraticCurveTo(bx - len*0.45, by + 0.0 + wv, bx, by + 0.025); ctx.closePath(); fs(); } }
+    // back hair: big spikes swept up and back. They get longer with every form, and the tips glow from Awakened on
+    const nSp = [0, 5, 6, 7, 8][k], spLen = [0, 1.45, 1.8, 2.15, 2.6][k];
+    if(k === 4){ ctx.shadowColor = glow; ctx.shadowBlur = 0.2; }
+    for(let i = 0; i < nSp; i++){
+      const a = Math.PI*0.96 + i*(Math.PI*0.6/(nSp - 1)), L = r*spLen*(i % 2 ? 0.88 : 1.08) + Math.sin(t*6 + i)*r*(k === 4 ? 0.1 : 0.03);
+      const bx = hcx + Math.cos(a)*r*0.7, by = hcy + Math.sin(a)*r*0.75, nx = -Math.sin(a)*r*0.5, ny = Math.cos(a)*r*0.5;
+      const tx = hcx + Math.cos(a - 0.22)*L - r*0.1, ty = hcy + Math.sin(a - 0.22)*L - (k === 4 ? r*0.3 : 0);
+      if(tipC){ const g = ctx.createLinearGradient(bx, by, tx, ty); g.addColorStop(0, hairC); g.addColorStop(0.45, hairC); g.addColorStop(1, tipC); ctx.fillStyle = g; } else ctx.fillStyle = hairC;
+      ctx.beginPath(); ctx.moveTo(bx + nx, by + ny); ctx.quadraticCurveTo((bx + tx)/2 + nx*0.55, (by + ty)/2 + ny*0.55, tx, ty); ctx.lineTo(bx - nx, by - ny); ctx.closePath(); fs();
+    }
+    ctx.shadowBlur = 0; return;
+  }
+  // skull with a cheek and a pointed chin (three-quarter view, looking right), and an ear
+  const head = () => { ctx.beginPath(); ctx.moveTo(hcx - r*0.9, hcy - r*0.2); ctx.bezierCurveTo(hcx - r*0.98, hcy - r*1.2, hcx + r*0.94, hcy - r*1.2, hcx + r*0.88, hcy - r*0.1);
+    ctx.quadraticCurveTo(hcx + r*0.9, hcy + r*0.5, hcx + r*0.46, hcy + r*1.0); ctx.quadraticCurveTo(hcx + r*0.22, hcy + r*1.1, hcx - r*0.08, hcy + r*0.9); ctx.quadraticCurveTo(hcx - r*0.78, hcy + r*0.62, hcx - r*0.9, hcy - r*0.2); ctx.closePath(); };
+  ctx.fillStyle = skin; head(); fs();
+  ctx.save(); head(); ctx.clip(); ctx.fillStyle = 'rgba(60,20,30,.14)'; ctx.fillRect(hcx - r, hcy - r*1.2, r*0.62, r*2.4); ctx.restore();          // shaded back of the head and jaw
+  ctx.fillStyle = skinD; ctx.beginPath(); ctx.ellipse(hcx - r*0.5, hcy + r*0.2, r*0.11, r*0.17, 0, 0, Math.PI*2); ctx.fill(); ctx.lineWidth = 0.01; ctx.stroke(); ctx.lineWidth = 0.016;   // ear
+  // hair on top of the skull
+  ctx.fillStyle = hairC; ctx.beginPath(); ctx.moveTo(hcx - r*0.95, hcy - r*0.1); ctx.bezierCurveTo(hcx - r*1.05, hcy - r*1.32, hcx + r*1.0, hcy - r*1.32, hcx + r*0.93, hcy - r*0.42);
+  ctx.lineTo(hcx + r*0.5, hcy - r*0.52); ctx.lineTo(hcx - r*0.62, hcy - r*0.42); ctx.lineTo(hcx - r*0.7, hcy - r*0.02); ctx.closePath(); fs();
+  // the band across the forehead: cloth for the athlete, a metal circlet with a gem for the armored forms
+  const bandC = H.band === 'crown' ? H.gold : acc;
+  ctx.fillStyle = bandC; ctx.beginPath(); ctx.moveTo(hcx - r*0.93, hcy - r*0.5); ctx.quadraticCurveTo(hcx, hcy - r*0.68, hcx + r*0.93, hcy - r*0.5); ctx.lineTo(hcx + r*0.92, hcy - r*0.28); ctx.quadraticCurveTo(hcx, hcy - r*0.46, hcx - r*0.92, hcy - r*0.28); ctx.closePath(); fs();
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.beginPath(); ctx.ellipse(hcx + r*0.3, hcy - r*0.49, r*0.3, r*0.04, -0.05, 0, Math.PI*2); ctx.fill();   // shine on the band
+  // face: big anime eyes that slant down toward the nose (a determined look), sharp brows, a small nose, a smirk
+  const ey = hcy + r*0.16;
+  const eye = (x, w, h, d) => {                                                 // d = +1: inner corner on the right (near eye). d = -1: mirrored (far eye)
+    const top = () => { ctx.moveTo(x - w*d, ey - h*0.75); ctx.quadraticCurveTo(x - w*0.1*d, ey - h*1.2, x + w*d, ey - h*0.3); };
+    const shape = () => { ctx.beginPath(); top(); ctx.quadraticCurveTo(x + w*0.95*d, ey + h*0.55, x + w*0.1*d, ey + h*0.8); ctx.quadraticCurveTo(x - w*0.9*d, ey + h*0.75, x - w*d, ey - h*0.75); ctx.closePath(); };
+    shape(); ctx.fillStyle = '#fff'; ctx.fill(); ctx.save(); ctx.clip();
+    const g = ctx.createLinearGradient(0, ey - h, 0, ey + h); g.addColorStop(0, shade(iris, -0.6)); g.addColorStop(0.55, iris); g.addColorStop(1, shade(iris, 0.5));
+    if(H.eyeGlow){ ctx.shadowColor = glow; ctx.shadowBlur = 0.05; }
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x + w*0.12, ey + h*0.02, w*0.62, h*0.95, 0, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;
+    ctx.fillStyle = '#0b0714'; ctx.beginPath(); ctx.ellipse(x + w*0.14, ey + h*0.05, w*0.24, h*0.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x - w*0.12, ey - h*0.38, w*0.2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(x + w*0.34, ey + h*0.4, w*0.09, 0, Math.PI*2); ctx.fill();
+    ctx.restore(); ctx.strokeStyle = ink; ctx.lineWidth = 0.02; ctx.beginPath(); top(); ctx.stroke();                                       // heavy upper lash only: a full outline reads as glasses
+    ctx.lineWidth = 0.006; ctx.beginPath(); ctx.moveTo(x - w*0.5*d, ey + h*0.8); ctx.lineTo(x + w*0.45*d, ey + h*0.72); ctx.stroke();      // a hint of the lower lid
+  };
+  const e1 = hcx + r*0.1, e2 = hcx + r*0.63;
+  if(H.blink){ ctx.lineWidth = 0.018; ctx.beginPath(); ctx.moveTo(e1 - r*0.24, ey - r*0.02); ctx.lineTo(e1 + r*0.22, ey + r*0.05); ctx.moveTo(e2 - r*0.15, ey + r*0.05); ctx.lineTo(e2 + r*0.15, ey - r*0.02); ctx.stroke(); }
+  else { eye(e1, r*0.27, r*0.3, 1); eye(e2, r*0.17, r*0.27, -1); }
+  ctx.strokeStyle = DK ? '#b9b9c6' : k === 4 ? '#c99a2e' : '#241812'; ctx.lineWidth = 0.022;                                                         // brows, angled down to the nose
+  ctx.beginPath(); ctx.moveTo(e1 - r*0.34, ey - r*0.62); ctx.lineTo(e1 + r*0.26, ey - r*0.42); ctx.moveTo(e2 - r*0.15, ey - r*0.42); ctx.lineTo(e2 + r*0.2, ey - r*0.58); ctx.stroke();
+  ctx.strokeStyle = shade(skin, -0.4); ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(hcx + r*0.42, ey + r*0.2); ctx.lineTo(hcx + r*0.5, ey + r*0.38); ctx.lineTo(hcx + r*0.4, ey + r*0.4); ctx.stroke();   // nose
+  ctx.strokeStyle = ink; ctx.lineWidth = 0.014;
+  if(H.mouth){ ctx.fillStyle = '#3a1418'; ctx.beginPath(); ctx.ellipse(hcx + r*0.38, ey + r*0.68, r*0.14, r*0.11, 0, 0, Math.PI*2); fs(); }          // shouting
+  else { ctx.beginPath(); ctx.moveTo(hcx + r*0.16, ey + r*0.66); ctx.quadraticCurveTo(hcx + r*0.36, ey + r*0.74, hcx + r*0.58, ey + r*0.58); ctx.stroke(); }   // smirk
+  if(H.marks){ ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = 0.05; ctx.beginPath(); ctx.rect(hcx - r*0.32, ey + r*0.34, r*0.3, r*0.06); ctx.rect(hcx - r*0.27, ey + r*0.48, r*0.24, r*0.06); ctx.fill(); ctx.shadowBlur = 0; }   // glowing cheek marks
+  // bangs: jagged locks falling over the band, with a streak of shine
+  ctx.lineWidth = 0.014;
+  for(const [bx, wv, ln, lean] of [[-0.62, 0.36, 0.5, -0.12], [-0.28, 0.42, 0.62, 0.04], [0.1, 0.44, 0.7, 0.2], [0.48, 0.4, 0.56, 0.32], [0.78, 0.26, 0.38, 0.28]]){
+    const x0 = hcx + r*bx, y0 = hcy - r*0.9; if(H.band === 'crown' && bx > -0.3 && bx < 0.3) continue;   // the middle lock is left out so the crown's gem shows
+    ctx.fillStyle = hairC; ctx.beginPath(); ctx.moveTo(x0 - r*wv*0.5, y0); ctx.quadraticCurveTo(x0 + r*lean*0.3, y0 + r*ln*0.5, x0 + r*lean, y0 + r*ln); ctx.quadraticCurveTo(x0 + r*(wv*0.45 + lean*0.2), y0 + r*ln*0.4, x0 + r*wv*0.5, y0 - r*0.04); ctx.closePath(); fs(); }
+  ctx.strokeStyle = hairHi; ctx.lineWidth = 0.014; ctx.beginPath(); ctx.moveTo(hcx - r*0.25, hcy - r*1.02); ctx.quadraticCurveTo(hcx + r*0.1, hcy - r*1.12, hcx + r*0.5, hcy - r*0.98); ctx.stroke(); ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
+  if(H.band === 'crown'){   // the crown's centre gem, and its side pieces: small wings for you, horns for Kaine
+    ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = 0.08; ctx.beginPath(); ctx.moveTo(hcx + r*0.22, hcy - r*0.72); ctx.lineTo(hcx + r*0.36, hcy - r*0.48); ctx.lineTo(hcx + r*0.22, hcy - r*0.26); ctx.lineTo(hcx + r*0.08, hcy - r*0.48); ctx.closePath(); fs(); ctx.shadowBlur = 0;
+    ctx.fillStyle = DK ? '#1c1f2b' : H.gold;
+    for(const sx of [-0.8, 0.84]){ const bx = hcx + r*sx, by = hcy - r*0.4, d = sx < 0 ? -1 : 0.5;
+      ctx.beginPath(); ctx.moveTo(bx - r*0.16, by + r*0.1); ctx.quadraticCurveTo(bx + d*r*0.75, by - r*0.2, bx + d*r*0.95, by - r*(DK ? 1.25 : 0.95)); ctx.quadraticCurveTo(bx + d*r*0.3, by - r*0.6, bx + r*0.16, by - r*0.16); ctx.closePath(); fs(); }
+  }
+}
+// a tapered piece of limb or armour from (x1, y1) to (x2, y2): half-width w1 at the start, w2 at the rounded end
+function taperLimb(ctx, x1, y1, x2, y2, w1, w2, fill){
+  const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 1, nx = -dy/d, ny = dx/d;
+  ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(x1 + nx*w1, y1 + ny*w1); ctx.lineTo(x2 + nx*w2, y2 + ny*w2); ctx.arc(x2, y2, w2, Math.atan2(ny, nx), Math.atan2(-ny, -nx), true); ctx.lineTo(x1 - nx*w1, y1 - ny*w1); ctx.closePath(); ctx.fill(); ctx.stroke();
 }
 function sparkle(ctx, x, y, s, col){
   ctx.fillStyle = col; ctx.beginPath();
   ctx.moveTo(x, y - s); ctx.quadraticCurveTo(x, y, x + s, y); ctx.quadraticCurveTo(x, y, x, y + s); ctx.quadraticCurveTo(x, y, x - s, y); ctx.quadraticCurveTo(x, y, x, y - s); ctx.fill();
 }
+/* ----- Your armored forms, v228 redraw: Ascendant (Lv 50) and Legendary. Kaine wears the dark version. -----
+   No more bucket helmet: it is still you. Your face and hair stay visible, the hair is longer with glowing tips
+   (all radiant when Legendary), and a winged crown replaces the headband (Kaine's has horns).
+   The armor is fitted to an athlete's body: a breastplate with a glowing core, pointed layered shoulder plates,
+   arm guards with a fin, hip plates around a tabard in your team colour, knee spikes, greaves and armored boots,
+   with glowing seams, and a long cape with a high collar. Same units and pose inputs as drawHero. */
 function drawKnight(ctx, px, py, hpx, o, LG){
   const t = o.t || 0, face = o.face || 1, sq = o.sq || 1, spinX = o.spinX == null ? 1 : o.spinX;
   const armF = o.armF == null ? 0.25 : o.armF, armB = o.armB == null ? 0.25 : o.armB;
-  const DK = !!o.dark;   // your nemesis wears black steel with crimson trim
-  const plate = DK ? '#3a3f52' : LG ? '#ffffff' : '#f3f6fc', shadeC = DK ? '#1c1f2b' : LG ? '#d5dcee' : '#b7c1d6', hi = DK ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.9)';
-  const ink = DK ? '#05060c' : LG ? '#4a5272' : '#262b40', gold = DK ? '#c0283a' : LG ? '#ffd86a' : '#e2b23e', goldD = '#8a6414', steel = DK ? '#2a2e3c' : LG ? '#e4e9f6' : '#9aa4ba';
-  const glow = DK ? '#ff3344' : LG ? '#ffffff' : '#7fe0ff';
-  const cape1 = DK ? '#22222c' : LG ? '#ffffff' : '#b3202a', cape2 = DK ? '#000000' : LG ? '#c6d2ee' : '#4f0b10', team = o.jersey || '#3fd0ff';
-  const sh = 0.25, waist = 0.15, hipY = -0.47, shY = -0.86, r = 0.12, hcx = 0.015, hcy = shY - 0.14;
+  const DK = !!o.dark;   // Kaine: black steel with crimson trim
+  const plate = DK ? '#3d4258' : LG ? '#ffffff' : '#f1f4fb', shadeC = DK ? '#1e2130' : LG ? '#cfd8ee' : '#aab5cd';
+  const ink = DK ? '#05060c' : LG ? '#4a5272' : '#232840', gold = DK ? '#c0283a' : LG ? '#ffd86a' : '#e6b53e', steel = DK ? '#2a2e3c' : LG ? '#e4e9f6' : '#8f9ab3';
+  const glow = DK ? '#ff3344' : LG ? '#fff6c8' : '#7fe0ff';
+  const cape1 = DK ? '#2a2a36' : LG ? '#ffffff' : '#c2242f', cape2 = DK ? '#000000' : LG ? '#c6d2ee' : '#520c12', team = o.jersey || '#3fd0ff';
+  const skin = DK ? '#d2b09a' : '#e0aa80', k = LG ? 4 : 3;
+  const sh = 0.24, waist = 0.128, hipY = -0.48, shY = -0.83, r = 0.132, hcx = 0.03, hcy = shY - 0.04 - r;
   ctx.save(); ctx.translate(px, py);
   if(o.rot){ ctx.translate(0, -hpx*0.45); ctx.rotate(o.rot); ctx.translate(0, hpx*0.45); }
   if(o.lean) ctx.rotate(o.lean);
   ctx.scale(hpx*face*spinX*(1 + (1 - sq)*0.6), hpx*sq);
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  const fs = (lw) => { ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = lw || 0.016; ctx.stroke(); };
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
+  const fs = lw => { ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = lw || 0.016; ctx.stroke(); };
+  const seam = pts => { ctx.strokeStyle = glow; ctx.lineWidth = 0.009; ctx.shadowColor = glow; ctx.shadowBlur = 0.05; ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = ink; ctx.lineWidth = 0.016; };   // a glowing line in the armor
+  const H = { x:hcx, y:hcy, r, k, DK, skin, skinD:shade(skin, -0.2), acc:gold, glow, ink:'#151026', hairC: DK ? '#eeeef6' : LG ? '#fff3c4' : '#241812', hairHi: DK || LG ? '#ffffff' : '#5a3d2c',
+    tipC: LG ? '#ffffff' : DK ? '#ff5a66' : '#ffd23a', iris: DK ? '#ff3344' : '#ffd23a', eyeGlow:true, band:'crown', gold, t, blink:o.blink, mouth:o.mouth, marks:!DK };
   // radiant backdrop for the Legendary form
   if(LG){ const g = ctx.createRadialGradient(0, -0.6, 0.05, 0, -0.6, 0.85); g.addColorStop(0, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(225,235,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -0.6, 0.85, 0, Math.PI*2); ctx.fill(); }
-  // 1. the cape: wide, flowing back, tattered at the hem
+  // 1) the cape: wide, flowing back, jagged at the hem, with a lighter lining edge
   const w1 = Math.sin(t*3.2)*0.04, w2 = Math.sin(t*3.2 + 1.3)*0.035;
-  const cg = ctx.createLinearGradient(0, shY, 0, 0); cg.addColorStop(0, cape1); cg.addColorStop(1, cape2);
-  ctx.fillStyle = cg;
-  ctx.beginPath(); ctx.moveTo(sh*0.85, shY + 0.02);
-  ctx.quadraticCurveTo(sh*1.5, hipY, 0.36 + w2, -0.06);
-  const hem = [[0.28, -0.0], [0.18, -0.07], [0.08, 0.0], [-0.04, -0.08], [-0.16, -0.01], [-0.3, -0.09], [-0.44, -0.02], [-0.58, -0.1], [-0.7, -0.05]];
-  hem.forEach(([x, y], i) => ctx.lineTo(x + (i % 2 ? w1 : w2)*(1 + i*0.15), y));
-  ctx.quadraticCurveTo(-0.62 + w1, hipY + 0.05, -sh*0.95, shY + 0.03); ctx.closePath(); fs(0.018);
-  ctx.strokeStyle = LG ? gold : 'rgba(0,0,0,.25)'; ctx.lineWidth = 0.012;   // folds
-  for(const fx of [-0.42, -0.2, 0.05]){ ctx.beginPath(); ctx.moveTo(fx*0.4, shY + 0.1); ctx.quadraticCurveTo(fx*0.9 + w1, hipY, fx + w2, -0.06); ctx.stroke(); }
-  // 2. legs: plated thighs, gold knee guards, greaves, pointed sabatons
+  const cg = ctx.createLinearGradient(0, shY, 0, 0); cg.addColorStop(0, cape1); cg.addColorStop(1, cape2); ctx.fillStyle = cg;
+  ctx.beginPath(); ctx.moveTo(sh*0.8, shY + 0.02); ctx.quadraticCurveTo(sh*1.35, hipY, 0.3 + w2, -0.07);
+  [[0.2, -0.02], [0.1, -0.09], [-0.02, -0.02], [-0.14, -0.1], [-0.27, -0.03], [-0.4, -0.12], [-0.53, -0.05], [-0.64, -0.14], [-0.74, -0.1]].forEach(([x, y], i) => ctx.lineTo(x + (i % 2 ? w1 : w2)*(1 + i*0.15), y));
+  ctx.quadraticCurveTo(-0.62 + w1, hipY + 0.02, -sh*0.9, shY + 0.02); ctx.closePath(); fs(0.018);
+  ctx.strokeStyle = LG ? gold : 'rgba(0,0,0,.28)'; ctx.lineWidth = 0.012;                                                                          // folds
+  for(const fx of [-0.46, -0.24, 0.02]){ ctx.beginPath(); ctx.moveTo(fx*0.4, shY + 0.1); ctx.quadraticCurveTo(fx*0.9 + w1, hipY, fx + w2, -0.08); ctx.stroke(); }
+  ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
+  // 2) hair behind the body
+  heroHead(ctx, H, 'back');
+  // 3) legs: thigh plate, a pointed gold knee, a greave with a glowing seam, an armored boot
   const swg = o.moving ? Math.sin(o.run || 0)*0.09 : 0;
-  const feet = o.air ? [[-0.08, -0.13], [0.1, -0.09]] : [[-0.08 + swg, -Math.max(0, swg)*0.35], [0.08 - swg, -Math.max(0, -swg)*0.35]];
+  const feet = o.air ? [[-0.08, -0.14], [0.1, -0.09]] : [[-0.08 + swg, -Math.max(0, swg)*0.35], [0.08 - swg, -Math.max(0, -swg)*0.35]];
   feet.forEach(([fx, fy], i) => {
-    const hx = i ? 0.06 : -0.06, kx = (hx + fx)/2 + 0.03, ky = (hipY + fy)/2;
-    const pc = i ? plate : shadeC;
-    plateSeg(ctx, hx, hipY + 0.04, kx, ky, 0.1, pc, ink, i ? hi : null);
-    plateSeg(ctx, kx, ky, fx, fy - 0.06, 0.085, pc, ink, i ? hi : null);
-    ctx.fillStyle = gold; ctx.beginPath(); ctx.ellipse(kx + 0.01, ky, 0.05, 0.045, 0, 0, Math.PI*2); fs();      // knee guard
-    ctx.fillStyle = steel; ctx.beginPath(); ctx.moveTo(fx - 0.06, fy - 0.07); ctx.lineTo(fx + 0.05, fy - 0.07); ctx.quadraticCurveTo(fx + 0.13, fy - 0.03, fx + 0.14, fy); ctx.lineTo(fx - 0.06, fy); ctx.closePath(); fs();   // sabaton
+    const hx = i ? 0.06 : -0.055, hy = hipY + 0.06, ax = fx - 0.01, ay = fy - 0.08, kx = (hx + ax)/2 + 0.035, ky = (hy + ay)/2 - 0.01, pc = i ? plate : shadeC;
+    taperLimb(ctx, hx, hy, kx, ky, 0.07, 0.055, pc);
+    taperLimb(ctx, kx, ky, ax, ay, 0.06, 0.042, pc);
+    if(i) seam([[kx + 0.012, ky + 0.05], [ax + 0.012, ay - 0.01]]);
+    ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(kx - 0.05, ky - 0.035); ctx.lineTo(kx + 0.02, ky - 0.075); ctx.lineTo(kx + 0.075, ky - 0.005); ctx.lineTo(kx + 0.02, ky + 0.055); ctx.lineTo(kx - 0.045, ky + 0.035); ctx.closePath(); fs(0.014);   // knee
+    ctx.fillStyle = steel; ctx.beginPath(); ctx.moveTo(fx - 0.06, fy - 0.085); ctx.lineTo(fx + 0.045, fy - 0.09); ctx.quadraticCurveTo(fx + 0.075, fy - 0.05, fx + 0.14, fy - 0.03); ctx.lineTo(fx + 0.165, fy - 0.004); ctx.lineTo(fx - 0.064, fy - 0.004); ctx.closePath(); fs();   // boot with a pointed toe
+    ctx.fillStyle = gold; ctx.beginPath(); ctx.rect(fx - 0.062, fy - 0.095, 0.11, 0.022); fs(0.012);                                                 // ankle band
   });
-  // 3. back arm
-  knightArm(ctx, -sh*0.82, shY + 0.05, armB, shadeC, ink, gold, steel, null);
-  // 4. tasset skirt and tabard (team color, gold border)
-  ctx.fillStyle = shadeC;
-  ctx.beginPath(); ctx.moveTo(-waist - 0.02, hipY - 0.07); ctx.lineTo(waist + 0.02, hipY - 0.07); ctx.lineTo(waist + 0.06, hipY + 0.1); ctx.lineTo(-waist - 0.06, hipY + 0.1); ctx.closePath(); fs();
-  for(let i = 0; i < 3; i++){ ctx.strokeStyle = ink; ctx.lineWidth = 0.01; ctx.beginPath(); ctx.moveTo(-waist - 0.03 - i*0.01, hipY - 0.02 + i*0.04); ctx.lineTo(waist + 0.03 + i*0.01, hipY - 0.02 + i*0.04); ctx.stroke(); }
+  // 4) back arm
+  knightArm(ctx, -sh*0.8, shY + 0.045, armB, shadeC, ink, gold, steel, null, true);
+  // 5) hip plates on both sides, and the tabard in your team colour between them
+  for(const sx of [-1, 1]){ ctx.fillStyle = sx < 0 ? shadeC : plate; ctx.beginPath(); ctx.moveTo(sx*0.03, hipY - 0.07); ctx.lineTo(sx*(waist + 0.02), hipY - 0.075); ctx.lineTo(sx*(waist + 0.085), hipY + 0.1); ctx.lineTo(sx*(waist + 0.02), hipY + 0.17); ctx.lineTo(sx*0.05, hipY + 0.1); ctx.closePath(); fs();
+    ctx.strokeStyle = gold; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(sx*(waist + 0.075), hipY + 0.095); ctx.lineTo(sx*(waist + 0.02), hipY + 0.155); ctx.lineTo(sx*0.06, hipY + 0.095); ctx.stroke(); ctx.strokeStyle = ink; ctx.lineWidth = 0.016; }
   ctx.fillStyle = LG ? '#ffffff' : team;
-  ctx.beginPath(); ctx.moveTo(-0.07, hipY - 0.08); ctx.lineTo(0.09, hipY - 0.08); ctx.lineTo(0.1 + w2*0.3, hipY + 0.27); ctx.lineTo(0.01, hipY + 0.31); ctx.lineTo(-0.08 + w2*0.3, hipY + 0.27); ctx.closePath(); fs();
-  ctx.strokeStyle = gold; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(-0.055, hipY - 0.06); ctx.lineTo(-0.065, hipY + 0.25); ctx.moveTo(0.075, hipY - 0.06); ctx.lineTo(0.085, hipY + 0.25); ctx.stroke();
-  // 5. breastplate: white steel with a center ridge, gold trim and a glowing emblem
-  const bg = ctx.createLinearGradient(-sh, shY, sh, hipY); bg.addColorStop(0, DK ? '#555a70' : '#ffffff'); bg.addColorStop(0.55, plate); bg.addColorStop(1, shadeC);
-  ctx.fillStyle = bg;
-  ctx.beginPath(); ctx.moveTo(-sh*0.78, shY - 0.01); ctx.lineTo(sh*0.82, shY - 0.01);
-  ctx.quadraticCurveTo(sh*0.95, shY + 0.16, waist + 0.01, hipY - 0.07); ctx.lineTo(-waist - 0.01, hipY - 0.07);
-  ctx.quadraticCurveTo(-sh*0.9, shY + 0.16, -sh*0.78, shY - 0.01); ctx.closePath(); fs(0.018);
-  ctx.strokeStyle = shadeC; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(0.02, shY + 0.02); ctx.lineTo(0.02, hipY - 0.08); ctx.stroke();   // ridge
-  ctx.strokeStyle = gold; ctx.lineWidth = 0.02; ctx.beginPath(); ctx.moveTo(-sh*0.6, shY + 0.01); ctx.quadraticCurveTo(0.02, shY + 0.09, sh*0.66, shY + 0.01); ctx.stroke();   // collar trim
-  ctx.beginPath(); ctx.moveTo(-waist, hipY - 0.075); ctx.lineTo(waist, hipY - 0.075); ctx.stroke();                                                           // waist trim
-  ctx.fillStyle = gold; ctx.shadowColor = glow; ctx.shadowBlur = 0.08;
-  ctx.beginPath(); ctx.moveTo(0.02, shY + 0.09); ctx.lineTo(0.07, shY + 0.15); ctx.lineTo(0.02, shY + 0.24); ctx.lineTo(-0.03, shY + 0.15); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;   // emblem
-  ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0.02, shY + 0.16, 0.018, 0, Math.PI*2); ctx.fill();
-  // 6. helmet: great helm with a gold brow band and a glowing visor
-  ctx.fillStyle = steel; ctx.beginPath(); ctx.ellipse(hcx, shY - 0.02, 0.085, 0.04, 0, 0, Math.PI*2); fs();   // gorget
-  const hg = ctx.createLinearGradient(hcx - r, hcy - r, hcx + r, hcy + r); hg.addColorStop(0, DK ? '#555a70' : '#ffffff'); hg.addColorStop(1, shadeC);
-  ctx.fillStyle = hg;
-  ctx.beginPath(); ctx.moveTo(hcx - r*0.95, hcy + r*0.95); ctx.lineTo(hcx - r*0.98, hcy - r*0.1); ctx.quadraticCurveTo(hcx - r*0.95, hcy - r*1.25, hcx, hcy - r*1.3);
-  ctx.quadraticCurveTo(hcx + r*1.05, hcy - r*1.25, hcx + r*1.02, hcy - r*0.1); ctx.lineTo(hcx + r*1.0, hcy + r*0.9); ctx.quadraticCurveTo(hcx, hcy + r*1.25, hcx - r*0.95, hcy + r*0.95); ctx.closePath(); fs(0.018);
-  ctx.strokeStyle = shadeC; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(hcx + r*0.15, hcy - r*1.28); ctx.lineTo(hcx + r*0.15, hcy + r*1.05); ctx.stroke();   // helm ridge
-  ctx.strokeStyle = gold; ctx.lineWidth = 0.022; ctx.beginPath(); ctx.moveTo(hcx - r*0.97, hcy - r*0.42); ctx.quadraticCurveTo(hcx, hcy - r*0.55, hcx + r*1.02, hcy - r*0.42); ctx.stroke();   // brow band
-  ctx.fillStyle = '#0b0d18'; ctx.beginPath(); ctx.roundRect(hcx - r*0.55, hcy - r*0.22, r*1.45, r*0.2, r*0.06); ctx.fill();   // visor slit
-  ctx.fillRect(hcx + r*0.08, hcy - r*0.05, r*0.14, r*0.55);
-  ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = 0.12;
-  ctx.beginPath(); ctx.ellipse(hcx + r*0.05, hcy - r*0.12, r*0.2, r*0.055, 0, 0, Math.PI*2); ctx.ellipse(hcx + r*0.6, hcy - r*0.12, r*0.16, r*0.05, 0, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur = 0;   // glowing eyes in the visor
-  if(LG){   // gold wing crest on the Legendary helm
-    ctx.fillStyle = gold;
-    for(const sx of [-1, 1]){ ctx.beginPath(); ctx.moveTo(hcx + sx*r*0.8, hcy - r*0.5); ctx.quadraticCurveTo(hcx + sx*r*1.6, hcy - r*1.2, hcx + sx*r*1.35, hcy - r*2.0); ctx.quadraticCurveTo(hcx + sx*r*1.15, hcy - r*1.2, hcx + sx*r*0.7, hcy - r*0.9); ctx.closePath(); fs(); }
-  }
-  // 7. pauldrons: layered shoulder plates with gold rims and points
-  for(const [sx, col] of [[-1, shadeC], [1, plate]]){
-    const x = sx*sh*0.85, y = shY + 0.02;
-    ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(x + sx*0.02, y - 0.05); ctx.lineTo(x + sx*0.1, y - 0.15); ctx.lineTo(x + sx*0.09, y - 0.03); ctx.closePath(); fs();   // point
-    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, y + 0.035, 0.12, 0.07, sx*0.25, 0, Math.PI*2); fs();
-    ctx.beginPath(); ctx.ellipse(x, y, 0.13, 0.075, sx*0.25, Math.PI, Math.PI*2); ctx.lineTo(x - 0.13, y); ctx.closePath(); fs();
-    ctx.strokeStyle = gold; ctx.lineWidth = 0.016; ctx.beginPath(); ctx.ellipse(x, y + 0.035, 0.11, 0.06, sx*0.25, 0.15, Math.PI - 0.15); ctx.stroke();
-    ctx.fillStyle = gold; ctx.beginPath(); ctx.arc(x + sx*0.03, y + 0.005, 0.016, 0, Math.PI*2); ctx.fill();   // rivet
-  }
-  // 8. front arm
-  knightArm(ctx, sh*0.82, shY + 0.05, armF, plate, ink, gold, steel, hi);
-  // 9. sparkles drifting around you (more of them, with arcs of light, when Legendary)
+  ctx.beginPath(); ctx.moveTo(-0.06, hipY - 0.08); ctx.lineTo(0.085, hipY - 0.08); ctx.lineTo(0.095 + w2*0.3, hipY + 0.26); ctx.lineTo(0.012, hipY + 0.32); ctx.lineTo(-0.07 + w2*0.3, hipY + 0.26); ctx.closePath(); fs();
+  ctx.strokeStyle = gold; ctx.lineWidth = 0.012; ctx.beginPath(); ctx.moveTo(-0.058, hipY + 0.245); ctx.lineTo(0.012, hipY + 0.3); ctx.lineTo(0.083, hipY + 0.245); ctx.stroke(); ctx.strokeStyle = ink; ctx.lineWidth = 0.016;
+  // 6) breastplate: fitted, two chest plates over ribbed belly plates, gold trim, a glowing core in the middle
+  const torso = () => { ctx.beginPath(); ctx.moveTo(-0.05, shY - 0.012); ctx.lineTo(-sh*0.7, shY + 0.0); ctx.quadraticCurveTo(-sh*0.9, shY + 0.1, -sh*0.74, shY + 0.17);
+    ctx.quadraticCurveTo(-waist - 0.035, (shY + hipY)/2 + 0.04, -waist - 0.005, hipY - 0.065); ctx.lineTo(waist + 0.005, hipY - 0.065); ctx.quadraticCurveTo(waist + 0.035, (shY + hipY)/2 + 0.04, sh*0.74, shY + 0.17);
+    ctx.quadraticCurveTo(sh*0.9, shY + 0.1, sh*0.7, shY + 0.0); ctx.lineTo(0.095, shY - 0.012); ctx.lineTo(0.025, shY + 0.05); ctx.closePath(); };
+  const bg = ctx.createLinearGradient(-sh, shY, sh, hipY); bg.addColorStop(0, shadeC); bg.addColorStop(0.45, plate); bg.addColorStop(1, DK ? '#555a70' : '#ffffff');
+  ctx.fillStyle = bg; torso(); fs(0.018);
+  ctx.save(); torso(); ctx.clip();
+  ctx.fillStyle = shadeC; ctx.fillRect(-sh, shY + 0.2, sh*2, hipY - shY);                                                                         // belly plates (darker), ribbed
+  ctx.strokeStyle = ink; ctx.lineWidth = 0.01; for(let i = 0; i < 3; i++){ ctx.beginPath(); ctx.moveTo(-sh, shY + 0.245 + i*0.045); ctx.quadraticCurveTo(0.02, shY + 0.265 + i*0.045, sh, shY + 0.245 + i*0.045); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(10,8,30,.16)'; ctx.fillRect(-sh, shY - 0.02, sh*0.7, hipY - shY + 0.05); ctx.restore();                                   // cel shading
+  ctx.strokeStyle = ink; ctx.lineWidth = 0.014; ctx.beginPath(); ctx.moveTo(-sh*0.74, shY + 0.17); ctx.quadraticCurveTo(-0.05, shY + 0.26, 0.022, shY + 0.19); ctx.quadraticCurveTo(0.1, shY + 0.26, sh*0.74, shY + 0.17); ctx.stroke();   // lower edge of the chest plates
+  ctx.strokeStyle = gold; ctx.lineWidth = 0.02; ctx.beginPath(); ctx.moveTo(-0.05, shY - 0.004); ctx.lineTo(0.025, shY + 0.055); ctx.lineTo(0.093, shY - 0.004); ctx.stroke();   // collar trim
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.rect(-waist - 0.012, hipY - 0.09, waist*2 + 0.024, 0.03); fs(0.012);                                 // belt
+  seam([[-sh*0.6, shY + 0.05], [-0.03, shY + 0.1]]); seam([[sh*0.62, shY + 0.05], [0.075, shY + 0.1]]);
+  ctx.fillStyle = glow; ctx.shadowColor = glow; ctx.shadowBlur = 0.1; ctx.beginPath(); ctx.moveTo(0.022, shY + 0.075); ctx.lineTo(0.065, shY + 0.125); ctx.lineTo(0.022, shY + 0.185); ctx.lineTo(-0.021, shY + 0.125); ctx.closePath(); fs(0.012); ctx.shadowBlur = 0;   // the core
+  ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(0.012, shY + 0.112, 0.01, 0, Math.PI*2); ctx.fill();
+  // 7) the high cape collar behind the neck, the neck, then the head
+  ctx.fillStyle = cape1; ctx.beginPath(); ctx.moveTo(-sh*0.62, shY + 0.0); ctx.lineTo(-0.09, shY - 0.1); ctx.lineTo(-0.035, shY - 0.02); ctx.closePath(); fs(0.014);
+  ctx.fillStyle = skin; ctx.beginPath(); ctx.rect(hcx - 0.045, shY - 0.075, 0.075, 0.085); ctx.fill();
+  ctx.fillStyle = shade(skin, -0.2); ctx.beginPath(); ctx.rect(hcx - 0.045, shY - 0.075, 0.075, 0.03); ctx.fill();
+  ctx.fillStyle = steel; ctx.beginPath(); ctx.moveTo(-0.055, shY - 0.03); ctx.lineTo(0.1, shY - 0.03); ctx.lineTo(0.09, shY + 0.0); ctx.lineTo(0.025, shY + 0.045); ctx.lineTo(-0.048, shY + 0.0); ctx.closePath(); fs(0.012);   // neck guard
+  heroHead(ctx, H, 'front');
+  // 8) shoulder plates: two layers each, pointing up and out, with a gold edge and a glowing seam
+  for(const [sx, col] of [[-1, shadeC], [1, plate]]){ const x = sx*sh*0.82, y = shY + 0.03;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - sx*0.06, y + 0.04); ctx.lineTo(x + sx*0.05, y + 0.03); ctx.lineTo(x + sx*0.1, y + 0.08); ctx.lineTo(x + sx*0.03, y + 0.125); ctx.lineTo(x - sx*0.055, y + 0.1); ctx.closePath(); fs();          // lower layer
+    ctx.beginPath(); ctx.moveTo(x - sx*0.09, y - 0.03); ctx.quadraticCurveTo(x + sx*0.02, y - 0.075, x + sx*0.14, y - 0.085); ctx.quadraticCurveTo(x + sx*0.13, y - 0.0, x + sx*0.075, y + 0.06); ctx.lineTo(x - sx*0.075, y + 0.05); ctx.closePath(); fs();   // upper layer with the point
+    ctx.strokeStyle = gold; ctx.lineWidth = 0.016; ctx.beginPath(); ctx.moveTo(x + sx*0.132, y - 0.078); ctx.quadraticCurveTo(x + sx*0.122, y - 0.0, x + sx*0.072, y + 0.052); ctx.lineTo(x - sx*0.066, y + 0.042); ctx.stroke(); ctx.strokeStyle = ink;
+    seam([[x - sx*0.045, y - 0.02], [x + sx*0.075, y - 0.045]]); }
+  // 9) front arm
+  knightArm(ctx, sh*0.8, shY + 0.045, armF, plate, ink, gold, steel, glow, false);
+  // 10) sparkles drifting around you (more of them, with arcs of light, when Legendary)
   const n = LG ? 9 : 5;
   for(let i = 0; i < n; i++){
     const a = i*2.399 + t*0.6, rr = 0.35 + (i % 3)*0.12, tw = 0.5 + 0.5*Math.sin(t*5 + i*1.7);
-    sparkle(ctx, Math.cos(a)*rr*0.9, -0.62 + Math.sin(a)*rr*0.85, 0.018 + tw*0.02, LG ? 'rgba(255,255,255,.95)' : 'rgba(200,245,255,.9)');
+    sparkle(ctx, Math.cos(a)*rr*0.9, -0.62 + Math.sin(a)*rr*0.85, 0.018 + tw*0.02, LG ? 'rgba(255,255,255,.95)' : DK ? 'rgba(255,170,180,.85)' : 'rgba(200,245,255,.9)');
   }
-  if(LG){ ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 0.01; for(let k = 0; k < 2; k++){ const a0 = t*2 + k*3; ctx.beginPath(); for(let j = 0; j <= 6; j++){ const a = a0 + j*0.35, rr = 0.55 + Math.sin(j*2 + t*9)*0.04; const x = Math.cos(a)*rr, y = -0.6 + Math.sin(a)*rr*0.9; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); } }
+  if(LG){ ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 0.01; for(let q = 0; q < 2; q++){ const a0 = t*2 + q*3; ctx.beginPath(); for(let j = 0; j <= 6; j++){ const a = a0 + j*0.35, rr = 0.55 + Math.sin(j*2 + t*9)*0.04; const x = Math.cos(a)*rr, y = -0.6 + Math.sin(a)*rr*0.9; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); } }
   ctx.restore();
   // jersey number on the tabard
   if(o.num != null && hpx > 40 && !o.rot && Math.abs(spinX) > 0.85){
     ctx.fillStyle = LG ? '#8a6414' : '#fff'; ctx.font = `700 ${Math.round(hpx*0.1)}px 'Barlow Condensed', sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(o.num), px + face*hpx*0.01, py + hpx*sq*(hipY + 0.11));
+    ctx.fillText(String(o.num), px + face*hpx*0.012, py + hpx*sq*(hipY + 0.1));
   }
 }
-// Armored arm: plated upper arm and forearm, gold elbow guard, steel gauntlet.
-function knightArm(ctx, x, y, a, fill, ink, gold, steel, hi){
-  ctx.save(); ctx.translate(x, y); ctx.rotate(-a);
-  plateSeg(ctx, 0, 0, 0, 0.16, 0.085, fill, ink, hi);
-  plateSeg(ctx, 0, 0.16, 0, 0.29, 0.075, fill, ink, hi);
-  ctx.fillStyle = gold; ctx.strokeStyle = ink; ctx.lineWidth = 0.014; ctx.beginPath(); ctx.arc(0, 0.16, 0.042, 0, Math.PI*2); ctx.fill(); ctx.stroke();   // elbow
-  ctx.fillStyle = steel; ctx.beginPath(); ctx.roundRect(-0.05, 0.27, 0.1, 0.09, 0.03); ctx.fill(); ctx.stroke();                                               // gauntlet
-  ctx.fillStyle = gold; ctx.fillRect(-0.05, 0.265, 0.1, 0.02);
+// Armored arm: plated upper arm, a gold elbow point, an arm guard with a fin on the outside, and a gauntlet fist.
+function knightArm(ctx, x, y, a, fill, ink, gold, steel, glow, back){
+  const L1 = 0.16, L2 = 0.155, w = 0.05;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-a); ctx.strokeStyle = ink; ctx.lineWidth = 0.016; ctx.lineJoin = 'round';
+  taperLimb(ctx, 0, 0, 0, L1, w, w*0.85, fill);                                                                                                   // upper arm
+  ctx.translate(0, L1 - 0.005); ctx.rotate(-0.32);
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(-w*0.8, L2*0.1); ctx.lineTo(-w*1.7, -L2*0.12); ctx.lineTo(-w*0.85, L2*0.55); ctx.closePath(); ctx.fill(); ctx.stroke();   // fin on the outside of the arm guard
+  ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(-w*0.95, 0); ctx.quadraticCurveTo(-w*1.12, L2*0.45, -w*0.7, L2); ctx.lineTo(w*0.7, L2); ctx.quadraticCurveTo(w*1.08, L2*0.4, w*0.95, 0); ctx.closePath(); ctx.fill(); ctx.stroke();   // arm guard
+  if(glow){ ctx.strokeStyle = glow; ctx.lineWidth = 0.009; ctx.shadowColor = glow; ctx.shadowBlur = 0.05; ctx.beginPath(); ctx.moveTo(0, L2*0.15); ctx.lineTo(0, L2*0.85); ctx.stroke(); ctx.shadowBlur = 0; ctx.strokeStyle = ink; ctx.lineWidth = 0.016; }
+  ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(-w*0.95, -0.02); ctx.lineTo(0, -0.05); ctx.lineTo(w*0.95, -0.02); ctx.lineTo(0, 0.04); ctx.closePath(); ctx.fill(); ctx.stroke();   // elbow
+  ctx.beginPath(); ctx.rect(-w*0.8, L2*0.86, w*1.6, L2*0.14); ctx.fill(); ctx.stroke();                                                              // wrist band
+  ctx.fillStyle = steel; ctx.beginPath(); ctx.ellipse(0.004, L2 + w*0.62, w*0.88, w*0.9, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();                  // gauntlet fist
+  ctx.beginPath(); ctx.ellipse(w*0.62, L2 + w*0.38, w*0.3, w*0.42, -0.5, 0, Math.PI*2); ctx.fill(); ctx.stroke();
   ctx.restore();
 }
 // ----- (old hero parts, kept for reference) -----
@@ -4104,7 +4136,7 @@ function paintPortrait(ctx, sp, jersey, asc, heroSt, t, look){
   // fit the creature's full height into the canvas, but keep babies a bit smaller so growth shows
   // fit both height and width (tail and wings stick out behind, arms in front)
   const rx = SHAPES[S.look.shape].rx*S.look.body, wide = rx*2 + (S.look.tip || S.legend ? 0.75 : 0.45) + (S.legend || S.look.orn === 'Wind' ? 0.3 : 0) + (S.heroForm ? 0.45 : S.look.back === 'wings' || S.look.back === 'moth' ? 0.3 : 0);
-  const h = Math.min(124/S.uh, 118/wide, 112) * (S.legend ? 1 : [0.8, 0.92, 1][S.stage - 1]) * (asc ? 0.8 : 1) * (S.heroForm && !asc ? 1.35 : 1);   /* v227: your knight was drawn much smaller than Kaine's in portraits */   // leave a little room for the aura (bigger than before, so you can tell who it is)
+  const h = Math.min(124/S.uh, 118/wide, 112) * (S.legend ? 1 : [0.8, 0.92, 1][S.stage - 1]) * (asc ? 0.8 : 1) * (S.heroForm && !asc ? 1.35 : 1) * (SPECIES[sp].nemesis && heroSt >= 3 && !asc ? 0.84 : 1);   /* v227: your knight was drawn much smaller than Kaine's in portraits */   // leave a little room for the aura (bigger than before, so you can tell who it is)
   const cx = 64 + (S.look.tip || S.legend ? 0.16 : 0.04)*h + (S.heroForm ? (asc ? 0.12*h : -0.1*h) : 0);   // shift right to make room for the tail (your knight: a little left, so the sword arm fits)
   if(asc) drawAura(ctx, cx, 128, S.uh*h, h*0.85, t + 0.2, 1.1, asc);
   drawCreature(ctx, sp, cx, asc ? 128 : 136, h, { face:1, jersey, num:null, t, legendary: asc === 7, heroStage: heroSt, blink: (t % 4) > 3.85, look });
@@ -6999,7 +7031,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 227;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 228;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
