@@ -7041,7 +7041,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 238;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 239;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7787,6 +7787,7 @@ const KAINE_SCENES = {
   lost:{ title:'Shadow Prevails', reward:0, lines:[['kaine', 'I told you. Only one of us walks out.'], ['kaine', 'Come back when you are worthy of a rematch. I will be waiting, and I will be stronger.'], ['coach', 'He just got better. So do we. Next year.']] },
   won:{ title:'Light Prevails', reward:500, lines:[['kaine', '...You beat me. In a series. Nobody has ever done that.'], ['kaine', 'Pryce built me to beat you. Maybe I was built for the wrong team.'], ['coach', 'Boss, he is asking you a question. What do you want to do?']], choice:true },
   ally:{ title:'Brothers in Arms', reward:0, lines:[['kaine', 'Light and shadow, same jersey. The league is not ready.'], ['coach', 'Kaine is ours. Pryce just threw a chair through his office window.']] },
+  later:{ title:'Not Yet', reward:0, lines:[['kaine', 'Not yet. Fine.'], ['kaine', 'Then I keep coming for you. Same round, next year.'], ['coach', 'He will be back in the playoffs next season, boss. Beat him again and he will ask again.']] },
   gone1:{ title:'No', reward:0, lines:[['kaine', 'No. You beat me, and the answer is no.'], ['kaine', 'Then I am done being measured against you. Forget my name.'], ['kaine', 'When everyone else has fallen, I will be the last thing standing in your way.'], ['coach', 'He cleaned out his locker. Nobody knows where he went.']] },
   gone:{ title:'The Second No', reward:0, lines:[['kaine', 'Twice. You looked at me and said no twice.'], ['kaine', 'Then I am done being measured against you. Forget my name.'], ['kaine', 'When everyone else has fallen, I will be the last thing standing in your way.'], ['coach', 'He cleaned out his locker. Nobody knows where he went.']] },
   unbound:{ title:'Unbound', reward:0, lines:[['kaine', 'Then I will go find out what I am without Pryce. Without anyone.'], ['kaine', 'When I come back, I will not be the same. Neither will you.']] },
@@ -7959,11 +7960,11 @@ function showKaineScene(L, key, done){
     <img src="${portrait(NEMESIS_SP, L.teams[L.rival].color)}" alt="" style="width:120px;height:132px;align-self:center;filter:drop-shadow(0 0 14px rgba(255,51,68,.6))">
     ${sc.lines.map(([who, t]) => `<div class="line"><span class="speaker ${who === 'kaine' ? 'rival' : 'coach'}">${who === 'kaine' ? 'Kaine' : COACH}</span><p>${esc(t)}</p></div>`).join('')}
     ${sc.reward ? `<div class="msg">Reward: ${sc.reward} coins</div>` : ''}
-    ${sc.choice ? `<div class="row"><button class="btn hot" id="k-ally">Brothers in arms: bring him to your team</button><button class="btn" id="k-free">${K.act >= 2 ? 'Turn him down again' : 'Turn him down: he leaves the league'}</button></div>
-      <p class="dim cond" style="margin:0"><b>Bring him in:</b> he plays for you against Vex and then the Five Crowns. What happens after you beat the Five depends on a choice you make then.<br><b>Turn him down:</b> he disappears. You face Vex and then the Five Crowns without him, and he comes back alone at the very end as the last and strongest opponent of your career.</p>`
+    ${sc.choice ? `<div class="row"><button class="btn hot" id="k-ally">Brothers in arms: bring him to your team</button><button class="btn" id="k-free">Not yet</button></div>
+      <p class="dim cond" style="margin:0"><b>Bring him in:</b> he plays for you against Vex and then the Five Crowns. What happens after you beat the Five depends on a choice you make then.<br><b>Not yet:</b> nothing is lost. He stays your rival, he is in the playoffs again next season, and when you beat him in a series he asks again. The story waits for you.</p>`
       : `<div class="row"><button class="btn hot" id="k-ok">Continue</button></div>`}</div>`;
   const close = next => { saveLeague(); M.hidden = true; if(next) return showKaineScene(L, next, done); done(); };
-  if(sc.choice){ $('#k-ally').onclick = () => { kaineAlliance(L); close('ally'); }; $('#k-free').onclick = () => { kaineGone(L); close(K.act >= 2 ? 'gone' : 'gone1'); }; }   /* v236: one "no" is final (it used to send him away for a year first) */
+  if(sc.choice){ $('#k-ally').onclick = () => { kaineAlliance(L); close('ally'); }; $('#k-free').onclick = () => { K.declined = (K.declined || 0) + 1; close('later'); }; }   /* v239: saying no only delays the story. He stays your rival and asks again the next time you beat him in a playoff series */
   else $('#k-ok').onclick = () => close();
 }
 /* ---------- A 20-YEAR CAREER ----------
@@ -8346,8 +8347,9 @@ function formFive(L){
                                   L.five.fin = 1). The final boss is the Five Crowns AND Kaine on one team, with Kaine
                                   starting. This is the harder ending. Beat them in a playoff series to end the story
                                   (L.five.fin = 2): Kaine retires, and the Five ask to join you once more.
-   Side road: if you turn Kaine down when he first asks, he leaves the league, you face Vex and the Five without him,
-   and he returns alone as the Last Shadow after the Five (the same as ending 1).
+   No side roads (v239): every choice that does not move the story forward only delays it. If you say "not yet" when
+   Kaine asks to join, he stays your rival and asks again the next time you beat him in a playoff series.
+   (Saves from older versions where he already left the league keep working: Vex, the Five, then Kaine alone.)
    kaineJoinsCrowns moves him. Returns true if he moved. */
 function kaineJoinsCrowns(L){
   const K = L.kaine, N = L.nemesis != null ? L.players[L.nemesis] : null, U = L.teams[L.user], F = L.five, R = F ? L.teams[F.tid] : null;
