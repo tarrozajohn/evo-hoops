@@ -1118,7 +1118,7 @@ const dblStyle = S => S ? { ...S, three:S.three*0.5, jump:S.jump*0.5, drive:S.dr
    CROWN_KIT[n] = { rare, keys } for crown number n (1 Zenith, 2 Mirage, 3 Onyx, 4 Tempest, 5 Colossus, 6 Vex). */
 const CROWN_KIT = [null,
   { rare:'maestro',    keys:{ vision:true, laser:true, captain:true } },        // Zenith: Foresight
-  { rare:'sniper',     keys:{ unblockable:true, heatcheck:true, nolimit:true } },             // Mirage: No Limit (scores from anywhere)
+  { rare:'sniper',     keys:{ nolimit:true } },                                 // Mirage: No Limit (deadly when open, from anywhere; poor when guarded)
   { rare:'ballhawk',   keys:{ thiefking:true } },                               // Onyx: Shadow (leads the double team on you)
   { rare:'juggernaut', keys:{ unstoppable:true, handles:true, meteor:true } },  // Tempest: Comet
   { rare:'wall',       keys:{ guardian:true } },                                // Colossus: The Wall
@@ -2125,7 +2125,7 @@ function releaseShot(G, e){
   if(nd && dd < 6) p -= 0.015*bdg(nd, 'clamps');                                // Clamps
   if(d < 12) p += 0.02*bdg(e, 'finisher');                                       // Fearless Finisher
   if(hasKey(e, 'heatcheck')) p += 0.05*Math.min(5, e.heat || 0);                 // Heat Check: hot from deep
-  if(hasKey(e, 'nolimit')) p += three ? 0.22 : 0.1;                              // No Limit: a hand in his face does not matter
+  if(hasKey(e, 'nolimit')) p += dd > 6 ? 0.3 : dd > 4 ? 0.05 : -0.2;             // No Limit: left open (nobody within 6 ft) he barely misses, from any distance; with a defender on him he is worse than an ordinary shooter
   if(G.ents.some(o => o !== e && o.team === e.team && hasKey(o, 'gravity'))) p += 0.06;   // Gravity: they can't leave your teammate
   if(e.spotT > 0) p += 0.10;                                                     // Spotlight
   if(G.lastPass && G.lastPass.passer.team === e.team && G.lastPass.passer !== e && G.t - G.lastPass.t < 2 && hasKey(G.lastPass.passer, 'vision')) p += 0.04;
@@ -2370,7 +2370,7 @@ function bestPassTarget(G, e, mode){
   for(const m of G.ents){
     if(m.team !== e.team || m === e || m.stun > 0) continue;
     const o = nearestOpp(G, m), od = o ? dist(m, o) : 10, dm = dist(m, h);
-    let s = od*0.8 - dm*0.12 + (dm < 8 ? 2 : 0) + (m.fire ? 3 : 0) + (m.star ? (m.plan && m.plan.focus === 'share' ? 0 : m.plan && m.avatar ? 3.5 : 2) : 0) + (mode === 'advance' ? -dm*0.2 : 0) + (hasKey(m, 'nolimit') ? 5 + dm*0.12 : 0);   // teammates look for the star, and for Mirage wherever he is standing
+    let s = od*0.8 - dm*0.12 + (dm < 8 ? 2 : 0) + (m.fire ? 3 : 0) + (m.star ? (m.plan && m.plan.focus === 'share' ? 0 : m.plan && m.avatar ? 3.5 : 2) : 0) + (mode === 'advance' ? -dm*0.2 : 0) + (hasKey(m, 'nolimit') && od > 6 ? 5 + dm*0.12 : 0);   // teammates look for the star, and for Mirage whenever he is open, wherever he is standing
     for(const x of G.ents) if(x.team !== e.team && distToSeg(x, e, m) < 2.2){ s -= 4; break; }   // blocked lane
     if(s > bs){ bs = s; best = m; }
   }
@@ -2474,6 +2474,7 @@ function handlerAI(G, e, dt, sk){
   if(e.think <= 0 && e.z === 0){
     e.think = 0.16 + rand()*0.16;
     e.aiTurbo = rand() < 0.45*S.drive;
+    if(back && hasKey(e, 'nolimit') && ndd > 6 && e.hold > 0.3 && rand() < 0.5){ startJump(G, e, sk); return still; }   // No Limit: wide open in the backcourt, he lets it go from there
     if(!back){
       const cutter = G.ents.find(o => o.team === e.team && o !== e && o.cutOn > 0 && dist(o, h) < 10 && o.r.dnk > 50 && (() => { const od = nearestOpp(G, o); return !od || dist(od, o) > 3; })());
       if(cutter && dh > 8 && rand() < 0.07*S.pass){ doPass(G, e, cutter, true); return still; }
@@ -2481,9 +2482,10 @@ function handlerAI(G, e, dt, sk){
       if(dh < (S.drive > 1.2 ? 9 : 8) && (ndd > 2.3 || rand() < 0.3)){ if(dh < 7.8 && (e.r.dnk > 52 || rand() < 0.45)) startDunk(G, e); else startJump(G, e, sk); return still; }
       if(G.shot < 2.2){ startJump(G, e, sk); return still; }
       // open threes: shooters let it fly, slashers and rim protectors almost never do
-      const nl = hasKey(e, 'nolimit');   // Mirage's No Limit: lets it fly from anywhere in the front court, even with a defender close
-      if(three && dh < (nl ? 42 : 27) && ndd > (nl ? 1.2 : S.three > 1.5 ? 3.5 : 4.5) && e.hold > (nl ? 0.12 : 0.25) && rand() < (nl ? 0.9 : 0.4*S.three*(e.r.sht/75)*(e.fire ? 1.5 : 1))){ startJump(G, e, sk); return still; }
-      const range = dh < 23.2 ? 1 : dh < 27 ? 0.95*(e.r.sht/80)*Math.min(1.5, S.three) : nl && dh < 42 ? 1 : 0.05;
+      const nl = hasKey(e, 'nolimit'), nlOpen = nl && ndd > 6;   // Mirage's No Limit: only when nobody is within 6 ft of him
+      if(nl && !nlOpen && ndd < 4 && e.hold > 0.2 && rand() < 0.6){ const m = bestPassTarget(G, e, 'ai'); if(m){ doPass(G, e, m); return still; } }   // guarded: he gives it up
+      if(three && dh < (nlOpen ? 60 : 27) && ndd > (S.three > 1.5 ? 3.5 : 4.5) && e.hold > (nlOpen ? 0.12 : 0.25) && rand() < (nlOpen ? 0.9 : 0.4*S.three*(e.r.sht/75)*(e.fire ? 1.5 : 1))){ startJump(G, e, sk); return still; }
+      const range = dh < 23.2 ? 1 : dh < 27 ? 0.95*(e.r.sht/80)*Math.min(1.5, S.three) : nlOpen ? 1 : 0.05;
       const openF = ndd > 7 ? 1.5 : ndd > 4.5 ? 0.8 : 0.2;
       const p = 0.42 * range * openF * (e.r.sht/78) * (e.fire ? 1.6 : 1) * S.jump;
       if(e.hold > 0.4 && rand() < p*0.8){ startJump(G, e, sk); return still; }
@@ -6763,7 +6765,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 199;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 200;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7976,7 +7978,7 @@ function hubLegacyMain(L){
    your wins and losses against them, playoff series won and lost, and their extra boost against you. */
 const FIVE = [
   { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.', ab:'Foresight', abd:'His passes can never be stolen, teammates shoot better off them, and his whole team plays +4.' },
-  { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.', ab:'No Limit', abd:'Scores from anywhere: no penalty from deep, jump shots that can\'t be blocked, and he heats up fast.' },
+  { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.', ab:'No Limit', abd:'Leave him open and he scores from anywhere, even the far end of the court. Put a defender within 4 ft and he shoots much worse and gives the ball up.' },
   { nick:'Onyx',     arch:'wing',    title:'The Lockdown',  line:'Guards your best player all night.', ab:'Shadow', abd:'Leads the double team on you, steals 50% more often and picks off passes.' },
   { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.', ab:'Comet', abd:'Can\'t be stripped, dunks can\'t be blocked, and his slams count 3 and knock nearby defenders down.' },
   { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.', ab:'The Wall', abd:'Blocks far more shots and keeps the ball when he does. Shots near him are harder.' },
