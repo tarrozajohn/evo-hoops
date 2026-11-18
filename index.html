@@ -1120,7 +1120,7 @@ const CROWN_KIT = [null,
   { rare:'maestro',    keys:{ vision:true, laser:true, captain:true } },        // Zenith: Foresight
   { rare:'sniper',     keys:{ nolimit:true } },                                 // Mirage: No Limit (deadly when open, from anywhere; poor when guarded)
   { rare:'ballhawk',   keys:{ thiefking:true } },                               // Onyx: Shadow (leads the double team on you)
-  { rare:'juggernaut', keys:{ unstoppable:true, handles:true, meteor:true } },  // Tempest: Comet
+  { rare:'juggernaut', keys:{ handles:true, meteor:true } },                    // Tempest: Comet (v201: his dunks can be blocked)
   { rare:'wall',       keys:{ guardian:true } },                                // Colossus: The Wall
   { rare:'phenom',     keys:{} } ];                                             // Vex: Prodigy
 const KAINE_FINAL_KEYS = { unstoppable:true, unblockable:true, handles:true, guardian:true, gravity:true };
@@ -6765,7 +6765,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 200;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 201;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7980,7 +7980,7 @@ const FIVE = [
   { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.', ab:'Foresight', abd:'His passes can never be stolen, teammates shoot better off them, and his whole team plays +4.' },
   { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.', ab:'No Limit', abd:'Leave him open and he scores from anywhere, even the far end of the court. Put a defender within 4 ft and he shoots much worse and gives the ball up.' },
   { nick:'Onyx',     arch:'wing',    title:'The Lockdown',  line:'Guards your best player all night.', ab:'Shadow', abd:'Leads the double team on you, steals 50% more often and picks off passes.' },
-  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.', ab:'Comet', abd:'Can\'t be stripped, dunks can\'t be blocked, and his slams count 3 and knock nearby defenders down.' },
+  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.', ab:'Comet', abd:'Can\'t be stripped, and his slams count 3 and knock nearby defenders down. His dunks can be blocked, so meet him at the rim.' },
   { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.', ab:'The Wall', abd:'Blocks far more shots and keeps the ball when he does. Shots near him are harder.' },
   { nick:'Vex',      arch:'slasher', title:'The Sixth Man', line:'The one who warned you. First off their bench.', ab:'Prodigy', abd:'+5 on every rating.' } ];   /* Vex is not one of the five: he is entry 6 */
 // what they say. who = index into FIVE (0 Zenith, 1 Mirage, 2 Onyx, 3 Tempest, 4 Colossus)
