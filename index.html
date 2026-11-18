@@ -7157,7 +7157,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 244;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 245;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7951,7 +7951,7 @@ function kaineFinalIntro(L){
   N.lvl = Math.max(N.lvl || 0, lv); N.xp = xpFor(N.lvl); N.kaineEdge = (N.kaineEdge || 0) + 5; N.contract = { sal:0, yrs:99, legend:true }; N.inj = 0;
   R.roster.unshift(N.id); sortRosterByOvr(L, R);
   R.roster.slice(0, STARTERS).forEach(id => { const p = L.players[id]; if(p === N) return; p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); autoTrain(p); });   // his starters train up to your level
-  sortRosterByOvr(L, R); R.star = N.id; K.ending = 'final'; K.final = { s:L.season, edge:(L.five && L.five.joined ? 66 : 56), w:0, l:0 };   /* v229: starts far above anyone before him (more if the Five play for you) */ memoClear();
+  sortRosterByOvr(L, R); R.star = N.id; K.ending = 'final'; K.final = { s:L.season, edge:(L.five && L.five.joined ? 96 : 86), w:0, l:0 };   /* v229: starts far above anyone before him (more if the Five play for you) */ memoClear();
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine is back with the ${R.name}. Nobody has ever seen a creature play like this.`, rival:true, me:true });
   saveLeague(true); M.hidden = false; fanfare(true);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
@@ -8009,19 +8009,19 @@ const vexRound = L => { const t = stalkTeam(L); return t != null && L.teams[t].c
    Whenever YOU make the playoffs, his team is in too, on the other side of your bracket, and it does not lose to
    anyone else. So he is always waiting in the conference finals (same conference) or the Finals (other conference),
    and beating him in that series is how you earn him. If you miss the playoffs, none of this applies. */
-/* v229: the final boss is meant to be very hard. His team's rating edge over you starts at 56 (66 if the Five play
+/* v229: the final boss is meant to be very hard. His team's rating edge over you starts at 86 (96 if the Five play
    for you) and can never fall below this floor, however many times you lose to him. Before, it started at 20 to 30
    and dropped by 4 with every loss, so a few losses turned the last fight into a coin flip. */
 // Is this player one of the Five Crowns, or Vex playing as their sixth man? (Vex on his own team, before the Five arrive, does not count.)
 const crownSafe = e => { const c = e && e.p ? e.p.crown : 0; if(!c) return false; if(c <= 5) return true; const L = typeof LEAGUE !== 'undefined' ? LEAGUE : null; return !!(L && L.five && !L.five.joined && L.five.six === e.p.id); };
-const KAINE_FINAL_FLOOR = 46;   /* v244: was 40 */
+const KAINE_FINAL_FLOOR = 76;   /* v245: was 46 */
 /* v230: the Five Crowns era is harder too. Three changes:
-     - their rating edge starts 60 higher (85, 110 or 140 depending on how dominant you have been), never drops below
+     - their rating edge starts at 125, 150 or 180 (depending on how dominant you have been), never drops below
        FIVE_FLOOR (it was 20) and eases by 2 after a loss instead of 4
      - their double team on your Legend costs you more (-40 shooting, -32 dunking; it was -24 and -20)
      - Ultimates work on them in full, like on anyone: the stun, and the ball coming loose.
      - their passes are intercepted about a third as often. Colossus alone was having 13 passes a game picked off. */
-const FIVE_FLOOR = 80;   /* v244: was 70 */
+const FIVE_FLOOR = 110;   /* v245: was 80 */
 const kaineHunt = L => { const K = L.kaine || {}; return !kaineOff(K) && L.nemesis != null && L.rival != null && L.teams[L.rival] && L.teams[L.rival].roster.includes(L.nemesis) && !L.teams[L.user].roster.includes(L.nemesis); };
 const kaineHuntLive = L => kaineHunt(L) && !!(L.playoffs && (L.playoffs.seeds || []).includes(L.user));   // only once the bracket has you in it
 const stalkTeam = L => kaineFinalOn(L) ? L.rival : vexTeam(L) != null ? vexTeam(L) : fiveOn(L) && !L.five.joined ? L.five.tid : kaineHuntLive(L) ? L.rival : null;
@@ -8454,7 +8454,7 @@ function formFive(L){
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
     const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; vex.inj = 0; room(vex);   /* he arrives healthy */ R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
-  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 150 : (L.heat || 0) >= 50 ? 120 : 95 };   /* v244: starts at 95, 120 or 150 */
+  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 180 : (L.heat || 0) >= 50 ? 150 : 125 };   /* v245: starts at 125, 150 or 180 (every boss +30) */
   memoClear(); sortRosterByOvr(L, R); R.star = ids[0];   // v233: sort again now that L.five exists, because Vex's story rating only counts once it does
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
@@ -9596,7 +9596,7 @@ function showUltimate(p, done){
 /* v244: a little more for every boss. Kaine's team while he is still your rival, and Vex's team, had no rating edge
    of their own (only the league-wide "heat"). Now they get a small fixed one. The Five and the final fights were
    raised where their numbers are set (FIVE_FLOOR, FIVE_FINAL_EDGE, KAINE_FINAL_FLOOR and the starting edges). */
-const RIVAL_EDGE = 5, VEX_EDGE = 10;
+const RIVAL_EDGE = 35, VEX_EDGE = 40;   /* v245: every boss +30 (these were 5 and 10) */
 const storyEdge = (L, opp) => vexTeam(L) === opp ? VEX_EDGE : kaineHunt(L) && opp === L.rival ? RIVAL_EDGE : 0;
 function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
   const opp0 = g.a === L.user ? g.b : g.a, boss = five ? 2 : vexTeam(L) === opp0 || (kaineFinalOn(L) && opp0 === L.rival) ? 1 : 0;   // story bosses double you harder: 2 = the Five Crowns, 1 = Vex's team and final-boss Kaine
