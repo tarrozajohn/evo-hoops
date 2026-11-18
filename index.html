@@ -252,6 +252,19 @@ select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
 .kainecard{border-color:rgba(255,84,112,.6)}
 .achgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}.ach{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;opacity:.6}.ach.on{opacity:1;border-color:rgba(255,210,58,.6);background:rgba(255,210,58,.07)}
 .card.goldf{border-color:#ffd23a;box-shadow:0 0 0 1px #ffd23a inset,0 0 14px rgba(255,210,58,.3)}.card.flamef{border-color:#ff6a2c;box-shadow:0 0 0 1px #ff6a2c inset,0 0 18px rgba(255,90,40,.45)}.card.frostf{border-color:#8fe6ff;box-shadow:0 0 0 1px #8fe6ff inset,0 0 18px rgba(143,230,255,.4)}.card.prismf{border:2px solid transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(120deg,#ff5470,#ffd23a,#4fdc8a,#3fd0ff,#b57bff) border-box}
+.upgridc{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.upcard{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.upcard.just{border-color:#ffd23a;box-shadow:0 0 0 2px rgba(255,210,58,.35),0 0 24px rgba(255,210,58,.25);animation:showpop .5s cubic-bezier(.2,1.3,.4,1) both}
+.uphead{display:flex;align-items:center;gap:10px}.upicon{font-size:28px;line-height:1}.upname{display:flex;flex-direction:column;min-width:0;flex:1}.upname b{font-size:18px}
+.upnew{padding:3px 10px;border-radius:999px;background:#ffd23a;color:#1a1200;font:800 12px var(--cond);letter-spacing:.06em;white-space:nowrap}
+.upcmp{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
+.upnow,.upnext{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:10px;font:500 15px/1.3 var(--cond);min-width:0}
+.upnow{background:rgba(255,255,255,.05);color:rgba(255,255,255,.72)}.upnext{background:rgba(80,220,130,.12);box-shadow:inset 0 0 0 1px rgba(80,220,130,.5);color:#fff;font-weight:600}
+.upnext.max{background:rgba(255,210,58,.1);box-shadow:inset 0 0 0 1px rgba(255,210,58,.4)}
+.upnow span,.upnext span{font:800 10px var(--cond);letter-spacing:.14em;opacity:.7}.upnext span{color:var(--good);opacity:1}.upnext.max span{color:#ffd23a}
+.uparrow{display:grid;place-items:center;font-size:22px;color:var(--good)}
+.upcard .upgbtns .btn{font-size:16px;padding:10px 16px}
+@media (max-width:640px){.upgridc{grid-template-columns:1fr}.upcmp{grid-template-columns:1fr}.uparrow{transform:rotate(90deg);height:18px}}
 .upgrow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px}.upginfo{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px}.upgbtns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.upginfo .dim.cond{font-size:14px}
 .autotog{display:flex;gap:6px;align-items:center;font-weight:700;padding:4px 8px;border:1px solid var(--line);border-radius:8px}.autotog input{width:22px;height:22px;margin:0}
 .autorow{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px}.autorow input[type=checkbox]{width:20px;height:20px;flex:none}
@@ -572,6 +585,23 @@ html.skin .card.sel{box-shadow:inset 0 0 0 3px var(--cool),0 0 0 0 transparent;b
 .procands{display:flex;flex-direction:column;gap:6px;width:100%}.procands .btn{display:flex;align-items:center;gap:10px;text-align:left;white-space:normal}.procands img{width:40px;height:44px;flex:none}.procands span{display:flex;flex-direction:column}
 .goatlist{display:flex;flex-direction:column;gap:4px;margin-top:8px}.goatlist > div{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.04);font:600 14px var(--cond)}
 .goatlist i{font-style:normal;font-size:16px;text-align:center;opacity:.5}.goatlist .ok{background:rgba(80,220,130,.14)}.goatlist .ok i{color:var(--good);opacity:1}.goatlist .dim{font-size:12px;text-align:right}
+.storycard.newscard:not(.panel){padding:18px 16px;border:1px solid var(--line)}
+.simask{max-width:560px!important}.simopts{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.simopts .btn{display:flex;align-items:center;gap:12px;text-align:left;white-space:normal;padding:14px;min-height:74px}
+.simopts .btn i{font-style:normal;font-size:30px;line-height:1;flex:none}.simopts .btn span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.simopts .btn b{font-size:18px}.simopts .btn em{font-style:normal;font:500 13px/1.25 var(--cond);opacity:.85;text-transform:none;letter-spacing:0}
+@media (max-width:520px){.simopts{grid-template-columns:1fr}}
+/* v206 playoff bracket tree */
+.bktree{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.bkcol{display:flex;flex-direction:column;flex:1 0 92px;min-width:92px}
+.bkname{font:700 10px/1.2 var(--cond);letter-spacing:.08em;text-transform:uppercase;opacity:.65;text-align:center;min-height:28px;display:grid;place-items:center}
+.bkcells{flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:8px}
+.bkm{border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.04);overflow:hidden;font:700 14px var(--cond)}
+.bkm > div{display:flex;align-items:center;gap:6px;padding:5px 7px}.bkm > div + div{border-top:1px solid var(--line)}
+.bkm i{width:9px;height:9px;border-radius:50%;flex:none}.bkm span{flex:1;white-space:nowrap}.bkm b{font-weight:800}
+.bkm .l{opacity:.42}.bkm .w b{color:var(--good)}.bkm .me span{color:#ffd23a}
+.bkm.mine{border-color:#ffd23a;box-shadow:0 0 0 1px rgba(255,210,58,.45)}.bkm.live{background:rgba(255,255,255,.09)}.bkm.tbd{opacity:.32}
+.bkcol.C .bkcells{justify-content:center}.bkcol.C .bkm{border-width:2px}.bkchamp{text-align:center;font:800 14px var(--cond);color:#ffd23a;margin-top:6px}
 .fivequotes{display:flex;flex-direction:column;gap:3px;text-align:left;font:600 14px var(--cond);padding:6px 10px;border-left:3px solid #ffd23a;background:rgba(255,255,255,.05);border-radius:6px;width:100%}
 .fivefaces{display:flex;gap:8px;flex-wrap:wrap}.fivefaces span{display:flex;align-items:center;gap:4px;font:600 13px var(--cond)}.fivefaces img{width:30px;height:33px}.fivefaces i{font-style:normal;color:#ffd23a}
 .mvs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);z-index:2;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;
@@ -1309,21 +1339,26 @@ function autoDevelop(L){
   return bought;
 }
 function hubUpgrades(L){
-  const A = autoOf(L), U = L.teams[L.user], tracks = upgTracks(L);
+  const A = autoOf(L), tracks = upgTracks(L);
   const pips = (l, m) => `<span class="pips">${Array.from({ length:m }, (_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('')}</span>`;
   const tog = (attr, on) => `<label class="autotog"><input type="checkbox" ${attr} ${on ? 'checked' : ''}>Auto</label>`;
-  const unspent = U.roster.reduce((t, id) => t + CATS.reduce((a, c) => a + ((L.players[id].tp && L.players[id].tp[c]) || 0), 0), 0);
-  const me = L.avatar != null && !L.avatarRetired ? L.players[L.avatar] : null, done = L.practiced === practiceKey(L);
-  // one row per coin upgrade
-  const row = t => `<div class="upgrow"><div class="upginfo"><div class="row" style="justify-content:space-between;gap:6px"><b>${t.name}</b><span class="cond dim">${t.stars ? stars(t.lvl) : t.max === Infinity ? `level ${t.lvl} · no limit` : pips(t.lvl, t.max) + ` ${t.lvl}/${t.max}`}</span></div>
-      <div class="dim cond">Now: ${t.now}</div>${t.next ? `<div class="cond">Next: ${t.next}</div>` : '<div class="good cond">Maxed out</div>'}</div>
-    <div class="upgbtns">${t.cost != null ? `<button class="btn sm hot" data-act="${t.act}" data-id="${t.id}" ${L.coins >= t.cost ? '' : 'disabled'}><span class="coin"></span> ${t.cost}</button>` : ''}${t.lvl < t.max ? tog(`data-autobuy="${t.key}"`, A.buy[t.key]) : ''}</div></div>`;
-  const group = g => `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>${g}</h3>${tracks.filter(t => t.group === g).map(row).join('')}</div>`;
+  const ICON = { 'No limit':'♾️', Facilities:'🏗️', Arena:'🏟️', Staff:'🧑‍💼' };
+  // v206: which upgrade just went up a level? Compare each level with the last time this page was drawn, and mark that card.
+  const snap = UI.upSnap || {}, now = {}; tracks.forEach(t => { now[t.key] = t.lvl; if(snap[t.key] != null && t.lvl > snap[t.key]) UI.upJust = t.key; }); UI.upSnap = now;
+  // one card per upgrade: what it is, what you have NOW, what you get AFTER, and the price
+  const row = t => { const can = t.cost != null && L.coins >= t.cost, just = UI.upJust === t.key;
+    return `<div class="upcard ${just ? 'just' : ''}">
+      <div class="uphead"><span class="upicon">${ICON[t.group] || '⬆️'}</span><div class="upname"><b>${t.name}</b><span class="cond dim">${t.stars ? stars(t.lvl) : t.max === Infinity ? `Level ${t.lvl} · no limit` : pips(t.lvl, t.max) + ` Level ${t.lvl} of ${t.max}`}</span></div>${just ? '<span class="upnew">✓ UPGRADED</span>' : ''}</div>
+      <div class="upcmp"><div class="upnow"><span>NOW</span>${t.now}</div>
+        ${t.next ? `<div class="uparrow">➜</div><div class="upnext"><span>${t.cost != null ? 'AFTER UPGRADE' : 'NEXT'}</span>${t.next}</div>` : '<div class="uparrow">✓</div><div class="upnext max"><span>MAXED OUT</span>Nothing left to buy here.</div>'}</div>
+      <div class="upgbtns">${t.cost != null ? `<button class="btn hot" data-act="${t.act}" data-id="${t.id}" ${can ? '' : 'disabled'}><span class="coin"></span> ${can ? 'Upgrade for' : 'Costs'} ${t.cost.toLocaleString()}</button>${can ? '' : `<span class="dim cond">${(t.cost - L.coins).toLocaleString()} coins short</span>`}` : ''}${t.lvl < t.max ? tog(`data-autobuy="${t.key}"`, A.buy[t.key]) : ''}</div></div>`; };
+  const group = g => { const list = tracks.filter(t => t.group === g); return list.length ? `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>${ICON[g]} ${g}</h3><div class="upgridc">${list.map(row).join('')}</div></div>` : ''; };
+  const buyable = tracks.filter(t => t.cost != null && L.coins >= t.cost).length, cheapest = tracks.filter(t => t.cost != null).sort((a, b) => a.cost - b.cost)[0];
   // the Upgrades page (Office, next to Shop): only the things you buy with coins. Every Auto switch is on the Auto tab.
   return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
-      <h3>Upgrades</h3>
-      <p class="dim" style="margin:0">Things you buy once with coins and keep: facilities, staff and team boosts. Tick Auto on a row and it buys the next level by itself after games (cheapest first).</p>
-      <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label></div>
+      <div class="row" style="justify-content:space-between;gap:10px"><h3>Upgrades</h3><span class="cond" style="font-size:18px"><span class="coin"></span> <b>${L.coins.toLocaleString()}</b> coins · ${buyable ? `<b style="color:var(--good)">${buyable} you can afford</b>` : cheapest ? `cheapest is ${cheapest.cost.toLocaleString()}` : 'everything is maxed'}</span></div>
+      <p class="dim" style="margin:0">Things you buy once with coins and keep. Each card shows what you have <b>now</b> and what you get <b>after the upgrade</b>. Tick Auto on a card and it buys the next level by itself after games (cheapest first).</p>
+      <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label>
     </div>
     ${group('No limit')}${group('Facilities')}${group('Arena')}${group('Staff')}`;
 }
@@ -1337,7 +1372,7 @@ function hubAuto(L){
   return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
       <div class="row" style="justify-content:space-between"><h3>⚙️ Auto</h3><button class="btn sm ${allOn ? '' : 'hot'}" data-act="auto-all" data-id="${allOn ? 'off' : 'on'}">${allOn ? 'Turn every Auto off' : 'Turn every Auto on'}</button></div>
       <p class="dim" style="margin:0">Each switch does one chore for you after every game. "Turn every Auto on" also turns on the coin upgrades (Office → Upgrades).</p>
-      <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label></div>
+      <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label>
     </div>
     <div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>Player growth</h3>
       <div class="upgrow"><div class="upginfo"><b>Creature training</b><div class="dim cond">Spends each creature's TP: skills stay even, tilted toward its playstyle. ${unspent ? `${unspent} TP unspent on your roster.` : 'No TP waiting.'}</div></div>
@@ -2805,6 +2840,41 @@ function drawSnout(ctx, kind, hx, hy, hr, c1, dark){
   }
 }
 // Eyes. (ex, ey) is the near eye; the far eye sits to its right.
+/* v206 anime look, part 1: the eyes. Large angular eyes with a heavy upper lash line, an iris shaded in the creature's
+   type colour, a tall pupil and two highlights. Babies get big round ones; the top lid slants down toward the nose more
+   at each stage, so final forms glare. Used for every creature except the ones with visors, bug eyes or slit eyes. */
+function animeEyes(ctx, ex, ey, hr, o){
+  const { stage, dark, tc, kind } = o, baby = stage === 1;
+  for(const [x, w, k] of [[ex - hr*0.04, hr*(baby ? 0.24 : 0.3), 1], [ex + hr*(baby ? 0.5 : 0.6), hr*(baby ? 0.2 : 0.22), 0.88]]){   // near eye, then the far eye (a little smaller)
+    const h = hr*(baby ? 0.4 : stage === 2 ? 0.34 : 0.28)*k*(kind === 'big' ? 1.1 : 1), sl = baby ? 0 : stage === 2 ? 0.22 : 0.42;   // sl: how far the top lid slants
+    const oy = ey - h*(0.5 + sl*0.5), top = () => { ctx.moveTo(x - w, oy); ctx.quadraticCurveTo(x - w*0.05, ey - h*(1.2 + sl*0.15), x + w, ey - h*(0.5 - sl*0.75)); };
+    const shape = () => { ctx.beginPath(); top(); ctx.quadraticCurveTo(x + w*1.05, ey + h*0.55, x + w*0.15, ey + h*0.86); ctx.quadraticCurveTo(x - w*0.85, ey + h*0.9, x - w, oy); ctx.closePath(); };
+    shape(); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.save(); ctx.clip();
+    const ir = h*0.92, ix = x + w*0.1, iy = ey + h*0.1, g = ctx.createLinearGradient(0, iy - ir, 0, iy + ir); g.addColorStop(0, shade(tc, -0.65)); g.addColorStop(0.5, tc); g.addColorStop(1, shade(tc, 0.55));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(ix, iy, w*(baby ? 0.82 : 0.62), ir, 0, 0, Math.PI*2); ctx.fill();                     // big iris in the type colour (babies: almost the whole eye)
+    ctx.fillStyle = '#0b0714'; ctx.beginPath(); ctx.ellipse(ix, iy, w*(baby ? 0.3 : 0.2), ir*(baby ? 0.5 : 0.62), 0, 0, Math.PI*2); ctx.fill();   // pupil: taller and thinner as they grow
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(ix - w*0.26, iy - ir*0.42, w*0.2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(ix + w*0.24, iy + ir*0.42, w*0.09, 0, Math.PI*2); ctx.fill();   // two highlights
+    ctx.restore();
+    ctx.strokeStyle = dark; ctx.lineWidth = 0.01; shape(); ctx.stroke();
+    ctx.lineWidth = baby ? 0.022 : 0.05; ctx.beginPath(); top(); ctx.stroke();                                                    // heavy upper lash line
+    if(!baby){ ctx.lineWidth = 0.026; ctx.beginPath(); ctx.moveTo(x - w, oy); ctx.lineTo(x - w*1.28, oy - h*0.3); ctx.stroke();   // lash flick at the outer corner
+      ctx.lineWidth = 0.036; ctx.beginPath(); ctx.moveTo(x - w*1.1, ey - h*(1.5 + sl*0.8)); ctx.lineTo(x + w*0.9, ey - h*(1.0 - sl*0.6)); ctx.stroke(); }   // sharp brow
+  }
+}
+/* v206 anime look, part 2: hair. Spikes swept up and back from the crown, and a jagged fringe over the forehead.
+   Stage 2 gets a short cut, final forms get long spikes. col = the creature's mane or accent colour. */
+function animeHair(ctx, hx, hy, hr, col, dark, t, st){
+  const sw = Math.sin(t*4)*hr*0.05, n = st === 3 ? 6 : 4;
+  ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 0.022; ctx.lineJoin = 'miter';
+  for(let i = n - 1; i >= 0; i--){ const a = -Math.PI*0.5 - 0.2 - i*(1.55/n), len = hr*(st === 3 ? 1.0 : 0.6)*(1 - i*0.06), a2 = a - 0.5;
+    ctx.beginPath(); ctx.moveTo(hx + Math.cos(a + 0.3)*hr*0.88, hy + Math.sin(a + 0.3)*hr*0.88); ctx.lineTo(hx + Math.cos(a)*hr*0.85 + Math.cos(a2)*len + sw, hy + Math.sin(a)*hr*0.85 + Math.sin(a2)*len); ctx.lineTo(hx + Math.cos(a - 0.32)*hr*0.88, hy + Math.sin(a - 0.32)*hr*0.88); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  // front tuft: three short spikes swept forward over the forehead, well above the eyes
+  for(let i = 0; i < 3; i++){ const bx = hx - hr*0.25 + i*hr*0.34, by2 = hy - hr*0.86 + i*hr*0.06;
+    ctx.beginPath(); ctx.moveTo(bx - hr*0.24, by2 - hr*0.04); ctx.lineTo(bx + hr*0.36, by2 - hr*(0.5 - i*0.08) + sw*0.5); ctx.lineTo(bx + hr*0.2, by2 + hr*0.16); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 0.018; ctx.beginPath(); ctx.moveTo(hx - hr*0.5, hy - hr*1.0); ctx.lineTo(hx - hr*0.78, hy - hr*1.32); ctx.stroke();   // shine on one spike
+  ctx.strokeStyle = dark; ctx.lineJoin = 'round';
+}
 function drawEyes(ctx, kind, ex, ey, hr, o){
   const { big, stage, iris, c1, dark, blink, glow } = o, fs = () => { ctx.fill(); ctx.stroke(); };
   ctx.lineWidth = 0.015; ctx.strokeStyle = dark;
@@ -2829,6 +2899,7 @@ function drawEyes(ctx, kind, ex, ey, hr, o){
     ctx.beginPath(); ctx.ellipse(ex + hr*0.48, ey, hr*0.16, hr*0.14, 0.15, 0, Math.PI*2); fs(); ctx.shadowBlur = 0;
     ctx.fillStyle = '#120a18'; ctx.beginPath(); ctx.ellipse(ex + hr*0.04, ey, hr*0.04, hr*0.14, 0, 0, Math.PI*2); ctx.ellipse(ex + hr*0.51, ey, hr*0.03, hr*0.11, 0, 0, Math.PI*2); ctx.fill(); return;
   }
+  if(o.tc){ animeEyes(ctx, ex, ey, hr, { ...o, kind }); return; }   // v206: every ordinary eye is drawn anime-style
   const b = (kind === 'big' ? 1.3 : 1)*big;
   ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.ellipse(ex, ey, hr*0.2*b, hr*0.27*b, 0, 0, Math.PI*2); fs();
@@ -3047,7 +3118,7 @@ SPECIES.forEach(S => {
     if(plan.tail !== 'none' && plan.tail !== 'normal' && st >= 2 && !S.look.tip) S.look.tip = S.types[0];
     if(plan.tail === 'none') S.look.tip = null;
   }
-  S.look.vee = (st === 3 || S.legend) && !S.look.blocky && !S.avatar && !S.nemesis && !S.heroForm;   // final forms: wide shoulders, narrow waist
+  S.look.vee = (st >= 2 || S.legend) && !S.look.blocky && !S.avatar && !S.nemesis && !S.heroForm;   // final forms: wide shoulders, narrow waist
   S.uh = unitHeight(S);
 });
 function bodyColor(S){ const c = TYPES[S.types[0]].c; return S.stage === 1 ? shade(c, 0.15) : S.stage === 3 ? shade(c, -0.12) : c; }
@@ -3094,6 +3165,14 @@ function drawCreature(ctx, sp, px, py, hpx, o){
   ctx.scale(hpx*face*spinX*(1 + (1 - sq)*0.6), hpx*sq);  // squash and stretch
   ctx.lineWidth = 0.028; ctx.strokeStyle = dark; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   const fillStroke = () => { ctx.fill(); ctx.stroke(); };
+  // v206 energy: final forms burn with their type's colour (drawn first, so it sits behind everything)
+  if((S.stage === 3 || S.legend) && !S.heroForm){ const tcol = TYPES[S.types[0]].c, cy = by - ry*0.3, R = Math.max(rx, ry)*1.5; ctx.save();   /* kept tight so it fits inside portraits */
+    const gl = ctx.createRadialGradient(0, cy, R*0.15, 0, cy, R); gl.addColorStop(0, hexA(tcol, 0.6)); gl.addColorStop(1, hexA(tcol, 0)); ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(0, cy, R, R*1.1, 0, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha *= 0.6;
+    for(let i = 0; i < 6; i++){ const fx = (i - 2.5)*rx*0.4, top = hy - hr*(0.5 + 0.8*Math.abs(Math.sin(i*1.9 + t*5))), w = rx*0.26, lean = (i - 2.5)*rx*0.1 + Math.sin(i + t*3)*rx*0.1;
+      const gr = ctx.createLinearGradient(0, by, 0, top); gr.addColorStop(0, hexA(tcol, 0)); gr.addColorStop(0.45, hexA(tcol, 0.85)); gr.addColorStop(1, hexA(shade(tcol, 0.5), 0));   /* fades in from the base, so there is no hard bottom edge */
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(fx - w, by); ctx.quadraticCurveTo(fx - w*1.1, (by + top)/2, fx + lean, top); ctx.quadraticCurveTo(fx + w*1.1, (by + top)/2, fx + w, by); ctx.closePath(); ctx.fill(); }
+    ctx.restore(); }
   // 1. things behind the body: legend wings, type ornament, tail
   if(S.legend){
     ctx.fillStyle = c2; ctx.globalAlpha *= 0.85;
@@ -3113,6 +3192,9 @@ function drawCreature(ctx, sp, px, py, hpx, o){
   } else if(K.leg > 0){
     ctx.strokeStyle = shade(c1, -0.25); ctx.lineWidth = 0.098*K.body*thickL;
     for(const [fx, fy] of feet){ ctx.beginPath(); ctx.moveTo(fx*0.7, by + ry*0.7); ctx.lineTo(fx, fy - 0.02); ctx.stroke(); }
+    if(o.jersey){ const lw = ctx.lineWidth; ctx.lineCap = 'butt'; ctx.strokeStyle = shade(o.jersey, -0.3); ctx.lineWidth = lw*1.4;   // v206: shorts legs over the top half of each leg
+      for(const [fx, fy] of feet){ const x0 = fx*0.7, y0 = by + ry*0.7, x1 = x0 + (fx - x0)*0.5, y1 = y0 + (fy - 0.02 - y0)*0.5; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); }
+      ctx.lineCap = 'round'; }
     ctx.strokeStyle = dark; ctx.lineWidth = 0.022;
   }
   if(K.legs !== 'none'){
@@ -3142,12 +3224,15 @@ function drawCreature(ctx, sp, px, py, hpx, o){
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(-1, by + ry*0.6, 2, 0.045);                   // waistband
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-rx*0.93, by + ry*0.62, rx*0.13, ry);  // the stripe carries down the shorts
   }
+  // v206 cel shading: a hard-edged shadow down the far side and underneath, and one sharp highlight
+  ctx.fillStyle = 'rgba(8,10,40,.28)'; ctx.beginPath(); ctx.rect(-2, by - ry*2, 4, ry*4); ctx.ellipse(-rx*0.3, by - ry*0.28, rx*1.1, ry*1.14, 0, 0, Math.PI*2); ctx.fill('evenodd');
+  ctx.fillStyle = 'rgba(255,255,255,.34)'; ctx.beginPath(); ctx.ellipse(-rx*0.5, by - ry*0.45, rx*0.1, ry*0.38, 0.45, 0, Math.PI*2); ctx.fill();
   ctx.restore();
   bodyPath(ctx, K, by, rx, ry); ctx.stroke();
   if(K.orn) drawOrnament(ctx, K.orn, 'body', g);
   if((S.stage === 3 || S.legend) && !S.heroForm){   // shoulder plates on final forms
     ctx.fillStyle = litFill(ctx, c2, 0, by - ry*0.8, rx*1.1);
-    for(const sx of [-1, 1]){ ctx.beginPath(); ctx.moveTo(sx*rx*0.3, by - ry*0.86); ctx.quadraticCurveTo(sx*rx*0.8, by - ry*1.16, sx*rx*1.14, by - ry*0.66); ctx.lineTo(sx*rx*0.98, by - ry*0.42); ctx.quadraticCurveTo(sx*rx*0.66, by - ry*0.66, sx*rx*0.3, by - ry*0.86); ctx.closePath(); fillStroke(); }
+    for(const sx of [-1, 1]){ ctx.beginPath(); ctx.moveTo(sx*rx*0.3, by - ry*0.86); ctx.lineTo(sx*rx*0.75, by - ry*1.08); ctx.lineTo(sx*rx*1.42, by - ry*1.14); ctx.lineTo(sx*rx*0.98, by - ry*0.42);   /* v206: a spike, not a rounded pad */ ctx.quadraticCurveTo(sx*rx*0.66, by - ry*0.66, sx*rx*0.3, by - ry*0.86); ctx.closePath(); fillStroke(); }
   }
   if(S.avatar){ ctx.fillStyle = LG ? '#fff6c8' : '#ffcf4a'; star(ctx, rx*0.3, by - ry*0.05, 0.065); if(LG) heroArmor(ctx, g); }   // chest emblem (and gold armor)
   // 5. head with its features (babies get smaller versions)
@@ -3157,6 +3242,7 @@ function drawCreature(ctx, sp, px, py, hpx, o){
   if(S.avatar) heroHair(ctx, g, LG);
   ctx.fillStyle = litFill(ctx, c1, hx, hy, hr);
   headPath(ctx, K.headS, hx, hy, hr); fillStroke();
+  ctx.save(); headPath(ctx, K.headS, hx, hy, hr); ctx.clip(); ctx.fillStyle = 'rgba(8,10,40,.24)'; ctx.beginPath(); ctx.rect(hx - hr*2, hy - hr*2, hr*4, hr*4); ctx.ellipse(hx - hr*0.22, hy - hr*0.2, hr*1.12, hr*1.12, 0, 0, Math.PI*2); ctx.fill('evenodd'); ctx.restore();   // v206 cel shadow
   if(K.headS === 'snout' || K.headS === 'beak') drawSnout(ctx, K.headS, hx, hy, hr, c1, dark);
   if(S.stage === 3 || S.legend){   // face markings on final forms
     ctx.save(); ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI*2); ctx.clip();
@@ -3173,14 +3259,15 @@ function drawCreature(ctx, sp, px, py, hpx, o){
     ctx.beginPath(); ctx.moveTo(hx - hr*0.9, hy - hr*0.46); ctx.lineTo(hx - hr*1.45, hy - hr*0.22 - fl); ctx.lineTo(hx - hr*1.3, hy - hr*0.1 - fl); ctx.closePath(); fillStroke();
     ctx.save(); headPath(ctx, K.headS, hx, hy, hr); ctx.clip(); ctx.fillRect(hx - hr*1.3, hy - hr*0.64, hr*2.6, hr*0.2); ctx.fillStyle = 'rgba(255,255,255,.65)'; ctx.fillRect(hx - hr*1.3, hy - hr*0.64, hr*2.6, hr*0.045); ctx.restore();
   }
+  if(S.stage >= 2 && !S.avatar && !S.heroForm && K.eyes !== 'visor'){ animeHair(ctx, hx, hy, hr, shade((P && P.mane) || c2, -0.08), dark, t, S.stage === 3 || S.legend ? 3 : 2); ctx.lineWidth = 0.028; }   // v206 anime hair
   if(S.avatar) heroBand(ctx, g, LG);
   // 6. face: eyes, brows and mouth come from the body plan
   const snouty = K.headS === 'snout' || K.headS === 'beak';
   const ex = hx + hr*(snouty ? 0.12 : 0.25), ey = hy - hr*0.05;
   const big = S.stage === 1 ? 1.15 : 1;   // baby eyes are bigger
   const irisC = S.heroForm ? (S.heroForm === 4 ? '#fff3a0' : '#3fd0ff') : (S.stage === 3 || S.legend) ? TYPES[S.types[S.types.length - 1]].c : null;
-  drawEyes(ctx, K.eyes || 'round', ex, ey, hr, { big, stage:S.stage, iris:irisC, c1, dark, blink:o.blink, glow: S.heroForm ? irisC : K.eyes === 'slit' ? (P && P.acc) || '#ffe14a' : (S.stage === 3 || S.legend) ? irisC : null });
-  if(S.stage >= 2 && K.eyes !== 'visor' && K.eyes !== 'bug' && K.eyes !== 'fierce' && K.eyes !== 'sleepy'){   // brows: calm at stage 2, fierce at stage 3
+  drawEyes(ctx, K.eyes || 'round', ex, ey, hr, { tc:S.stage >= 2 || S.legend ? TYPES[S.types[S.types.length - 1]].c : null, big, stage:S.legend ? 3 : S.stage,   /* babies keep their round eyes */ iris:irisC, c1, dark, blink:o.blink, glow: S.heroForm ? irisC : K.eyes === 'slit' ? (P && P.acc) || '#ffe14a' : (S.stage === 3 || S.legend) ? irisC : null });
+  if(S.stage >= 2 && K.eyes === 'slit'){   // brows for slit eyes only (v206: the anime eyes draw their own)
     const k = S.stage === 3 ? 1.5 : 0.9;
     ctx.strokeStyle = dark; ctx.lineWidth = 0.042;
     ctx.beginPath(); ctx.moveTo(ex - hr*0.2, ey - hr*(0.33 + 0.07*k)); ctx.lineTo(ex + hr*0.2, ey - hr*(0.33 - 0.07*k)); ctx.moveTo(ex + hr*0.3, ey - hr*(0.31 - 0.06*k)); ctx.lineTo(ex + hr*0.68, ey - hr*(0.31 + 0.06*k)); ctx.stroke();
@@ -4880,6 +4967,21 @@ function seriesYou(L, S){ const [m, o] = seriesMine(L, S);
   return m === o ? `Series tied ${m}-${o}` : m > o ? `You lead the series ${m}-${o}` : `You trail in the series ${m}-${o}`; }
 // your series this round, finished or not (null once you are out of the bracket)
 const userSeries = L => L.phase === 'playoffs' && L.playoffs ? L.playoffs.series.find(s => s.a === L.user || s.b === L.user) || null : null;
+/* v206 playoff bracket tree. One column per round: the first half of each round's series on the left, the second half on
+   the right (East and West in a 16-team bracket), the Finals in the middle. Rounds not reached yet show as TBD.
+   Every series shows both teams and their wins; the winner's number is green, the loser is faded, your series is gold. */
+function bracketTree(L){
+  const P = L.playoffs; if(!P) return '';
+  const size = P.size || 4, R = Math.round(Math.log2(size)), rounds = P.done.concat(L.phase === 'playoffs' ? [P.series] : []), names = ROUND_NAMES[size] || [];
+  const row = (x, tid, w) => `<div class="${x.winner != null ? (x.winner === tid ? 'w' : 'l') : ''} ${tid === L.user ? 'me' : ''}"><i style="background:${L.teams[tid].color}"></i><span>${L.teams[tid].abbr}</span><b>${w == null ? 0 : w}</b></div>`;
+  const box = x => x ? `<div class="bkm ${x.a === L.user || x.b === L.user ? 'mine' : ''} ${x.winner == null ? 'live' : ''}" title="${esc(L.teams[x.a].name)} vs ${esc(L.teams[x.b].name)}${x.bestOf > 1 ? ', best of ' + x.bestOf : ''}">${row(x, x.a, x.wa)}${row(x, x.b, x.wb)}</div>` : '<div class="bkm tbd"><div><i style="background:#666"></i><span>TBD</span><b>–</b></div><div><i style="background:#666"></i><span>TBD</span><b>–</b></div></div>';
+  const col = (r, side) => { const n = size >> (r + 1), list = rounds[r] || [], idx = []; for(let i = side === 'R' ? n/2 : 0; i < (side === 'L' ? n/2 : n); i++) idx.push(i);
+    return `<div class="bkcol ${side}"><div class="bkname">${side === 'C' ? '🏆 ' : ''}${names[r] || 'Round ' + (r + 1)}</div><div class="bkcells">${idx.map(i => box(list[i])).join('')}</div></div>`; };
+  let cols = ''; for(let r = 0; r < R - 1; r++) cols += col(r, 'L'); cols += col(R - 1, 'C'); for(let r = R - 2; r >= 0; r--) cols += col(r, 'R');
+  const fin = (rounds[R - 1] || [])[0], champ = fin && fin.winner != null ? L.teams[fin.winner] : null;
+  return `<div class="panel"><div class="row" style="justify-content:space-between"><h3>Playoff bracket</h3><span class="dim cond">${size >= 16 ? 'East on the left · West on the right' : ''}</span></div>
+    <div class="bktree" style="margin-top:8px">${cols}</div>${champ ? `<div class="bkchamp">🏆 Season ${L.season} champions: ${esc(champ.name)}</div>` : ''}</div>`;
+}
 function advancePlayoffs(L){
   const P = L.playoffs;
   if(P.series.some(s => s.winner == null)) return;
@@ -6508,6 +6610,8 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   if(L.phase === 'draft'){ renderDraft(); return; }
   const U = L.teams[L.user];
   UI.keepY = view().hidden ? null : view().scrollTop;   // remember the scroll before redrawing
+  const keepX = sel => [...document.querySelectorAll(sel)].map(e => e.scrollLeft);   // v206: and the sideways scroll of the tab strips and wide tables
+  const xTabs = keepX('#view .tabs, #view .subtabs'), xWide = UI.lastTab === UI.tab ? keepX('#view .tablewrap, #view .bktree, #view .dticker') : [];
   if(UI.tab === 'staff') UI.tab = 'upgrades';   // old saves/bookmarks: the Staff tab became Upgrades
   if(L.keyNote){ UI.msg = L.keyNote; L.keyNote = null; }
   if(L.offerNote){ UI.msg = (UI.msg ? UI.msg + ' ' : '') + L.offerNote; L.offerNote = null; }
@@ -6545,6 +6649,10 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   if(UI.toTop){ y = 0; UI.toTop = false; }
   if(y != null){ const v = view(); v.scrollTop = y; requestAnimationFrame(() => { if(Math.abs(v.scrollTop - y) > 2) v.scrollTop = y; }); }
   else view().scrollTop = 0;
+  { const put = (sel, xs) => [...document.querySelectorAll(sel)].forEach((e, i) => { if(xs[i]) e.scrollLeft = xs[i]; });
+    put('#view .tabs, #view .subtabs', xTabs); put('#view .tablewrap, #view .bktree, #view .dticker', xWide);
+    document.querySelectorAll('#view .tabs, #view .subtabs').forEach(strip => { const on = strip.querySelector('.on'); if(!on) return;   // keep the tab you are on in sight
+      const r = on.getBoundingClientRect(), sr = strip.getBoundingClientRect(); if(r.left < sr.left) strip.scrollLeft -= sr.left - r.left + 24; else if(r.right > sr.right) strip.scrollLeft += r.right - sr.right + 24; }); }
   if(UI.toast){ toast(UI.toast); UI.toast = null; }
   UI.msg = '';
   hubModals(L);
@@ -6765,7 +6873,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 205;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 206;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8186,16 +8294,11 @@ function hubPlay(L){
         : `<div class="panel" style="display:flex;flex-direction:column;gap:12px"><div>Your season is over. The playoffs go on.</div><div class="row"><button class="btn hot" data-act="simplayoffs" ${UI.busy ? 'disabled' : ''}>Sim playoffs</button></div>${UI.busy ? `<div class="dim">${UI.busy}</div>` : ''}</div>`;
     }
   }
-  let bracket = '';
-  if(L.playoffs){
-    const all = L.playoffs.done.concat(L.phase === 'playoffs' ? [L.playoffs.series] : []);
-    const names = ROUND_NAMES[L.playoffs.size || 4];   // 16-team brackets list the East series first, then the West
-    bracket = `<div class="panel"><h3>Playoffs</h3>${all.map((round, ri) => `<div style="margin-top:8px"><div class="dim cond">${names[ri] || 'Finals'}</div>${round.map(x => `<div class="cond num bracketrow ${x.a === L.user || x.b === L.user ? 'mine' : ''}"><span style="color:${L.teams[x.a].color}">${L.teams[x.a].abbr}</span> ${x.wa ?? ''}<span class="dim">–</span>${x.wb ?? ''} <span style="color:${L.teams[x.b].color}">${L.teams[x.b].abbr}</span>${x.winner != null ? ` · <b>${L.teams[x.winner].abbr} wins</b>` : ''}</div>`).join('')}</div>`).join('')}</div>`;
-  }
+  const bracket = '';   // v206: the round-by-round list became the bracket tree (bracketTree), shown full width under the main panel
   const recent = L.log.filter(x => x.a === L.user || x.b === L.user).slice(-6).reverse();
   const recentHtml = `<div class="panel"><h3>Recent results</h3>${recent.length ? `<table style="margin-top:6px"><tbody>${recent.map(x => { const me = x.a === L.user, us = me ? x.sa : x.sb, them = me ? x.sb : x.sa, opp = L.teams[me ? x.b : x.a]; return `<tr><td>${x.playoff ? 'Playoff ' : ''}vs ${opp.abbr}</td><td style="color:${us > them ? 'var(--good)' : 'var(--bad)'}">${us > them ? 'W' : 'L'} ${us}-${them}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No games yet.</p>'}</div>`;
   const titles = L.champs.filter(c => c.tid === L.user).length;
-  return (L.phase === 'offseason' ? offHero(L) + offseasonSteps(L) + awardsPanel(L) : '') + eventPanel(L) + main + eraBar(L) + storyPanel(L) + echoPanel(L, false) + storylinePanel(L, false) + todoPanel(L) + newsPanel(L) + `<div class="split">${recentHtml}${bracket}${titles ? `<div class="panel"><h3>Trophy case</h3><div class="big" style="color:var(--hot)">${titles}×</div><div class="dim cond">${L.champs.filter(c => c.tid === L.user).map(c => 'Season ' + c.season).join(' · ')}</div></div>` : ''}</div>`;
+  return (L.phase === 'offseason' ? offHero(L) + offseasonSteps(L) + awardsPanel(L) : '') + eventPanel(L) + main + (L.playoffs && (L.phase === 'playoffs' || L.phase === 'offseason') ? bracketTree(L) : '') + eraBar(L) + storyPanel(L) + echoPanel(L, false) + storylinePanel(L, false) + todoPanel(L) + newsPanel(L) + `<div class="split">${recentHtml}${bracket}${titles ? `<div class="panel"><h3>Trophy case</h3><div class="big" style="color:var(--hot)">${titles}×</div><div class="dim cond">${L.champs.filter(c => c.tid === L.user).map(c => 'Season ' + c.season).join(' · ')}</div></div>` : ''}</div>`;
 }
 /* "What should I trade for?" For each position, the game tries real players from other teams who play that spot
    (natural position), about as good as your weakest starter up to 12 OVR better (the kind you can actually trade for).
@@ -10455,8 +10558,17 @@ function franchiseGame(sim, mode){
   const L = LEAGUE, g = userGame(L); if(!g) return;
   // big game: ask first (unless turned off in Settings)
   if(sim && !mode && (SET.live || 'big') !== 'never' && (SET.live === 'all' || isBigGame(L, g))){ const M = $('#modal'); M.hidden = false;
-    M.innerHTML = `<div class="storycard newscard"><div class="news-kicker">🎙 ${g.playoff ? 'Playoff game' : g.b === L.rival || g.a === L.rival ? 'Rivalry game' : 'Big game'}</div><h2>Coach this one yourself?</h2><p>Watch it on the court and make calls any time, or get a quick stop every half quarter. Either way you can change the pace, shots, playbook and defense, double or hunt any player, sub anyone, call timeouts and work the refs.</p>
-      <div class="eventopts"><button class="btn hot" data-act="game-mode" data-id="play"><b>🎮 Play it yourself</b></button><button class="btn cool" data-act="game-mode" data-id="watch"><b>📺 Watch and coach</b></button><button class="btn cool" data-act="game-mode" data-id="live"><b>🎙 Quick coach</b> <span class="dim">(stops every half quarter)</span></button><button class="btn" data-act="game-mode" data-id="sim"><b>Just sim it</b></button></div></div>`;
+    const opp = L.teams[g.a === L.user ? g.b : g.a];
+    M.innerHTML = `<div class="storycard showcard simask" style="--tc:#ffd23a">
+      <div class="news-kicker">🎙 ${g.playoff ? 'Playoff game' : g.b === L.rival || g.a === L.rival ? 'Rivalry game' : 'Big game'} · vs ${esc(opp.name)}</div>
+      <div class="showaward">HOW DO YOU WANT TO PLAY IT?</div>
+      <div class="simopts">
+        <button class="btn hot" data-act="game-mode" data-id="sim"><i>⏩</i><span><b>Sim it</b><em>Skip straight to the final score</em></span></button>
+        <button class="btn cool" data-act="game-mode" data-id="play"><i>🎮</i><span><b>Play it yourself</b><em>You control your Legend on the court</em></span></button>
+        <button class="btn cool" data-act="game-mode" data-id="watch"><i>📺</i><span><b>Watch and coach</b><em>Watch the game and make calls any time</em></span></button>
+        <button class="btn cool" data-act="game-mode" data-id="live"><i>🎙</i><span><b>Quick coach</b><em>The game stops every half quarter for your calls</em></span></button>
+      </div>
+      <div class="dim cond">This question only comes up for big games. You can turn it off in Settings.</div></div>`;
     return; }
   if(autoOf(L).book){ setBook(L, suggestPlaybook(L, g.b).id); setDefBook(L, suggestDefense(L, g.b).id); }   // Auto playbook (offense and defense)
   autoPractice(L);
