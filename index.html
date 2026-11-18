@@ -1550,6 +1550,7 @@ function createGame(teams, opts){
   /* v199 double teams: every CPU team sends a second defender at your Legend. You shoot and dunk worse (SHT -14, DNK -12;
      -24 and -20 against the Five Crowns, -18 and -15 against Vex's team and final-boss Kaine), and because someone is always left open, each of your teammates shoots +3 (+4 against bosses).
      It is applied after the rating leveling-off, so it bites no matter how strong you are. You do not tire any faster. */
+  if(opts.heat && opts.mine != null) G.secure = { team:1 - opts.mine, k:clamp(1 - opts.heat/140, 0.2, 1) };   // v208: heat teaches ordinary opponents to protect the ball: your strips and picked-off passes work this fraction as often
   if(opts.mine != null){ const mine = G.ents.concat(G.bench[opts.mine]).filter(e => e.team === opts.mine), me = mine.find(e => e.avatar);
     if(me){ G.dbl = opts.boss ? 2 : 1; mine.forEach(e => { e.dbl = e === me ? (opts.boss >= 2 ? { sht:-24, dnk:-20 } : opts.boss ? { sht:-18, dnk:-15 } : { sht:-14, dnk:-12 }) : { sht:opts.boss ? 4 : 3 }; e.r = rateFor(e, e.slot); });
       me.S = dblStyle(me.S); } }   // when the computer plays your Legend (sims, Watch), he takes fewer shots and passes out of the double
@@ -2329,7 +2330,7 @@ function updateBall(G, dt){
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (o.rare === 'ballhawk' ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((b.passer.rare === 'maestro' ? 0.6 : 1)*(0.1 + (o.rare === 'ballhawk' ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
-        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
+        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(G.secure && G.secure.team === b.passer.team ? G.secure.k : 1)){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
     if(u >= 1){
@@ -2441,7 +2442,7 @@ function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
   if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
   const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (e.rare === 'ballhawk' ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
-  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
+  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))*(G.secure && G.secure.team === h.team ? G.secure.k : 1)){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
 function shove(G, e, o){
   e.cd = 1.0; e.swipe = 0.3; if(!e.fire) e.turbo = Math.max(0, e.turbo - 30);
@@ -2729,11 +2730,12 @@ const ultKind = e => e.avatar ? 'Legend' : e.types[0];
 function ultGain(G, team, amt){
   if(!G.ultM) G.ultM = [0, 0];
   const behind = (G.score[team] < G.score[1 - team] ? 1.5 : 1)*(G.ents.some(e => e.team === team && hasKey(e, 'instinct')) ? 1.5 : 1);   // comeback help; Ultimate Instinct keystone
-  G.ultM[team] = Math.min(100, G.ultM[team] + amt*behind);
+  const used = (G.ultN && G.ultN[team]) || 0;   // v208: each Ultimate already used this game makes the next one charge slower (2nd takes 1.6x as long, 3rd 2.2x, ...)
+  G.ultM[team] = Math.min(100, G.ultM[team] + amt*behind/(1 + used*0.6));
 }
 function activateUlt(G, e){
   if(!G.ultM || G.ultM[e.team] < 100 || e.dunk || e.stun > 0) return false;
-  G.ultM[e.team] = 0;
+  G.ultM[e.team] = 0; (G.ultN = G.ultN || [0, 0])[e.team]++;
   const k = ultKind(e), U = ULTS[k], opp = G.ents.filter(o => o.team !== e.team), col = k === 'Legend' ? '#ffffff' : TYPES[k].c;
   const near = r => opp.filter(o => dist(o, e) < r), knock = (o, f) => { const L = dist(o, e) || 1; o.vx = (o.x - e.x)/L*f; o.vy = (o.y - e.y)/L*f; };
   e.hyper = 6; G.ultFx = { t:0, x:e.x, y:e.y, col, name:U.name, team:e.team };
@@ -2775,7 +2777,7 @@ function tickUltFx(e, dt){
 // o.mine: which side (0/1) is your team; o.diff: how sharp the OTHER side plays (Settings > CPU difficulty, rivals a bit more)
 function simulateMatch(teams, qlen, o){
   o = o || {};
-  const G = createGame(teams, { user:null, qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss });
+  const G = createGame(teams, { user:null, qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss, heat:o.heat });
   // your simmed games still follow your standing orders (📌 in the Calls tab)
   const R = o.mine != null && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.coachRules;
   if(R && Object.values(R).some(v => v && v !== 'off')){ G.coach = { tos:3, refs:0, log:[], subQ:[], lock:false, tab:'calls', guards:{}, sim:true }; liveCoachRates(G); }
@@ -6894,7 +6896,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 207;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 208;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8299,7 +8301,7 @@ function hubPlay(L){
         ${matchupPoster(L, g)}
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
-        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
+        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.${!lv && SET.balance !== false && (L.heat || 0) >= 10 ? ` <b>🔥 League heat ${Math.round(L.heat)}:</b> the league has studied you, so tonight they play +${Math.round(L.heat)} on every rating and protect the ball (your steals work ${Math.round(clamp(1 - L.heat/140, 0.2, 1)*100)}% as often). Heat drops when you lose or win close.` : ''}</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
@@ -9192,14 +9194,14 @@ function showUltimate(p, done){
 // How a franchise game is simmed: which side is yours, and how hard the other side plays.
 function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
   const opp0 = g.a === L.user ? g.b : g.a, boss = five ? 2 : vexTeam(L) === opp0 || (kaineFinalOn(L) && opp0 === L.rival) ? 1 : 0;   // story bosses double you harder: 2 = the Five Crowns, 1 = Vex's team and final-boss Kaine
-  return { boss, mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
+  return { boss, heat: boss || SET.balance === false ? 0 : Math.round(L.heat || 0), mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
 /* Competitive balance ("the league studies your tape"): after each of your games, L.heat moves toward whatever keeps
    your average winning margin near +7. Blow teams out and opponents get fired up against you (+heat to every rating);
    lose and it cools off. It never goes below 0, so a weak team is never handicapped. */
 function updateHeat(L, myScore, theirScore){
   if(SET.balance === false) return;
   const m = myScore - theirScore;
-  L.heat = clamp((L.heat || 0) + clamp((m - 7)*0.12, -3, 3), 0, 90);   // small steps so one blowout or one bad night doesn't swing it
+  L.heat = clamp((L.heat || 0) + clamp((m - 7)*0.12, -3, 3), 0, 140);   // small steps so one blowout or one bad night doesn't swing it (v208: the ceiling went from 90 to 140)
 }
 /* ---------- LIVE COACHING ----------
    Two ways to coach a game yourself:
@@ -9625,7 +9627,7 @@ function playOverlay(G, ctx, s){
 function liveStart(L, g, watch){
   const teams = gameTeams(L, g.a, g.b), o = simOpts(L, g);
   const play = watch === 'play';   // 🎮 you control a player (the engine's G.user), otherwise just watch and coach
-  const G = createGame(teams, { user:play ? o.mine : null, qlen:SET.qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss });
+  const G = createGame(teams, { user:play ? o.mine : null, qlen:SET.qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss, heat:o.heat });
   if(play){ G.playAutoSub = true; PIN.keys.clear(); PIN.tx = PIN.ty = 0; playClearEdges(); }   // your bench still rotates by itself
   document.body.classList.add('coaching');   // hides the bottom bar while you coach
   G.coach = { tos:3, refs:1, log:[], subQ:[], lock:false, tab:'calls', sel:null, guards:{}, pickFor:null };
