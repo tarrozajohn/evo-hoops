@@ -2796,7 +2796,7 @@ function activateUlt(G, e){
     case 'Legend': opp.forEach(o => { o.stun = 2; o.shooting = null; knock(o, 8); }); e.hyper = 7; e.judgment = true; break;
   }
   // a stunned ball handler coughs it up
-  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0 && !(b.holder.p && b.holder.p.crown >= 1 && b.holder.p.crown <= 5)){ const h = b.holder;   /* the Five Crowns hold on (v230) */ G.stats[h.id].to++; Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
+  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0){ const h = b.holder;   /* v231: this works on everyone again, the Five Crowns included */ G.stats[h.id].to++; Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
   return true;
 }
 // timers for the effects, ticked every frame for every creature
@@ -7033,7 +7033,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 230;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 231;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7886,12 +7886,11 @@ const vexRound = L => { const t = stalkTeam(L); return t != null && L.teams[t].c
    for you) and can never fall below this floor, however many times you lose to him. Before, it started at 20 to 30
    and dropped by 4 with every loss, so a few losses turned the last fight into a coin flip. */
 const KAINE_FINAL_FLOOR = 34;
-/* v230: the Five Crowns era is harder too. Four changes:
+/* v230: the Five Crowns era is harder too. Three changes:
      - their rating edge starts 50 higher (75, 100 or 130 depending on how dominant you have been), never drops below
        FIVE_FLOOR (it was 20) and eases by 2 after a loss instead of 4
      - their double team on your Legend costs you more (-40 shooting, -32 dunking; it was -24 and -20)
-     - an Ultimate still stuns them, but a stunned Crown no longer drops the ball.
-       Ordinary steals and strips still work on everyone except Zenith.
+     - Ultimates work on them in full, like on anyone: the stun, and the ball coming loose.
      - their passes are intercepted about a third as often. Colossus alone was having 13 passes a game picked off. */
 const FIVE_FLOOR = 60;
 const kaineHunt = L => { const K = L.kaine || {}; return !kaineOff(K) && L.nemesis != null && L.rival != null && L.teams[L.rival] && L.teams[L.rival].roster.includes(L.nemesis) && !L.teams[L.user].roster.includes(L.nemesis); };
