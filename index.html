@@ -265,6 +265,7 @@ select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
 .kainecard{border-color:rgba(255,84,112,.6)}
 .achgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}.ach{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;opacity:.6}.ach.on{opacity:1;border-color:rgba(255,210,58,.6);background:rgba(255,210,58,.07)}
 .card.goldf{border-color:#ffd23a;box-shadow:0 0 0 1px #ffd23a inset,0 0 14px rgba(255,210,58,.3)}.card.flamef{border-color:#ff6a2c;box-shadow:0 0 0 1px #ff6a2c inset,0 0 18px rgba(255,90,40,.45)}.card.frostf{border-color:#8fe6ff;box-shadow:0 0 0 1px #8fe6ff inset,0 0 18px rgba(143,230,255,.4)}.card.prismf{border:2px solid transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,linear-gradient(120deg,#ff5470,#ffd23a,#4fdc8a,#3fd0ff,#b57bff) border-box}
+.uplock{padding:8px 10px;border-radius:10px;background:rgba(255,210,58,.1);box-shadow:inset 0 0 0 1px rgba(255,210,58,.45);font:600 14px/1.35 var(--cond)}
 .upgridc{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
 .upcard{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
 .upcard.just{border-color:#ffd23a;box-shadow:0 0 0 2px rgba(255,210,58,.35),0 0 24px rgba(255,210,58,.25);animation:showpop .5s cubic-bezier(.2,1.3,.4,1) both}
@@ -1256,6 +1257,13 @@ function hireStaff(L, idx){   // shared by the Hire button and auto-hire
   L.coins -= fee; L.teams[L.user].staff[st.role] = { ...st }; ledger(L, 'hire', { name:st.name, r:st.r, role:st.role }); L.staffMarket.list.splice(idx, 1);
   return st;
 }
+/* v210 "build the franchise first". The three things that make you stronger straight away (Elite Training Fund,
+   Star treatment, and the Shop's Badge Token) stay locked until your XP upgrade and your coin upgrades are all maxed:
+   Training Gym (XP), Arena expansion, Luxury suites and Food court (coins). powerLock returns what is still missing,
+   or null when everything is done. */
+function powerLock(L){ const A = arenaOf(L), need = [['Training Gym', 'XP', (L.fac && L.fac.gym) || 0], ['Arena expansion', 'coins', (L.fac && L.fac.arena) || 0], ['Luxury suites', 'coins', A.suites || 0], ['Food court', 'coins', A.food || 0]];
+  const left = need.filter(x => x[2] < 3); return left.length ? left : null; }
+const powerLockTxt = L => { const left = powerLock(L); return left ? left.map(x => `${x[0]} (${x[1]}) ${x[2]}/3`).join(' · ') : ''; };
 function upgTracks(L){
   ensureStaff(L); const A = arenaOf(L), U = L.teams[L.user], out = [];
   for(const [k, F] of Object.entries(FACILITIES)){ const l = L.fac[k];
@@ -1265,12 +1273,12 @@ function upgTracks(L){
     out.push({ key:'arena:' + k, group:'Arena', name:G.name, lvl:l, max:3, now:l ? G.effect(l) : 'Not built yet', next:l < 3 ? G.effect(l + 1) : null, cost:l < 3 ? G.costs[l] : null, act:'aupg', id:k,
       buy:() => { L.coins -= G.costs[l]; A[k]++; return `${G.name} level ${A[k]}`; } }); }
   const fund = (L.inf && L.inf.fund) || 0, fundCost = Math.round(1500*Math.pow(1.6, fund)/10)*10;
-  out.push({ key:'inf:fund', group:'No limit', name:'Elite Training Fund', lvl:fund, max:Infinity, now:fund ? `Your team plays +${fund} on every rating in games` : 'Not funded yet', next:`+${fund + 1} on every rating in games`, cost:fundCost, act:'infbuy', id:'fund',
+  out.push({ key:'inf:fund', group:'No limit', name:'Elite Training Fund', lvl:fund, max:Infinity, now:fund ? `Your team plays +${fund} on every rating in games` : 'Not funded yet', next:`+${fund + 1} on every rating in games`, cost:powerLock(L) ? null : fundCost, lock:!!powerLock(L), act:'infbuy', id:'fund',
     buy:() => { L.coins -= fundCost; L.inf = L.inf || {}; L.inf.fund = fund + 1; return `Elite Training Fund level ${fund + 1}`; } });
   const starters = U.roster.slice(0, STARTERS).map(id => L.players[id]).filter(Boolean), st = starters.slice().sort((a, b) => (a.boost || 0) - (b.boost || 0))[0];
   if(st){ const sc = Math.round(300*Math.pow(1.5, st.boost || 0)/10)*10   /* Star treatment: 300 coins, x1.5 per boost that creature already has */, total = starters.reduce((t, p) => t + (p.boost || 0), 0);
     out.push({ key:'inf:star', group:'No limit', name:'Star treatment', lvl:total, max:Infinity, now:total ? `Starters have ${total} boost${total > 1 ? 's' : ''} (${starters.map(p => `${pname(p)} +${p.boost || 0}`).join(', ')})` : 'No boosts yet',
-      next:`${pname(st)} +1 to every rating, for good`, cost:sc, act:'infbuy', id:'star',
+      next:`${pname(st)} +1 to every rating, for good`, cost:powerLock(L) ? null : sc, lock:!!powerLock(L), act:'infbuy', id:'star',
       buy:() => { L.coins -= sc; st.boost = (st.boost || 0) + 1; return `Star treatment for ${pname(st)} (+${st.boost})`; } }); }
   for(const [role, R] of Object.entries(STAFF_ROLES)){ const cur = U.staff[role];
     // best candidate for this role who is better than who you have (ties go to the cheaper fee, which is the same stars)
@@ -1365,12 +1373,14 @@ function hubUpgrades(L){
       <div class="uphead"><span class="upicon">${ICON[t.group] || '⬆️'}</span><div class="upname"><b>${t.name}</b><span class="cond dim">${t.stars ? stars(t.lvl) : t.max === Infinity ? `Level ${t.lvl} · no limit` : pips(t.lvl, t.max) + ` Level ${t.lvl} of ${t.max}`}</span></div>${just ? '<span class="upnew">✓ UPGRADED</span>' : ''}</div>
       <div class="upcmp"><div class="upnow"><span>NOW</span>${t.now}</div>
         ${t.next ? `<div class="uparrow">➜</div><div class="upnext"><span>${t.cost != null ? 'AFTER UPGRADE' : 'NEXT'}</span>${t.next}</div>` : '<div class="uparrow">✓</div><div class="upnext max"><span>MAXED OUT</span>Nothing left to buy here.</div>'}</div>
-      <div class="upgbtns">${t.cost != null ? `<button class="btn hot" data-act="${t.act}" data-id="${t.id}" ${can ? '' : 'disabled'}><span class="coin"></span> ${can ? 'Upgrade for' : 'Costs'} ${t.cost.toLocaleString()}</button>${can ? '' : `<span class="dim cond">${(t.cost - L.coins).toLocaleString()} coins short</span>`}` : ''}${t.lvl < t.max ? tog(`data-autobuy="${t.key}"`, A.buy[t.key]) : ''}</div></div>`; };
+      ${t.lock ? `<div class="uplock">🔒 <b>Locked.</b> Max out your XP and coin upgrades first: ${powerLockTxt(L)}</div>` : ''}
+      <div class="upgbtns">${t.cost != null ? `<button class="btn hot" data-act="${t.act}" data-id="${t.id}" ${can ? '' : 'disabled'}><span class="coin"></span> ${can ? 'Upgrade for' : 'Costs'} ${t.cost.toLocaleString()}</button>${can ? '' : `<span class="dim cond">${(t.cost - L.coins).toLocaleString()} coins short</span>`}` : ''}${t.lvl < t.max && !t.lock ? tog(`data-autobuy="${t.key}"`, A.buy[t.key]) : ''}</div></div>`; };
   const group = g => { const list = tracks.filter(t => t.group === g); return list.length ? `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>${ICON[g]} ${g}</h3><div class="upgridc">${list.map(row).join('')}</div></div>` : ''; };
   const buyable = tracks.filter(t => t.cost != null && L.coins >= t.cost).length, cheapest = tracks.filter(t => t.cost != null).sort((a, b) => a.cost - b.cost)[0];
   // the Upgrades page (Office, next to Shop): only the things you buy with coins. Every Auto switch is on the Auto tab.
   return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
       <div class="row" style="justify-content:space-between;gap:10px"><h3>Upgrades</h3><span class="cond" style="font-size:18px"><span class="coin"></span> <b>${L.coins.toLocaleString()}</b> coins · ${buyable ? `<b style="color:var(--good)">${buyable} you can afford</b>` : cheapest ? `cheapest is ${cheapest.cost.toLocaleString()}` : 'everything is maxed'}</span></div>
+      ${powerLock(L) ? `<div class="uplock">🔒 <b>Build the franchise first.</b> Upgrades that make you stronger straight away (Elite Training Fund, Star treatment, and the Shop's Badge Token) unlock when these are maxed: ${powerLockTxt(L)}</div>` : ''}
       <p class="dim" style="margin:0">Things you buy once with coins and keep. Each card shows what you have <b>now</b> and what you get <b>after the upgrade</b>. Tick Auto on a card and it buys the next level by itself after games (cheapest first).</p>
       <label class="row cond" style="gap:8px">Auto-buys always leave you at least <select data-autokeep>${[0, 100, 200, 500, 1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000, 30000, 50000, 75000, 100000].map(v => `<option value="${v}" ${A.keep === v ? 'selected' : ''}>${v.toLocaleString()}</option>`).join('')}</select> coins</label>
     </div>
@@ -1551,7 +1561,6 @@ function createGame(teams, opts){
   /* v199 double teams: every CPU team sends a second defender at your Legend. You shoot and dunk worse (SHT -14, DNK -12;
      -24 and -20 against the Five Crowns, -18 and -15 against Vex's team and final-boss Kaine), and because someone is always left open, each of your teammates shoots +3 (+4 against bosses).
      It is applied after the rating leveling-off, so it bites no matter how strong you are. You do not tire any faster. */
-  if(opts.heat && opts.mine != null) G.secure = { team:1 - opts.mine, k:clamp(1 - opts.heat/140, 0.2, 1) };   // v208: heat teaches ordinary opponents to protect the ball: your strips and picked-off passes work this fraction as often
   if(opts.mine != null){ const mine = G.ents.concat(G.bench[opts.mine]).filter(e => e.team === opts.mine), me = mine.find(e => e.avatar);
     if(me){ G.dbl = opts.boss ? 2 : 1; mine.forEach(e => { e.dbl = e === me ? (opts.boss >= 2 ? { sht:-24, dnk:-20 } : opts.boss ? { sht:-18, dnk:-15 } : { sht:-14, dnk:-12 }) : { sht:opts.boss ? 4 : 3 }; e.r = rateFor(e, e.slot); });
       me.S = dblStyle(me.S); } }   // when the computer plays your Legend (sims, Watch), he takes fewer shots and passes out of the double
@@ -2331,7 +2340,7 @@ function updateBall(G, dt){
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (o.rare === 'ballhawk' ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((b.passer.rare === 'maestro' ? 0.6 : 1)*(0.1 + (o.rare === 'ballhawk' ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
-        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(G.secure && G.secure.team === b.passer.team ? G.secure.k : 1)){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
+        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
     if(u >= 1){
@@ -2443,7 +2452,7 @@ function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
   if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
   const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (e.rare === 'ballhawk' ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
-  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))*(G.secure && G.secure.team === h.team ? G.secure.k : 1)){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
+  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
 function shove(G, e, o){
   e.cd = 1.0; e.swipe = 0.3; if(!e.fire) e.turbo = Math.max(0, e.turbo - 30);
@@ -6897,7 +6906,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 209;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 210;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8302,7 +8311,7 @@ function hubPlay(L){
         ${matchupPoster(L, g)}
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
-        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.${!lv && SET.balance !== false && (L.heat || 0) >= 10 ? ` <b>🔥 League heat ${Math.round(L.heat)}:</b> the league has studied you, so tonight they play +${Math.round(L.heat)} on every rating and protect the ball (your steals work ${Math.round(clamp(1 - L.heat/140, 0.2, 1)*100)}% as often). Heat drops when you lose or win close.` : ''}</div>`; })() : ''}
+        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
@@ -8927,7 +8936,7 @@ function hubShop(L){
       ${l < 3 ? `<div style="font-size:14px">Next: ${F.effect(l + 1)}</div><button class="btn sm hot" data-act="fac" data-id="${k}" ${L.coins >= cost ? '' : 'disabled'}><span class="coin"></span> ${cost} · Upgrade</button>` : '<div class="good cond">Maxed out</div>'}</div>`; }).join('');
   const group = (kinds, title) => `<h3>${title}</h3><div class="shopgrid">${Object.entries(SHOP).filter(([, it]) => kinds.includes(it.kind)).map(([k, it]) =>
     `<div class="shopcard kind-${it.kind}"><span class="name">${it.name}</span><span class="dim" style="font-size:14px">${it.desc}</span>
-      <div class="row" style="justify-content:space-between;margin-top:auto"><button class="btn sm cool" data-act="buy" data-id="${k}" ${L.coins >= it.cost ? '' : 'disabled'}><span class="coin"></span> ${it.cost} · Buy</button>${L.inv[k] ? `<span class="dim cond">Owned ${L.inv[k]}</span>` : ''}</div></div>`).join('')}</div>`;
+      <div class="row" style="justify-content:space-between;margin-top:auto"><button class="btn sm cool" data-act="buy" data-id="${k}" ${L.coins >= it.cost && !(it.kind === 'bp' && powerLock(L)) ? '' : 'disabled'}>${it.kind === 'bp' && powerLock(L) ? '🔒 Locked' : `<span class="coin"></span> ${it.cost} · Buy`}</button>${L.inv[k] ? `<span class="dim cond">Owned ${L.inv[k]}</span>` : ''}</div></div>`).join('')}</div>`;
   return `<p class="dim" style="margin:0;max-width:70ch">You earn coins every game: 40 for a win, 20 for a loss, plus bonus goals, Arena income, 100 per playoff win and 300 for a title.</p>
     ${bag.length ? `<div class="panel"><h3>Your bag</h3><div class="row" style="margin-top:8px">${bag.map(k => `<button class="btn sm" data-act="usepick" data-id="${k}">${SHOP[k].kind === 'gear' ? 'Equip' : 'Use'} ${SHOP[k].name} ×${L.inv[k]}</button>`).join('')}</div></div>` : ''}
     <div class="row" style="gap:8px"><span class="dim cond">Facilities, staff and team boosts are on the Upgrades tab, right next to this one.</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
@@ -9202,7 +9211,7 @@ function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const
 function updateHeat(L, myScore, theirScore){
   if(SET.balance === false) return;
   const m = myScore - theirScore;
-  L.heat = clamp((L.heat || 0) + clamp((m - 7)*0.12, -3, 3), 0, 140);   // small steps so one blowout or one bad night doesn't swing it (v208: the ceiling went from 90 to 140)
+  L.heat = clamp((L.heat || 0) + clamp((m - 7)*0.12, -3, 3), 0, 90);   // small steps so one blowout or one bad night doesn't swing it
 }
 /* ---------- LIVE COACHING ----------
    Two ways to coach a game yourself:
@@ -10783,7 +10792,7 @@ if(typeof document !== 'undefined'){
       case 'restructure': { const p = L.players[+id]; if(!p || !p.contract || p.contract.legend) break; const c = restructCost(p); if(L.coins < c) break;
         const was = p.contract.sal; L.coins -= c; p.contract.sal = MIN_SAL; bump(L, 'trust', 2);
         UI.msg = `${pname(p)}'s contract is now ${fmtM(MIN_SAL)} a year (was ${fmtM(was)}) for ${c.toLocaleString()} coins. That frees ${fmtM(was - MIN_SAL)} of cap space.`; saveLeague(); renderHub(); break; }
-      case 'infbuy': { const t = upgTracks(L).find(x => x.key === 'inf:' + id); if(!t || L.coins < t.cost) break; UI.msg = 'Bought: ' + t.buy() + '.'; saveLeague(); renderHub(); break; }
+      case 'infbuy': { const t = upgTracks(L).find(x => x.key === 'inf:' + id); if(!t || t.lock || t.cost == null || L.coins < t.cost) break; UI.msg = 'Bought: ' + t.buy() + '.'; saveLeague(); renderHub(); break; }
       case 'need-find': UI.find = id === 'need' ? { what:'players', pos:'all', tag:'need', sort:'ovr' } : { what:'players', pos:id, tag:'all', sort:'ovr' }; UI.tab = 'trade'; UI.tradeMode = 'find'; renderHub(); view().scrollTop = 0; window.scrollTo(0, 0); break;   // Roster "What to trade for" → Trade finder, filtered to that position
       case 'find-set': { const [k, v] = id.split(':'); UI.find[k] = v; renderHub(); break; }
       case 'find-pick': { const pk = L.picks.find(k => k.id === id); if(!pk) break; UI.trade = { team:pk.owner, mine:[], theirs:[], minePk:[], theirsPk:[pk.id] }; UI.tradeMode = 'build';
@@ -10838,6 +10847,7 @@ if(typeof document !== 'undefined'){
       }
       case 'buy': {
         const it = SHOP[id];
+        if(it.kind === 'bp' && powerLock(L)){ UI.msg = `🔒 Badge Tokens are locked. Max out your XP and coin upgrades first: ${powerLockTxt(L)}.`; renderHub(); break; }
         if(L.coins < it.cost){ UI.msg = `You need ${it.cost - L.coins} more coins for ${it.name}.`; renderHub(); break; }
         L.coins -= it.cost;
         if(it.kind === 'bp'){
