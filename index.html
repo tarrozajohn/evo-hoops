@@ -1117,10 +1117,10 @@ const dblStyle = S => S ? { ...S, three:S.three*0.5, jump:S.jump*0.5, drive:S.dr
    (plus one rare archetype each), so they play differently from everyone else:
    CROWN_KIT[n] = { rare, keys } for crown number n (1 Zenith, 2 Mirage, 3 Onyx, 4 Tempest, 5 Colossus, 6 Vex). */
 const CROWN_KIT = [null,
-  { rare:'maestro',    keys:{ vision:true, laser:true, captain:true } },        // Zenith: Foresight
+  { rare:'maestro',    keys:{ vision:true, laser:true, captain:true, handles:true } },   // Zenith: Foresight (the only one of them who can't be stripped)
   { rare:'sniper',     keys:{ nolimit:true } },                                 // Mirage: No Limit (deadly when open, from anywhere; poor when guarded)
   { rare:'ballhawk',   keys:{ thiefking:true } },                               // Onyx: Shadow (leads the double team on you)
-  { rare:'juggernaut', keys:{ handles:true, meteor:true } },                    // Tempest: Comet (v201: his dunks can be blocked)
+  { rare:'juggernaut', keys:{ meteor:true } },                                  // Tempest: Comet (his dunks can be blocked and he can be stripped)
   { rare:'wall',       keys:{ guardian:true } },                                // Colossus: The Wall
   { rare:'phenom',     keys:{} } ];                                             // Vex: Prodigy
 const KAINE_FINAL_KEYS = { unstoppable:true, unblockable:true, handles:true, guardian:true, gravity:true };
@@ -2277,7 +2277,7 @@ function updateBall(G, dt){
     if(b.kind === 'bounce' && !b.bounced && u >= 0.55){ b.bounced = true; G.sfx('bounce'); puff(G, b.x, b.y, 3, 'dust'); }
     // defenders near the passing lane get one chance each to pick it off
     for(const o of G.ents){
-      if(o.team === b.passer.team || b.tried.has(o) || o.stun > 0 || hasKey(b.passer, 'meteor')) continue;   // Meteor Slam pass security
+      if(o.team === b.passer.team || b.tried.has(o) || o.stun > 0 || (hasKey(b.passer, 'meteor') && b.passer.avatar)) continue;   // Meteor Slam pass security (your Legend only)
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (o.rare === 'ballhawk' ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((b.passer.rare === 'maestro' ? 0.6 : 1)*(0.1 + (o.rare === 'ballhawk' ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
@@ -2391,14 +2391,14 @@ function doPass(G, e, m, oop){
 }
 function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
-  if(h.shooting || h.dunk || h.vanishT > 0 || hasKey(h, 'meteor') || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
+  if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
   const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (e.rare === 'ballhawk' ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
   if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
 function shove(G, e, o){
   e.cd = 1.0; e.swipe = 0.3; if(!e.fire) e.turbo = Math.max(0, e.turbo - 30);
   if(dist(e, o) > 3.2 || o.dunk) return;
-  if(hasKey(o, 'meteor') && G.ball.state === 'held' && G.ball.holder === o){ fxText(G, 'BALL SECURE', '#ff7a3d', o.x, o.y, 8, 0.6); return; }   // Meteor Slam: you don't get shoved off the ball
+  if(hasKey(o, 'meteor') && o.avatar && G.ball.state === 'held' && G.ball.holder === o){ fxText(G, 'BALL SECURE', '#ff7a3d', o.x, o.y, 8, 0.6); return; }   // Meteor Slam: you don't get shoved off the ball
   const L = dist(e, o) || 1;
   // shoving someone heavier can fail: you bounce off instead
   if(o.rare === 'juggernaut' || rand() > clamp(0.8 + (e.cw - o.cw)*0.35, 0.25, 1)){   // nobody moves a Juggernaut
@@ -6765,7 +6765,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 201;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 202;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7977,10 +7977,10 @@ function hubLegacyMain(L){
    L.five = { tid, ids, s, w, l, sw, sl, edge }: their team, the five players, the season they formed,
    your wins and losses against them, playoff series won and lost, and their extra boost against you. */
 const FIVE = [
-  { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.', ab:'Foresight', abd:'His passes can never be stolen, teammates shoot better off them, and his whole team plays +4.' },
+  { nick:'Zenith',   arch:'guard',   title:'The Conductor', line:'Runs the whole offense and never wastes a pass.', ab:'Foresight', abd:'The ball can\'t be taken from him: no strips, no stolen passes. Teammates shoot better off his passes, and his whole team plays +4.' },
   { nick:'Mirage',   arch:'shooter', title:'The Marksman',  line:'Pulls up from anywhere and it goes in.', ab:'No Limit', abd:'Leave him open and he scores from anywhere, even the far end of the court. Put a defender within 4 ft and he shoots much worse and gives the ball up.' },
   { nick:'Onyx',     arch:'wing',    title:'The Lockdown',  line:'Guards your best player all night.', ab:'Shadow', abd:'Leads the double team on you, steals 50% more often and picks off passes.' },
-  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.', ab:'Comet', abd:'Can\'t be stripped, and his slams count 3 and knock nearby defenders down. His dunks can be blocked, so meet him at the rim.' },
+  { nick:'Tempest',  arch:'slasher', title:'The Comet',     line:'At the rim before the defense turns around.', ab:'Comet', abd:'His slams count 3 and knock nearby defenders down. He can be stripped and his dunks can be blocked, so reach for the ball or meet him at the rim.' },
   { nick:'Colossus', arch:'big',     title:'The Mountain',  line:'Owns the paint at both ends.', ab:'The Wall', abd:'Blocks far more shots and keeps the ball when he does. Shots near him are harder.' },
   { nick:'Vex',      arch:'slasher', title:'The Sixth Man', line:'The one who warned you. First off their bench.', ab:'Prodigy', abd:'+5 on every rating.' } ];   /* Vex is not one of the five: he is entry 6 */
 // what they say. who = index into FIVE (0 Zenith, 1 Mirage, 2 Onyx, 3 Tempest, 4 Colossus)
