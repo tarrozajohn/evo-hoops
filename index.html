@@ -1010,7 +1010,7 @@ function storyBonus(p){
 
 function ratings(p){
   const S = SPECIES[p.sp], f = p.avatar ? 0.80 + p.lvl*0.02 : p.nemesis ? 0.84 + Math.min(p.lvl, 60)*0.012 : 0.80 + p.lvl*0.008, T = trainOf(p).stats, aura = auraTier(p)*2 + (isEternal(p) ? 4 : 0) + (p.gift || 0) - declineOf(p), o = {};   // gift: natural talent from the draft class
-  for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0), 20, p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
+  for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0) + (p.dev || 0), p.dev != null ? 5 : 20,   /* dev: the rookie-year catch-up (v212), see rookieGrow */ p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
   return o;
 }
 /* Badges (your player only, like 2K): 16 badges in 4 groups, each with Bronze, Silver, Gold and Hall of Fame tiers.
@@ -1162,6 +1162,20 @@ const hasKey = (e, k) => !!(e && e.keys && e.keys[k]);
    - when the computer plays you (sims, Watch) you look to pass a bit more
    - nobody double-teams a rookie, and your Legend drain has not woken up yet
    rookieYear(L) says whether it is on; rookStyle is the pass-first style. */
+/* The grind (v212). p.dev is one number added to every rating of your Legend and of your best friend.
+   It starts far below zero, so you both begin at 10 overall. After each of your regular-season games in your first
+   season it rises by an equal share of what is still missing, so that after the last game you are level with the
+   league's best (the average of the ten highest-rated other players at that moment). After that it never changes
+   again: from then on you get stronger the normal way, through levels and your skill tree. */
+const ROOKIE_OVR = 10;
+function topOvr(L){ const xs = []; L.teams.forEach(T => T.roster.forEach(id => { const p = L.players[id]; if(p && !p.avatar && id !== L.friend) xs.push(ovr(p)); })); xs.sort((a, b) => b - a); const top = xs.slice(0, 10); return top.length ? top.reduce((a, b) => a + b, 0)/top.length : 60; }
+function rookieStart(L, p){ p.dev = 0; memoClear(); p.dev = ROOKIE_OVR - ovr(p); memoClear(); }           // drop this creature to 10 overall
+function rookieGrow(L, playoff){
+  if(playoff || !rookieYear(L) || L.phase !== 'season') return; const U = L.teams[L.user], total = (L.schedule || []).length || 29, left = Math.max(1, total - (U.w + U.l) + 1);
+  memoClear(); const target = topOvr(L);
+  [L.avatar, L.friend].forEach(id => { const p = id != null ? L.players[id] : null; if(!p || p.dev == null) return; const gap = target - ovr(p); p.dev = Math.round((p.dev + gap/left)*10)/10; });
+  memoClear();
+}
 const rookieYear = L => !!(L && L.avatar != null && !L.avatarRetired && L.season - (L.careerStart || 1) + 1 <= 1);
 const rookStyle = S => S ? { ...S, pass:S.pass*1.2 } : S;   // you take your normal shots, but look for the pass a bit more
 const dblStyle = S => S ? { ...S, three:S.three*0.5, jump:S.jump*0.5, drive:S.drive*0.5, pass:S.pass*1.8 } : S;   // two defenders on him: fewer shots, more passing out
@@ -4757,6 +4771,7 @@ function createAvatar(L, name, pos){
   const U = L.teams[L.user]; assignNumber(L, U, p); U.roster.unshift(p.id); U.star = p.id;
   L.avatar = p.id; L.avatarName = (name || 'You').slice(0, 16); L.careerStart = L.season;
   SPECIES[AVATAR_SP].name = L.avatarName;
+  rookieStart(L, p);   // v212: you start at 10 overall
   return p;
 }
 
@@ -4893,7 +4908,7 @@ function applyGame(L, a, b, res, playoff){
   });
   if(L.coins != null && (A.user || B.user)){ reports.econ = payout(L, A.user ? 0 : 1, res, playoff);
     const opp = A.user ? b : a; L.coinHist = [{ s:L.season, opp, won:reports.econ.won, playoff:!!playoff, pay:reports.econ.total, gate:0, home:false }].concat(L.coinHist || []).slice(0, 15); }
-  if(A.user || B.user){ autoDevelop(L); L.gameNo = (L.gameNo || 0) + 1; if(L.farm && farmLeft(L) <= 0){ farmHatch(L, true); syncBredYouth(L); } autoAfterGame(L); L._home = playoff ? (() => { const S = L.playoffs.series.find(x => (x.a === L.user || x.b === L.user)); return S ? ((S.wa + S.wb) % 2 === 0) === (S.a === L.user) : false; })() : !!(L.schedule[L.round] && L.schedule[L.round].some(m => m[0] === L.user)); L._ctx = { res, won: A.user ? sa > sb : sb > sa, oppTid: A.user ? b : a }; L.dramaLog = null; afterUserGame(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb)); reports.fallout = gameFallout(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb), res, A.user ? b : a, playoff); const fresh = checkAchievements(L, gameFacts(L, a, b, res)); if(fresh.length) reports.ach = fresh; }
+  if(A.user || B.user){ autoDevelop(L); L.gameNo = (L.gameNo || 0) + 1; rookieGrow(L, playoff); if(L.farm && farmLeft(L) <= 0){ farmHatch(L, true); syncBredYouth(L); } autoAfterGame(L); L._home = playoff ? (() => { const S = L.playoffs.series.find(x => (x.a === L.user || x.b === L.user)); return S ? ((S.wa + S.wb) % 2 === 0) === (S.a === L.user) : false; })() : !!(L.schedule[L.round] && L.schedule[L.round].some(m => m[0] === L.user)); L._ctx = { res, won: A.user ? sa > sb : sb > sa, oppTid: A.user ? b : a }; L.dramaLog = null; afterUserGame(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb)); reports.fallout = gameFallout(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb), res, A.user ? b : a, playoff); const fresh = checkAchievements(L, gameFacts(L, a, b, res)); if(fresh.length) reports.ach = fresh; }
   if(L.story && L.rival != null && ((A.user && b === L.rival) || (B.user && a === L.rival))){
     const won = A.user ? sa > sb : sb > sa, S = L.story;
     if(won){ S.rivalW++; S.seasonRivalW++; if(playoff) S.rivalPlayoffW++; if(reports.econ){ reports.econ.rivalBonus = 60; reports.econ.total += 60; L.coins += 60; if(L.coinHist && L.coinHist[0]) L.coinHist[0].pay += 60; } }
@@ -6915,7 +6930,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 211;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 212;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8320,7 +8335,8 @@ function hubPlay(L){
         ${matchupPoster(L, g)}
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
-        ${rookieYear(L) ? '<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year.</b> You are not the star yet. The team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up. Your edge over everyone starts small and grows in as you level (all of it at Level 50).</div>' : ''}
+        ${rookieYear(L) ? (() => { const me = L.players[L.avatar], fr = L.friend != null ? L.players[L.friend] : null, U0 = L.teams[L.user], left = Math.max(0, ((L.schedule || []).length || 29) - (U0.w + U0.l));
+          return `<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year: the grind.</b> You${fr && fr.dev != null ? ' and ' + esc(pname(fr)) : ''} started at ${ROOKIE_OVR} overall, far behind everyone. You are at <b>OVR ${ovr(me)}</b>${fr && fr.dev != null ? ` (${esc(pname(fr))} ${ovr(fr)})` : ''} and gain after every game${L.phase === 'season' ? `: ${left} game${left === 1 ? '' : 's'} left to catch the league's best (OVR ${Math.round(topOvr(L))})` : ''}. Until then the team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up.</div>`; })() : ''}
         ${!rookieYear(L) && L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
@@ -10940,6 +10956,7 @@ if(typeof document !== 'undefined'){
       case 'unequip': { const p = L.players[+id]; unequip(L, p); saveLeague(); renderHub(); break; }
       case 'train-sel': UI.trainSel = +id; renderHub(); break;
       case 'friend': { if(L.friend != null) break; const p = L.players[+id]; if(!p || p.avatar) break; L.friend = p.id; memoClear(); L.morale = clamp((L.morale ?? 60) + 5, 0, 100); p.friendGen = !p.generational; p.giftPre = p.gift || 0; const up = makeGenerational(p); friendDeal(p);
+        if(rookieYear(L) && L.players[L.avatar] && L.players[L.avatar].dev != null){ p.dev = 0; memoClear(); p.dev = Math.min(0, ovr(L.players[L.avatar]) - ovr(p)); memoClear(); }   // v212: starts at your overall and grinds up with you
         UI.msg = `${pname(p)} is your best friend now. Friends for life. 👑 Playing next to you unlocked a generational talent: +${up} OVR now, Potential ${trainOf(p).mind.pot}/5. It signed a friends-for-life deal: no cap hit, ever.`; saveLeague(); renderHub(); break; }
       /* Switch best friends (once a season, tap twice to confirm). The old friend loses the friendship perks:
          the Generational boost goes away if the friendship gave it (a drafted Generational keeps it), he moves to a
@@ -10954,6 +10971,8 @@ if(typeof document !== 'undefined'){
         old.contract = { sal:marketSalary(L, old), yrs:2 }; delete old.friendGen; delete old.giftPre;
         addBond(L, old.id, -30); L.morale = clamp((L.morale ?? 60) - 5, 0, 100);
         L.friend = p.id; memoClear(); p.friendGen = !p.generational; p.giftPre = p.gift || 0; const up = makeGenerational(p); friendDeal(p);
+        if(old.dev != null && !old.avatar){ delete old.dev; }   // the old friend goes back to its natural ratings
+        if(rookieYear(L) && L.players[L.avatar] && L.players[L.avatar].dev != null){ p.dev = 0; memoClear(); p.dev = Math.min(0, ovr(L.players[L.avatar]) - ovr(p)); } memoClear();
         UI.msg = `♥ ${pname(p)} is your best friend now${up ? `: 👑 Generational, +${up} OVR` : ''}. ${pname(old)} feels replaced: ${fromFriend ? `lost the Generational boost (OVR ${ovr0} → ${ovr(old)}), ` : ''}now on a ${fmtM(old.contract.sal)} 2-year deal, bond −30, chemistry −5.`;
         saveLeague(); renderHub(); break; }
       case 'event': {
