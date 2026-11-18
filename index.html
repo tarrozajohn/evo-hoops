@@ -6238,13 +6238,21 @@ function hubModals(L){
   if(kaineFinalDue(L)) return kaineFinalIntro(L);   // he is back
   if(fiveDue(L)) return fiveIntro(L);
   if(L.five && L.five.offer && !L.five.joined) return fiveOffer(L);   // you beat them in a playoff series   // Kaine is yours: his old team answers with the Five Crowns
-  if(L.hatchShow != null){ const c = L.players[L.hatchShow], U = L.teams[L.user], M = $('#modal'); L.hatchShow = null; saveLeague(true);   // v207: your egg just hatched
-    if(c){ M.hidden = false; fanfare(false);
+  /* Your egg hatched (v207). v223: the reveal now stays pending until you press its button, so it cannot be lost behind
+     another screen, and when your roster is full it says so in big letters and takes you straight to Free Agents,
+     with the hatchling already selected, so you can pick who it replaces. */
+  if(L.hatchShow != null){ const c = L.players[L.hatchShow], U = L.teams[L.user], M = $('#modal');
+    if(!c){ L.hatchShow = null; } else { const waiting = c.reserved != null && !U.roster.includes(c.id); M.hidden = false; fanfare(false);
       M.innerHTML = `<div class="storycard showcard" style="--tc:${U.color}">${SHOW_BEAMS}${showConfetti([U.color, '#ffd23a', '#ffffff'])}<div class="news-kicker">🥚 Breed farm</div><div class="showaward">YOUR EGG HATCHED</div>
         <div class="showreveal"><img src="${portrait(c, U.color)}" alt=""><div class="showname">${esc(pname(c))}</div><div class="cond">${posLabel(c)} · OVR ${ovr(c)} · Potential ${trainOf(c).mind.pot}/5${c.rare ? ' · ★ ' + RARE[c.rare].name : ''}</div><div>${talentTags(L, c, starCut(L))}</div></div>
-        <div class="cond">${c.bred ? `${esc(c.bred.a)} × ${esc(c.bred.b)}. ` : ''}${c.reserved != null ? 'Your roster is full, so it is waiting in Free Agents, reserved for you at the minimum salary.' : 'It joined your roster on a 3-year minimum deal, with Eternal Youth for as long as it stays with you.'}</div>
-        <button class="btn hot" id="sh-ok">Welcome it</button></div>`;
-      $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); }; return; } }
+        <div class="cond">${c.bred ? `${esc(c.bred.a)} × ${esc(c.bred.b)}. ` : ''}${waiting ? '' : 'It joined your roster on a 3-year minimum deal, with Eternal Youth for as long as it stays with you.'}</div>
+        ${waiting ? `<div class="uplock" style="text-align:left">⚠️ <b>It is not on your team yet.</b> Your roster is full (${U.roster.length}/${ROSTER}), so it is waiting in Free Agents. Only you can sign it, for the minimum salary. Sign it and choose who it replaces.</div>` : ''}
+        <div class="row" style="gap:8px;justify-content:center">${waiting ? '<button class="btn hot" id="sh-sign">Sign it now</button><button class="btn" id="sh-ok">Later</button>' : '<button class="btn hot" id="sh-ok">Welcome it</button><button class="btn" id="sh-see">See it on my roster</button>'}</div></div>`;
+      const done = fn => { L.hatchShow = null; saveLeague(true); M.hidden = true; if(fn) fn(); renderHub(); };
+      $('#sh-ok').onclick = () => done();
+      if($('#sh-sign')) $('#sh-sign').onclick = () => done(() => { UI.faPick = c.id; UI.tab = 'fa'; });
+      if($('#sh-see')) $('#sh-see').onclick = () => done(() => { UI.tab = 'roster'; });
+      return; } }
   if(UI.pendingReveal){ const r = UI.pendingReveal; UI.pendingReveal = null; return draftReveal(L, r.pid, r.n, r.rank); }   // you just drafted someone
   if(L.draftRecap === L.season && !L.rookie){ L.draftRecap = null; saveLeague(true); const M = $('#modal'), G = draftGrade(L), U = L.teams[L.user]; M.hidden = false; fanfare(true);
     const pickLine = (x, label) => x && L.players[x.pid] ? `<div class="cond">${label}: <b>${esc(pname(L.players[x.pid]))}</b> <span class="dim">No. ${x.n} · </span><b style="color:${L.teams[x.tid].color}">${L.teams[x.tid].abbr}</b></div>` : '';
@@ -6964,7 +6972,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 222;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 223;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8726,6 +8734,7 @@ function faStatus(L, pid){
 function hubFA(L){
   const U = L.teams[L.user];
   const fa = L.fa.slice().sort((a, b) => ovr(L.players[b]) - ovr(L.players[a]));
+  if(UI.faPick != null && (!L.players[UI.faPick] || !L.fa.includes(UI.faPick))) UI.faPick = null;   // that creature is gone (signed elsewhere, or a different save)
   if(UI.faPick != null){
     const p = L.players[UI.faPick];
     return `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>Sign ${pname(p)} (OVR ${ovr(p)}, asks ${fmtM(faAsk(L, p).sal)}): who do you release?</h3><p class="dim" style="margin:0">Rosters hold ${ROSTER}. The released creature goes to free agency and its salary comes off your books.</p>
