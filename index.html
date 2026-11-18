@@ -1010,7 +1010,7 @@ function storyBonus(p){
 
 function ratings(p){
   const S = SPECIES[p.sp], f = p.avatar ? 0.80 + p.lvl*0.02 : p.nemesis ? 0.84 + Math.min(p.lvl, 60)*0.012 : 0.80 + p.lvl*0.008, T = trainOf(p).stats, aura = auraTier(p)*2 + (isEternal(p) ? 4 : 0) + (p.gift || 0) - declineOf(p), o = {};   // gift: natural talent from the draft class
-  for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0) + (p.dev || 0), p.dev != null ? 5 : 20,   /* dev: the rookie-year catch-up (v212), see rookieGrow */ p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
+  for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0) + (p.dev || 0), p.dev != null && !p.nemesis ? 5 : 20,   /* dev: the rookie-year catch-up (v212), see rookieGrow */ p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
   return o;
 }
 /* Badges (your player only, like 2K): 16 badges in 4 groups, each with Bronze, Silver, Gold and Hall of Fame tiers.
@@ -1169,12 +1169,20 @@ const hasKey = (e, k) => !!(e && e.keys && e.keys[k]);
    again: from then on you get stronger the normal way, through levels and your skill tree. */
 const ROOKIE_OVR = 10;
 function topOvr(L){ const xs = []; L.teams.forEach(T => T.roster.forEach(id => { const p = L.players[id]; if(p && !p.avatar && id !== L.friend) xs.push(ovr(p)); })); xs.sort((a, b) => b - a); const top = xs.slice(0, 10); return top.length ? top.reduce((a, b) => a + b, 0)/top.length : 60; }
+/* Kaine is the wall you are chasing. During your first season he is kept 3 overall above the best ordinary player
+   in the league, so he is the number one player from day one and still is when you reach the top ten.
+   Like your own catch-up, his number is frozen after season one. It only ever lifts him, never lowers him. */
+function kaineLead(L){
+  const N = L.nemesis != null ? L.players[L.nemesis] : null; if(!N || !rookieYear(L)) return;
+  let best = 0; L.teams.forEach(T => T.roster.forEach(id => { const p = L.players[id]; if(p && !p.avatar && !p.nemesis && id !== L.friend) best = Math.max(best, ovr(p)); }));
+  N.dev = 0; memoClear(); N.dev = Math.max(0, best + 3 - ovr(N)); memoClear();
+}
 function rookieStart(L, p){ p.dev = 0; memoClear(); p.dev = ROOKIE_OVR - ovr(p); memoClear(); }           // drop this creature to 10 overall
 function rookieGrow(L, playoff){
   if(playoff || !rookieYear(L) || L.phase !== 'season') return; const U = L.teams[L.user], total = (L.schedule || []).length || 29, left = Math.max(1, total - (U.w + U.l) + 1);
   memoClear(); const target = topOvr(L);
   [L.avatar, L.friend].forEach(id => { const p = id != null ? L.players[id] : null; if(!p || p.dev == null) return; const gap = target - ovr(p); p.dev = Math.round((p.dev + gap/left)*10)/10; });
-  memoClear();
+  memoClear(); kaineLead(L);
 }
 const rookieYear = L => !!(L && L.avatar != null && !L.avatarRetired && L.season - (L.careerStart || 1) + 1 <= 1);
 const rookStyle = S => S ? { ...S, pass:S.pass*1.2 } : S;   // you take your normal shots, but look for the pass a bit more
@@ -8019,6 +8027,7 @@ function createNemesis(L){
   if(R.roster.length >= ROSTER && worst != null){ R.roster = R.roster.filter(x => x !== worst); L.fa.push(worst); }
   assignNumber(L, R, p); R.roster.unshift(p.id); R.star = p.id; sortRosterByOvr(L, R); R.star = p.id;
   L.nemStats = { games:0, wins:0, youPts:0, hePts:0 };
+  kaineLead(L);   // v212: he enters the league as its best player
 }
 function giveAwards(L){
   const all = L.teams.flatMap(t => t.roster.map(id => ({ p:L.players[id], t }))).filter(x => x.p.season && x.p.season.gp >= 4);
