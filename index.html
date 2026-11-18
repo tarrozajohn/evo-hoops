@@ -6963,7 +6963,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 219;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 220;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8061,6 +8061,13 @@ function createNemesis(L){
   L.nemStats = { games:0, wins:0, youPts:0, hePts:0 };
   kaineLead(L);   // v212: he enters the league as its best player
 }
+// The Rookie of the Year race right now: the top 3 rookies by the same score the award uses (shown on the Play tab in your rookie year)
+function royRace(L){
+  const all = L.teams.flatMap(t => t.roster.map(id => L.players[id])).filter(p => p && p.season && p.season.gp >= 1);
+  const allNew = all.every(p => (p.age || 0) === 0), story = p => p.avatar || p.nemesis || p.id === L.friend;
+  return all.filter(p => (p.age || 0) === 0 && (!allNew || story(p))).sort((a, b) => gameScore(b.season)/b.season.gp - gameScore(a.season)/a.season.gp).slice(0, 3)
+    .map(p => ({ who: p.avatar ? 'You' : pName(L, p), pts:(p.season.pts/p.season.gp).toFixed(1), me:!!p.avatar }));
+}
 function giveAwards(L){
   const all = L.teams.flatMap(t => t.roster.map(id => ({ p:L.players[id], t }))).filter(x => x.p.season && x.p.season.gp >= 4);
   const per = (x, k) => x.p.season[k]/x.p.season.gp;
@@ -8070,7 +8077,11 @@ function giveAwards(L){
   const add = (key, name, x, line) => { if(!x) return; A.push({ key, name, pid:x.p.id, who:pName(L, x.p), sp:x.p.sp, tid:x.t.id, line }); (x.p.trophies = x.p.trophies || []).push(`${name} (S${L.season})`); };
   const mvp = best(all, x => (gameScore(x.p.season)/x.p.season.gp)*(0.7 + winPct(x.t)));
   add('mvp', 'MVP', mvp, mvp && `${per(mvp, 'pts').toFixed(1)} pts · ${per(mvp, 'reb').toFixed(1)} reb · ${per(mvp, 'ast').toFixed(1)} ast`);
-  const rk = best(all.filter(x => (x.p.age || 0) === 0 && x.p !== (mvp && mvp.p)), x => gameScore(x.p.season)/x.p.season.gp);
+  /* Rookie of the Year. A rookie is a creature in its first season (age 0). In the very first season of a new league
+     every creature is age 0, so that year the rookies are the class from the story: you, your best friend and Kaine,
+     the three who just came out of college together (v220). */
+  const allNew = all.every(x => (x.p.age || 0) === 0), story = x => x.p.avatar || x.p.nemesis || x.p.id === L.friend;
+  const rk = best(all.filter(x => (x.p.age || 0) === 0 && (!allNew || story(x)) && (allNew || x.p !== (mvp && mvp.p))), x => gameScore(x.p.season)/x.p.season.gp);
   add('roy', 'Rookie of the Year', rk, rk && `${per(rk, 'pts').toFixed(1)} pts in its first season`);
   const dp = best(all, x => (x.p.season.stl + x.p.season.blk)/x.p.season.gp);
   add('dpoy', 'Defensive Player', dp, dp && `${per(dp, 'stl').toFixed(1)} stl · ${per(dp, 'blk').toFixed(1)} blk`);
@@ -8378,7 +8389,7 @@ function hubPlay(L){
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
         ${rookieYear(L) ? (() => { const me = L.players[L.avatar], fr = L.friend != null ? L.players[L.friend] : null, U0 = L.teams[L.user], left = Math.max(0, ((L.schedule || []).length || 29) - (U0.w + U0.l));
-          return `<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year: the grind.</b> You${fr && fr.dev != null ? ' and ' + esc(pname(fr)) : ''} started at ${ROOKIE_OVR} overall, far behind everyone. You are at <b>OVR ${ovr(me)}</b>${fr && fr.dev != null ? ` (${esc(pname(fr))} ${ovr(fr)})` : ''} and gain after every game${L.phase === 'season' ? `: ${left} game${left === 1 ? '' : 's'} left to catch the league's best (OVR ${Math.round(topOvr(L))})` : ''}. Until then the team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up.</div>`; })() : ''}
+          return `<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year: the grind.</b> You${fr && fr.dev != null ? ' and ' + esc(pname(fr)) : ''} started at ${ROOKIE_OVR} overall, far behind everyone. You are at <b>OVR ${ovr(me)}</b>${fr && fr.dev != null ? ` (${esc(pname(fr))} ${ovr(fr)})` : ''} and gain after every game${L.phase === 'season' ? `: ${left} game${left === 1 ? '' : 's'} left to catch the league's best (OVR ${Math.round(topOvr(L))})` : ''}. Until then the team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up.${(() => { const rr = L.phase === 'season' ? royRace(L) : []; return rr.length ? `<div style="margin-top:6px">🏅 <b>Rookie of the Year race:</b> ${rr.map((r, i) => `${i + 1}. ${r.me ? '<b>You</b>' : esc(r.who)} ${r.pts} pts`).join(' · ')}</div>` : ''; })()}</div>`; })() : ''}
         ${!rookieYear(L) && L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simfeat" ${UI.busy || L.event || featuredGame(L, g) ? 'disabled' : ''} title="Sims ordinary games and stops before a rivalry game, a 3-game skid, or a game that matters for the playoffs">⏭ Sim to next featured game</button><button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
