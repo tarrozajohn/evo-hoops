@@ -513,7 +513,7 @@ html.skin .title h1::before{ content:''; position:absolute; left:-30px; top:50%;
 .sitcard{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:10px;background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.015));box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);font:500 14px var(--cond)}
 .sitcard.hi{box-shadow:inset 0 0 0 1px rgba(255,90,60,.55),0 0 14px rgba(255,90,60,.15);background:linear-gradient(90deg,rgba(255,90,60,.12),rgba(255,255,255,.015))}
 .sith{display:flex;gap:10px;align-items:flex-start}.siti{font-size:22px;line-height:1}.sith b{font-size:16px}.sith .dim{font-size:13px;margin-top:2px}
-.sitcard.asst{box-shadow:inset 0 0 0 1px rgba(255,210,58,.6),0 0 14px rgba(255,210,58,.12);background:linear-gradient(90deg,rgba(255,210,58,.12),rgba(255,255,255,.015))}.recbtn{box-shadow:inset 0 0 0 2px #ffd23a!important}.recwhy{color:#ffd23a;font-size:13px;margin-top:2px}
+.sitcard.asst{box-shadow:inset 0 0 0 1px rgba(255,210,58,.6),0 0 14px rgba(255,210,58,.12);background:linear-gradient(90deg,rgba(255,210,58,.12),rgba(255,255,255,.015))}.recbtn{box-shadow:inset 0 0 0 2px #ffd23a!important}.recwhy{color:#ffd23a;font-size:13px;margin-top:2px}.planrow{margin-top:4px;font-size:14px}
 .sitacts{display:flex;flex-wrap:wrap;gap:6px}.sitacts .btn{flex:1 1 auto}
 .sitbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.sitbar .btn{flex:none}
 #view:has(.todobar) .endspace{height:calc(250px + env(safe-area-inset-bottom,0px))}   /* room for the walk-through bar */
@@ -2821,7 +2821,7 @@ function simulateMatch(teams, qlen, o){
   const G = createGame(teams, { user:null, qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss, heat:o.heat, rook:o.rook });
   // your simmed games still follow your standing orders (📌 in the Calls tab)
   const R = o.mine != null && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.coachRules;
-  if(R && Object.values(R).some(v => v && v !== 'off')){ G.coach = { tos:3, refs:0, log:[], subQ:[], lock:false, tab:'calls', guards:{}, sim:true }; liveCoachRates(G); }
+  if((R && Object.values(R).some(v => v && v !== 'off')) || (o.mine != null && planAutoOn())){ G.coach = { tos:3, refs:0, log:[], subQ:[], lock:false, tab:'calls', guards:{}, sim:true }; liveCoachRates(G); }
   let n = 0; while(!G.over && n < 400000){ stepGame(G, 1/30, null); if(G.coach) coachTick(G); n++; }
   return { score:[...G.score], stats:G.stats, len:G.qlen*4, plays:G.plays, qs:G.qs };
 }
@@ -5510,7 +5510,7 @@ function resignPanel(L){
    - Development coach: more XP from every game (−2% at 1 star up to +22% at 5 stars); 5 stars also adds 1 extra practice TP.
    - Trainer: fewer injuries (+18% risk at 1 star down to −30% at 5 stars) and, at 4 stars and up, shorter ones.
    You hire from a market of candidates that refreshes every offseason. Hiring costs a one-time signing fee in coins. */
-const STAFF_ROLES = { hc:{ name:'Head coach', icon:'📋', what:r => `Every rating ${r >= 3 ? '+' : ''}${r - 3} in games` },
+const STAFF_ROLES = { hc:{ name:'Head coach', icon:'📋', what:r => `Every rating ${r >= 3 ? '+' : ''}${r - 3} in games. Battle plan: ${r >= 5 ? 'sees everything' : 'tracks ' + [1, 1, 2, 3, 5][r] + ' call' + (r >= 3 ? 's' : r === 2 ? 's' : '')}${r >= 3 ? ', can run it for you' : ''}` },
   dev:{ name:'Development coach', icon:'📈', what:r => `${Math.round((0.92 + 0.06*r - 1)*100) >= 0 ? '+' : ''}${Math.round((0.92 + 0.06*r - 1)*100)}% XP from games${r >= 5 ? ', +1 practice TP' : ''}` },
   mkt:{ name:'Marketing director', icon:'📣', what:r => `${r >= 3 ? '+' : ''}${(r - 3)*500} fans of demand every home game` },
   ops:{ name:'Arena manager', icon:'🏟️', what:r => `${Math.round((0.9 + 0.05*r - 1)*100) >= 0 ? '+' : ''}${Math.round((0.9 + 0.05*r - 1)*100)}% arena revenue` },
@@ -6948,7 +6948,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 216;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 217;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9448,6 +9448,12 @@ function coachSituations(G){
   // 20) the whole team is tired
   const avgE = mine.reduce((s, e) => s + e.energy, 0)/Math.max(1, mine.length);
   if(avgE < 55 && C.tos > 0 && !out.some(x => x.k === 'run')) out.push({ k:'legs', icon:'🔋', title:'Your team is running out of gas', why:`Average energy ${Math.round(avgE)}%. A timeout gives everyone 25 back.`, acts:[['timeout', `⏱ Call timeout (${C.tos})`, false], ['tempo:slow', '🐢 Slow it down', P.tempo === 'slow']] });
+  // 21) the opening game plan (first quarter only): the playbooks that fit this opponent, if you are not already running them
+  if(G.quarter <= 1 && typeof LEAGUE !== 'undefined' && LEAGUE && G.teams[op] && G.teams[op].tid != null){ try {
+    const so = suggestPlaybook(LEAGUE, G.teams[op].tid), sd = suggestDefense(LEAGUE, G.teams[op].tid);
+    if(so.id !== 'balanced' && P.book !== so.id) out.push({ k:'gpo', icon:'📋', title:`Game plan: ${PLAYBOOKS[so.id].name} on offense`, why:`Because of ${so.why}.`, acts:[bk(so.id)] });
+    if(sd.id !== 'man' && P.defense !== sd.id) out.push({ k:'gpd', icon:'📋', title:`Game plan: ${DEF_BOOKS[sd.id].name} on defense`, why:`Because ${sd.why}.`, acts:[db(sd.id)] });
+  } catch(err){} }
   // urgent ones first; then keep the screen short (the rest open with "Show all")
   return out.sort((a, b) => (b.hi ? 1 : 0) - (a.hi ? 1 : 0));
 }
@@ -9477,10 +9483,9 @@ function recCall(G, x){
   if(x.k === 'behind') return pickId('shots:threes', 'A big gap needs threes.') || pickId('tempo:fast', 'More possessions.') || (open[0] ? { id:open[0][0], why:'Shake things up.' } : null);
   if(x.acts.some(a => a[2])) return null;   // one call per card is enough
   const why = { star:'Costs you nothing and he fades in the fourth.', hand:'Ride the hot hand: +4 on his shots.', mis:'Biggest gap on the floor.', tired:'Fresh legs shoot and defend better.', glass:'Second chances are free points.',
-    myrun:'Keep the pressure on while they are rattled.', ahead:'Save your starters.', cold:'Easier looks until he finds it.', threes:'Close out on the shooters.', paint:'Wall off the rim.', to:'Fewer possessions lost.', stl:'They cannot handle pressure tonight.', tstar:'He cannot stay in front of anyone right now.', dmis:'Fix the matchup before he gets going.' }[x.k] || 'The strongest call for this situation.';
+    myrun:'Keep the pressure on while they are rattled.', ahead:'Save your starters.', cold:'Easier looks until he finds it.', threes:'Close out on the shooters.', paint:'Wall off the rim.', to:'Fewer possessions lost.', stl:'They cannot handle pressure tonight.', tstar:'He cannot stay in front of anyone right now.', gpo:'The matchup numbers favor it.', gpd:'It takes away what they do best.', dmis:'Fix the matchup before he gets going.' }[x.k] || 'The strongest call for this situation.';
   return open[0] && !(open[0][0] === 'timeout' && usedTO) ? { id:open[0][0], why } : null;
 }
-// every recommended call right now, most urgent first: [{ x (the situation), id, why, label }]
 /* Some calls share one "slot": you can only feed one player, wear down one opponent, run one defense playbook, one pace.
    Going through the situations from most to least urgent, a slot belongs to the first card that uses it (either a call
    already in place or a new recommendation). Later cards do not get a recommendation for that slot, so two cards can
@@ -9494,6 +9499,27 @@ function recCalls(G){
     x.acts.forEach(q => { if(q[2]) taken.add(slot(q[0])); });
   }
   return out;
+}
+/* ---------- BATTLE PLAN (v217) ----------
+   The battle plan is the list of recommended calls above, drawn up fresh from what is happening in the game.
+   How good it is depends on your head coach's stars:
+     1★  sees 1 call at a time            3★  sees 3 calls, and the staff can run the plan for you (checks every 60 s of game time)
+     2★  sees 2 calls                     4★  sees 5 calls, reacts every 40 s
+                                          5★  sees everything, reacts every 20 s
+   "Staff runs the plan" (LEAGUE.autoPlan) makes those calls on its own at dead balls, in games you watch, coach or sim.
+   It never spends your timeouts or your one "work the refs": those stay yours. */
+const hcStars = () => (typeof LEAGUE !== 'undefined' && LEAGUE ? staffR(LEAGUE, LEAGUE.user, 'hc') : 3);
+const planDepth = r => [1, 1, 2, 3, 5, 99][clamp(r, 1, 5)];
+const planEvery = r => r >= 5 ? 20 : r >= 4 ? 40 : 60;
+const planAutoOn = () => !!(typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.autoPlan && hcStars() >= 3);
+function battlePlan(G){ const all = recCalls(G), n = planDepth(hcStars()); return { list:all.slice(0, n), hidden:Math.max(0, all.length - n) }; }
+// the staff makes the plan's calls (same helper trick as the standing orders, so it also works in simmed games)
+function runBattlePlan(G){
+  const C = G.coach, did = []; let list; try { list = battlePlan(G).list; } catch(err){ return; }
+  for(const r of list){ if(r.id === 'timeout' || r.id === 'refs') continue;
+    const keep = UI.live, own = keep && keep.G === G; if(!own) UI.live = { G, feed:[], watch:false };
+    try { liveCall(r.id, true); did.push(String(r.label).replace(/^[^A-Za-z]+/, '')); } catch(err){} finally { if(!own) UI.live = keep; } }
+  if(did.length){ C.planLog = (C.planLog || []).concat(did); if(UI.live && UI.live.G === G) UI.live.feed.push('📋 Staff: ' + did.join(', ')); }
 }
 // standing orders: saved on the league, used every game. kind → value ('off' = do nothing)
 const RULES = [
@@ -9551,6 +9577,7 @@ function coachTick(G){
   if(bullyTick(G)) dirty = true;
   if(C.rattle && Math.floor(G.t/10) !== C.rattleTick){ C.rattleTick = Math.floor(G.t/10); dirty = true; }   // rattle wears off over time
   if((G.state === 'dead') && G.t - (C.ruleT || -9) > 3){ C.ruleT = G.t; applyRules(G); }   // standing orders
+  if(G.state === 'dead' && planAutoOn() && G.t - (C.planT == null ? -999 : C.planT) >= planEvery(hcStars())){ C.planT = G.t; runBattlePlan(G); dirty = true; }   // the staff runs the battle plan
   if(C.subQ.length && (G.state === 'dead' || G.state === 'break')){
     for(const s of C.subQ){ const out = G.ents.find(e => e.id === s.out), inn = G.bench[G.mine].find(e => e.id === s.inn); if(out && inn) swapIn(G, out, inn); }
     C.subQ = []; dirty = true; }
@@ -9830,10 +9857,16 @@ function coachPanel(G){
     const sb = ([id, label, on], rec) => `<button class="btn sm ${on ? 'cool' : ''} ${rec ? 'recbtn' : ''}" data-act="live" data-id="${id}">${rec ? '★ ' : ''}${label}</button>`;
     const Sv = C.sitAll ? S : S.slice(0, 6);
     // the assistant coach: the single most important call right now, and one button that makes every recommended call
-    const asst = RC.length ? `<div class="sitcard asst"><div class="sith"><span class="siti">🧠</span><div><b>Assistant coach: ${esc(RC[0].x.title)}</b><div class="dim">Do this: <b>${RC[0].label}</b>. ${esc(RC[0].why)}</div></div></div>
-        <div class="sitacts"><button class="btn sm hot" data-act="live" data-id="${RC[0].id}">★ ${RC[0].label}</button>${RC.length > 1 ? `<button class="btn sm" data-act="live" data-id="recall">✅ Make all ${RC.length} recommended calls</button>` : ''}</div></div>`
-      : S.length ? `<div class="sitcard asst"><div class="sith"><span class="siti">🧠</span><div><b>Assistant coach: you're set</b><div class="dim">Every call I would make is already in place.</div></div></div></div>` : '';
-    body = `${asst}${S.length ? Sv.map(x => { const r = recOf(x); return `<div class="sitcard ${x.hi ? 'hi' : ''}"><div class="sith"><span class="siti">${x.icon}</span><div><b>${esc(x.title)}</b><div class="dim">${esc(x.why)}</div>${r ? `<div class="recwhy">★ ${esc(r.why)}</div>` : ''}</div></div><div class="sitacts">${x.acts.map(a => sb(a, r && r.id === a[0])).join('')}</div></div>`; }).join('') + (S.length > 6 ? `<div class="coachgrp">${btn('sitall', C.sitAll ? 'Show fewer' : `Show ${S.length - 6} more situation${S.length - 6 > 1 ? 's' : ''}`, false)}</div>` : '')
+    const BP = { list:RC.slice(0, planDepth(hcStars())), hidden:Math.max(0, RC.length - planDepth(hcStars())) }, hc = hcStars(), HC = (L.teams[L.user].staff || {}).hc;
+    const head = `📋 Battle plan · ${HC ? esc(HC.name) : 'Head coach'} ${'★'.repeat(hc)}${'☆'.repeat(5 - hc)}`;
+    const autoBtn = hc >= 3 ? `<button class="btn sm ${L.autoPlan ? 'cool' : ''}" data-act="live" data-id="autoplan">🤖 Staff runs the plan: ${L.autoPlan ? 'ON' : 'OFF'}</button>` : '';
+    const more = BP.hidden ? `<div class="dim">Your ${hc}★ head coach can only keep track of ${planDepth(hc)} thing${planDepth(hc) === 1 ? '' : 's'} at once, and there ${BP.hidden === 1 ? 'is 1 more' : 'are ' + BP.hidden + ' more'} going on. A better head coach (Office → Staff) sees more${hc < 3 ? ', and from 3★ the staff can run the plan for you' : ''}.</div>` : hc < 3 ? `<div class="dim">From a 3★ head coach up, the staff can run the plan for you.</div>` : L.autoPlan ? `<div class="dim">The staff checks the game every ${planEvery(hc)} seconds of game time and makes these calls itself (never your timeouts). It does the same in simmed games.</div>` : '';
+    const asst = BP.list.length ? `<div class="sitcard asst"><div class="sith"><span class="siti">🧠</span><div><b>${head}</b>${BP.list.map((r, i) => `<div class="planrow"><span>${i + 1}. <b>${r.label}</b> <span class="dim">${esc(r.x.title)}. ${esc(r.why)}</span></span></div>`).join('')}${more}</div></div>
+        <div class="sitacts">${BP.list.length > 1 ? `<button class="btn sm hot" data-act="live" data-id="recall">✅ Run the whole plan (${BP.list.length} calls)</button>` : `<button class="btn sm hot" data-act="live" data-id="${BP.list[0].id}">★ ${BP.list[0].label}</button>`}${autoBtn}</div></div>`
+      : `<div class="sitcard asst"><div class="sith"><span class="siti">🧠</span><div><b>${head}</b><div class="dim">${S.length ? 'The plan is in place. Nothing to change right now.' : 'Nothing to change right now.'}</div>${more}</div></div>${autoBtn ? `<div class="sitacts">${autoBtn}</div>` : ''}</div>`;
+    const inPlan = r => r && BP.list.includes(r);
+    body = `${asst}${S.length ? Sv.map(x => { const r = recOf(x); const show = inPlan(r);   /* a call outside what your head coach can track gets no star */
+      return `<div class="sitcard ${x.hi ? 'hi' : ''}"><div class="sith"><span class="siti">${x.icon}</span><div><b>${esc(x.title)}</b><div class="dim">${esc(x.why)}</div>${show ? `<div class="recwhy">★ ${esc(r.why)}</div>` : ''}</div></div><div class="sitacts">${x.acts.map(a => sb(a, show && r.id === a[0])).join('')}</div></div>`; }).join('') + (S.length > 6 ? `<div class="coachgrp">${btn('sitall', C.sitAll ? 'Show fewer' : `Show ${S.length - 6} more situation${S.length - 6 > 1 ? 's' : ''}`, false)}</div>` : '')
       : '<div class="sitcard"><div class="sith"><span class="siti">✅</span><div><b>Nothing on fire</b><div class="dim">New situations show up here as the game changes: hot scorers, runs, mismatches, tired legs, the boards, crunch time.</div></div></div></div>'}
       <b class="bookhead">📌 Standing orders (every game)</b><div class="dim cond" style="font-size:13px">These fire on their own at dead balls, even when you sim.</div>
       <div class="coachrows">${RULES.map(r => `<div class="coachmatch"><div class="cond">${r.label}</div><div class="coachgrp">${r.opts.map(([val, lb]) => `<button class="btn sm ${(R[r.k] || 'off') === val ? 'cool' : ''}" data-act="live" data-id="rule:${r.k}:${val}">${lb}</button>`).join('')}</div></div>`).join('')}</div>`; }
@@ -9853,7 +9886,7 @@ function liveScreen(){
     <div class="news-kicker">🎙 Quick coach · ${periodTxt(G)}</div>
     <div class="livescore"><span style="color:${T[me].color}">${T[me].abbr} <b>${G.score[me]}</b></span><span class="dim">–</span><span style="color:${T[op].color}"><b>${G.score[op]}</b> ${T[op].abbr}</span></div>
     ${alerts.length ? `<div class="msg" style="margin:0">${alerts.join('<br>')}</div>` : '<div class="dim cond" style="text-align:center">No fires to put out. Keep it rolling, or make a call.</div>'}
-    ${G.coach.tab !== 'calls' && recCalls(G).length ? `<div class="dim cond" style="text-align:center">🧠 The assistant coach has ${recCalls(G).length} call${recCalls(G).length === 1 ? '' : 's'} for you on the Calls tab.</div>` : ''}
+    ${G.coach.tab !== 'calls' && battlePlan(G).list.length ? `<div class="dim cond" style="text-align:center">📋 Your staff has a battle plan with ${battlePlan(G).list.length} call${battlePlan(G).list.length === 1 ? '' : 's'} on the Calls tab.</div>` : ''}
     ${coachPanel(G)}
     <div class="row" style="gap:8px;justify-content:center"><button class="btn hot" data-act="live" data-id="go">▶ Play on</button><button class="btn" data-act="live" data-id="watch">📺 Watch it</button><button class="btn" data-act="live" data-id="end">⏭ Sim to the end</button></div></div>`;
 }
@@ -10625,7 +10658,8 @@ function liveCall(id, silent){
     case 'speed': LV.speed = +v; SET.watchSpeed = LV.speed; saveSettings(); document.querySelectorAll('.watchctl [data-id^="speed:"]').forEach(b => b.classList.toggle('cool', b.dataset.id === id)); return;
     case 'tab': C.tab = v; C.sel = null; break;
     case 'abilall': C.abilAll = !C.abilAll; break;
-    case 'recall': { const rc = recCalls(G); rc.forEach(r => { if(r.id === 'timeout' && (C.recTO === G.score[0] + G.score[1] || !C.tos)) return; liveCall(r.id, true); }); break; }   // make every recommended call (one timeout at most)
+    case 'autoplan': LEAGUE.autoPlan = !LEAGUE.autoPlan; if(LEAGUE.autoPlan) C.planT = null; saveLeague(); break;   // the staff runs the battle plan on its own (3★ head coach or better)
+    case 'recall': { const rc = battlePlan(G).list; rc.forEach(r => { if(r.id === 'timeout' && (C.recTO === G.score[0] + G.score[1] || !C.tos)) return; liveCall(r.id, true); }); break; }   // make every recommended call (one timeout at most)
     case 'sitall': C.sitAll = !C.sitAll; break;   // Calls tab: every situation, not just the top 6   // Abilities tab: all tips and every description
     case 'tempo': C.tempo = v; C.log.push({ fast:'push pace', normal:'normal pace', slow:'slow down' }[v]); break;
     case 'shots': C.shots = v; C.log.push({ inside:'attack rim', balanced:'balanced shots', threes:'let it fly' }[v]); break;
