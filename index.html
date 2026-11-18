@@ -2171,7 +2171,7 @@ function userActions(G, e, inp, dt){
       else if(e.turbo > 10 || e.fire) shove(G, e, opp);
       else fxText(G, 'NO TURBO LEFT', '#9aa3d6', e.x, e.y, 8, 0.6); }
     if(inp.passDown && e.cd <= 0){
-      if(b.state === 'held' && b.holder.team !== e.team && dist(e, b.holder) < 4.2 + e.dws*0.5 + (e.rare === 'ballhawk' ? 1.5 : 0)) trySteal(G, e, b.holder);
+      if(b.state === 'held' && b.holder.team !== e.team && dist(e, b.holder) < 4.2 + e.dws*0.5 + (rareHas(e.rare, 'ballhawk') ? 1.5 : 0)) trySteal(G, e, b.holder);
       else e.cd = 0.35;
     }
   }
@@ -2179,7 +2179,7 @@ function userActions(G, e, inp, dt){
 
 function startJump(G, e, skill){
   const apex = SHOOT_VZ / SHOOT_G;          // seconds to the top of the jump = the ideal release
-  const w = 0.05 + e.r.sht*0.0009 + (e.gear === 'veins' ? 0.045 : 0) + e.focus*0.012 + (e.rare === 'sniper' ? 0.03 : 0) + 0.006*bdg(e, 'green');   // Green Machine          // half-width of the green zone; better shooters get more room
+  const w = 0.05 + e.r.sht*0.0009 + (e.gear === 'veins' ? 0.045 : 0) + e.focus*0.012 + (rareHas(e.rare, 'sniper') ? 0.03 : 0) + 0.006*bdg(e, 'green');   // Green Machine          // half-width of the green zone; better shooters get more room
   // CPU release timing: random error around the apex, smaller for sharper CPUs
   e.shooting = { t:0, apex, w, rel: apex + (rand() - 0.5)*0.32*(1.6 - skill*0.6) };
   e.vz = SHOOT_VZ; e.z = 0.01; e.face = dirOf(e.team); e.sq = 1.18;
@@ -2196,7 +2196,7 @@ function releaseShot(G, e){
   // release quality: 1 inside the green zone, falling off outside it
   const off = Math.abs(s.t - s.apex), perfect = off <= s.w;
   const q = perfect ? 1 : clamp(1 - (off - s.w)/0.3, 0, 1);
-  let p = three ? 0.35 - (e.rare === 'sniper' ? 0 : Math.max(0, d - 26)*0.035*(1 - 0.25*bdg(e, 'limitless'))) : d < 5 ? 0.64 : d < 12 ? 0.50 : 0.43;   // Limitless Range   // corner threes use three-point odds
+  let p = three ? 0.35 - (rareHas(e.rare, 'sniper') ? 0 : Math.max(0, d - 26)*0.035*(1 - 0.25*bdg(e, 'limitless'))) : d < 5 ? 0.64 : d < 12 ? 0.50 : 0.43;   // Limitless Range   // corner threes use three-point odds
   p += ((d < 5 ? (e.r.sht + e.r.dnk)/2 : e.r.sht) - 62) * 0.0045;
   const nd = e.vanishT > 0 ? null : nearestOpp(G, e), dd = nd ? dist(e, nd) : 99;   // Vanish: nobody contests
   if(nd){
@@ -2222,10 +2222,10 @@ function releaseShot(G, e){
   if(G.lastPass && G.lastPass.passer.team === e.team && G.lastPass.passer !== e && G.t - G.lastPass.t < 2 && hasKey(G.lastPass.passer, 'vision')) p += 0.04;
   if(G.lastPass && G.lastPass.passer.team === e.team && G.lastPass.passer !== e && G.t - G.lastPass.t < 1.5) p += 0.025*bdg(e, 'catchshoot');   // Catch & Shoot
   if(G.lastPass && G.lastPass.passer.team === e.team && G.lastPass.passer !== e && G.t - G.lastPass.t < 2) p += 0.02*bdg(G.lastPass.passer, 'dimer');   // Dimer
-  if(e.rare === 'unicorn' && three && nd && dd < 6 && nd.dh < e.dh) p += 0.04;  // Unicorn shoots right over smaller defenders
+  if(rareHas(e.rare, 'unicorn') && three && nd && dd < 6 && nd.dh < e.dh) p += 0.04;  // Unicorn shoots right over smaller defenders
   const lp = G.lastPass;
-  if(lp && lp.passer.team === e.team && lp.passer !== e && lp.passer.rare === 'maestro' && G.t - lp.t < 2) p += 0.06;   // Maestro set it up
-  if(d < 12 && G.ents.some(o => o.team !== e.team && o.rare === 'wall' && hyp(o.x - e.x, o.y - e.y) < 6)) p -= 0.08;   // The Wall
+  if(lp && lp.passer.team === e.team && lp.passer !== e && rareHas(lp.passer.rare, 'maestro') && G.t - lp.t < 2) p += 0.06;   // Maestro set it up
+  if(d < 12 && G.ents.some(o => o.team !== e.team && rareHas(o.rare, 'wall') && hyp(o.x - e.x, o.y - e.y) < 6)) p -= 0.08;   // The Wall
   p += cpuBonus(G, e) * 0.06;
   p = clamp(p, 0.04, 0.94);
   const hyper = e.hyper > 0; if(hyper){ p = e.judgment ? 1 : Math.max(p, 0.82); e.hyper = 0; }   // HYPER SHOT (Legend's Judgment never misses)
@@ -2262,9 +2262,9 @@ function startDunk(G, e){
   for(const o of G.ents){
     if(o.team === e.team || o.stun > 0) continue;
     const seg = distToSeg(o, e, h), ahead = (o.x - e.x)*(h.x - e.x) + (o.y - e.y)*(h.y - e.y) > 0;
-    if(ahead && seg < 2.6) traffic += (0.2 + (o.r.idf - 60)*0.003 + (o.reach - e.reach)*0.04 - (e.cw - o.cw)*0.04) * (o.rare === 'wall' ? 1.5 : 1);
+    if(ahead && seg < 2.6) traffic += (0.2 + (o.r.idf - 60)*0.003 + (o.reach - e.reach)*0.04 - (e.cw - o.cw)*0.04) * (rareHas(o.rare, 'wall') ? 1.5 : 1);
   }
-  e.dunk.traffic = clamp(traffic, 0, 0.42) * (e.rare === 'juggernaut' ? 0.5 : 1) * (e.fire ? 0.5 : 1) * (1 - 0.12*bdg(e, 'posterizer')) * (style === 'oop' ? 1 - 0.15*bdg(e, 'lob') : 1);   // Posterizer, Lob City
+  e.dunk.traffic = clamp(traffic, 0, 0.42) * (rareHas(e.rare, 'juggernaut') ? 0.5 : 1) * (e.fire ? 0.5 : 1) * (1 - 0.12*bdg(e, 'posterizer')) * (style === 'oop' ? 1 - 0.15*bdg(e, 'lob') : 1);   // Posterizer, Lob City
   e.face = d; e.vx = e.vy = 0; e.shooting = null; e.sq = 0.72;
   puff(G, e.x, e.y, 5, 'dust');
   G.stats[e.id].fga++; G.sfx('jump');
@@ -2287,7 +2287,7 @@ function updateDunk(G, e, dt){
       o.blockTried = true;
       // a defender who beat the dunker to the spot (standing between him and the rim) has a much better shot at the block
       const inFront = hyp(o.x - D.tx, o.y - D.ty) < hyp(e.x - D.tx, e.y - D.ty);
-      const c = (e.rare === 'juggernaut' ? 0.5 : 1)*(0.1 + (inFront ? 0.12 : 0) + (o.gear === 'pads' ? 0.06 : 0) + (o.r.idf - 60)*0.003 + (o.reach - e.reach)*0.06 - (e.cw - o.cw)*0.05 + o.r.blk*0.0022 + entEdge(o, e)*0.05 - (e.fire ? 0.1 : 0) + cpuBonus(G, o)*0.04) + (o.rare === 'wall' ? 0.06 : 0);
+      const c = (rareHas(e.rare, 'juggernaut') ? 0.5 : 1)*(0.1 + (inFront ? 0.12 : 0) + (o.gear === 'pads' ? 0.06 : 0) + (o.r.idf - 60)*0.003 + (o.reach - e.reach)*0.06 - (e.cw - o.cw)*0.05 + o.r.blk*0.0022 + entEdge(o, e)*0.05 - (e.fire ? 0.1 : 0) + cpuBonus(G, o)*0.04) + (rareHas(o.rare, 'wall') ? 0.06 : 0);
       if(!hasKey(e, 'unstoppable') && !(e.hyper > 0) && rand() < (c + 0.03*bdg(o, 'anchor') + (hasKey(o, 'guardian') ? 0.25 : 0))*(e.gear === 'springs' ? 0.8 : 1)*(1 - 0.1*bdg(e, 'posterizer'))){ /* Unstoppable: never blocked */ e.dunk = null; e.vz = 0; looseFromBlock(G, o, e); return; }   // Anchor vs Posterizer
     }
   }
@@ -2369,9 +2369,9 @@ function updateBall(G, dt){
     // defenders near the passing lane get one chance each to pick it off
     for(const o of G.ents){
       if(o.team === b.passer.team || b.tried.has(o) || o.stun > 0 || (hasKey(b.passer, 'meteor') && b.passer.avatar)) continue;   // Meteor Slam pass security (your Legend only)
-      if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (o.rare === 'ballhawk' ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
+      if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (rareHas(o.rare, 'ballhawk') ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
-        const c = ((b.passer.rare === 'maestro' ? 0.6 : 1)*(0.1 + (o.rare === 'ballhawk' ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
+        const c = ((rareHas(b.passer.rare, 'maestro') ? 0.6 : 1)*(0.1 + (rareHas(o.rare, 'ballhawk') ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
         if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
@@ -2397,7 +2397,7 @@ function updateBall(G, dt){
         if(o.team === sh.team || b.tried.has(o) || o.z < 1.2) continue;
         if(hyp(o.x - b.x, o.y - b.y) < 2.6 + o.dws*0.4 && b.z < o.z + 9.5 + o.reach && b.z > o.z + 4){
           b.tried.add(o);
-          const c = 0.08 + (o.rare === 'wall' ? 0.06 : 0) + (o.gear === 'pads' ? 0.06 : 0) + (o.reach - sh.reach)*0.08 + (b.shot.dist < 12 ? (o.r.idf - 60)*0.002 : 0) + o.r.blk*0.002 + entEdge(o, sh)*0.06 - (sh.fire ? 0.15 : 0) + cpuBonus(G, o)*0.05;
+          const c = 0.08 + (rareHas(o.rare, 'wall') ? 0.06 : 0) + (o.gear === 'pads' ? 0.06 : 0) + (o.reach - sh.reach)*0.08 + (b.shot.dist < 12 ? (o.r.idf - 60)*0.002 : 0) + o.r.blk*0.002 + entEdge(o, sh)*0.06 - (sh.fire ? 0.15 : 0) + cpuBonus(G, o)*0.05;
           if(rand() < c + 0.03*bdg(o, 'anchor') + (o.ironT > 0 ? 0.15 : 0) + (hasKey(o, 'guardian') ? 0.25 : 0)){ looseFromBlock(G, o, sh); return; }   // Anchor, Iron Fortress, Rim Guardian
         }
       }
@@ -2483,7 +2483,7 @@ function doPass(G, e, m, oop){
 function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
   if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
-  const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (e.rare === 'ballhawk' ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
+  const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (rareHas(e.rare, 'ballhawk') ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
   if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
 function shove(G, e, o){
@@ -2492,7 +2492,7 @@ function shove(G, e, o){
   if(hasKey(o, 'meteor') && o.avatar && G.ball.state === 'held' && G.ball.holder === o){ fxText(G, 'BALL SECURE', '#ff7a3d', o.x, o.y, 8, 0.6); return; }   // Meteor Slam: you don't get shoved off the ball
   const L = dist(e, o) || 1;
   // shoving someone heavier can fail: you bounce off instead
-  if(o.rare === 'juggernaut' || rand() > clamp(0.8 + (e.cw - o.cw)*0.35, 0.25, 1)){   // nobody moves a Juggernaut
+  if(rareHas(o.rare, 'juggernaut') || rand() > clamp(0.8 + (e.cw - o.cw)*0.35, 0.25, 1)){   // nobody moves a Juggernaut
     e.stun = 0.35; e.vx = (e.x - o.x)/L*8; e.vy = (e.y - o.y)/L*8;
     fxText(G, 'BOUNCED OFF', '#9aa3d6', e.x, e.y, 8); G.sfx('shove'); return;
   }
@@ -2725,7 +2725,7 @@ function defenseAI(G, e, dt, sk){
     let dh = dist(e, handler), stealMul = { aggressive:1.8, gamble:1.4, soft:0.8, paint:0.6, lockdown:1.2 }[S.def] || 1;
     // a handler who turbos straight into a defender who's set in front of him is easier to strip
     if(handler.boosting && dist(e, hoop) < dist(handler, hoop)) stealMul *= 1.6;
-    if(dh < 3.6 + e.dws*0.5 + (e.rare === 'ballhawk' ? 1.5 : 0) && e.cd <= 0 && !handler.shooting && !handler.dunk && rand() < dt*(0.12 + e.r.stl*0.003)*sk*stealMul) trySteal(G, e, handler);
+    if(dh < 3.6 + e.dws*0.5 + (rareHas(e.rare, 'ballhawk') ? 1.5 : 0) && e.cd <= 0 && !handler.shooting && !handler.dunk && rand() < dt*(0.12 + e.r.stl*0.003)*sk*stealMul) trySteal(G, e, handler);
     else if(dh < 2.6 && e.turbo > 40 && e.cd <= 0 && rand() < dt*0.05*sk*(S.def === 'aggressive' ? 1.5 : 1)) shove(G, e, handler);
   }
   // jump at shooters and dunkers nearby; rim protectors react from farther and more often
@@ -4277,9 +4277,33 @@ const RARE = {
   phenom:    { name:'Two-Way Phenom', arch:null,                        style:'twoway',  boost:'all',
                desc:'Great at everything: +5 to every rating.' },
 };
+/* ---------- MUTATIONS (v226): whole new Rare traits that only exist through breeding ----------
+   BASE_RARE is the seven traits above. Two kinds of mutation are built from them and added to RARE:
+     Fusion  two different traits in one creature, with its own name. It gets the rating boosts of both and the
+             signature powers of both (has:[a, b] is what the game engine checks through rareHas).
+             Key: the two trait keys in alphabetical order joined by "+", for example "juggernaut+wall" = Titan.
+     Apex    the same trait from both parents, pushed further: its rating boost is 1.5 times bigger. Key "x+x".
+   Nobody is born or drafted with a mutation (mut:true keeps them out of rollRare). They come only from the Breed farm. */
+const BASE_RARE = Object.keys(RARE);
+const FUSION_NAMES = { 'maestro+unicorn':'Point Unicorn', 'juggernaut+unicorn':'Freight Train', 'sniper+unicorn':'Tower Sniper', 'ballhawk+unicorn':'Sky Thief', 'unicorn+wall':'Fortress',
+  'juggernaut+maestro':'Wrecking Maestro', 'maestro+sniper':'Deadeye Conductor', 'ballhawk+maestro':'Puppet Master', 'maestro+wall':'Anchor General',
+  'juggernaut+sniper':'Double Threat', 'ballhawk+juggernaut':'Stampede', 'juggernaut+wall':'Titan', 'ballhawk+sniper':'Assassin', 'sniper+wall':'Watchtower', 'ballhawk+wall':'No-Fly Zone' };
+const fuseKey = (a, b) => [a, b].sort().join('+');
+const boostObj = k => { const B = RARE[k].boost, o = {}; for(const st of STATS) o[st] = B === 'all' ? 5 : (B[st] || 0); return o; };   // a trait's boost as numbers for every rating
+BASE_RARE.forEach((a, i) => BASE_RARE.forEach((b, j) => {
+  if(j < i) return; const A = RARE[a], B = RARE[b], ba = boostObj(a), bb = boostObj(b), boost = {};
+  if(a === b){ for(const st of STATS) if(ba[st]) boost[st] = Math.round(ba[st]*1.5);
+    RARE[a + '+' + a] = { name:'Apex ' + A.name.replace(/^The /, ''), arch:A.arch, style:A.style, boost, has:[a], mut:true, desc:`Mutation: ${A.name} from both parents, pushed further. Its rating boost is 1.5 times bigger. ${A.desc}` }; return; }
+  for(const st of STATS) if(ba[st] + bb[st]) boost[st] = ba[st] + bb[st];
+  const ph = a === 'phenom' ? b : b === 'phenom' ? a : null, key = fuseKey(a, b);   // Two-Way Phenom fused with X is "Prime X"
+  RARE[key] = { name: ph ? 'Prime ' + RARE[ph].name.replace(/^The /, '') : FUSION_NAMES[key] || A.name + ' ' + B.name, arch:null, style:(ph ? RARE[ph] : A).style, boost, has:[a, b], mut:true,
+    desc:`Mutation: ${A.name} and ${B.name} in one creature. It has the rating boosts and the signature powers of both. ${ph ? RARE[ph].desc : A.desc + ' ' + B.desc}` };
+}));
+// does a creature with trait r have base trait k's signature power? (true for k itself and for mutations built from k)
+const rareHas = (r, k) => r === k || !!(r && RARE[r] && RARE[r].has && RARE[r].has.includes(k));
 function rollRare(S, chance){
   if(rand() >= chance) return null;
-  const fits = Object.keys(RARE).filter(k => !RARE[k].arch || RARE[k].arch.includes(S.arch));
+  const fits = BASE_RARE.filter(k => !RARE[k].arch || RARE[k].arch.includes(S.arch));
   return pick(fits);
 }
 const rareBoost = (p, k) => !p.rare ? 0 : RARE[p.rare].boost === 'all' ? 5 : (RARE[p.rare].boost[k] || 0);
@@ -6472,7 +6496,7 @@ function renderHelp(back){
       <div class="panel"><h3>Genes</h3><p class="dim">Every creature has its own genes: a random spread on every stat, one standout strength (green ▲) and one clear weakness (red ▼). Two creatures of the same species and level can look very different, so check the cards before you draft.</p></div>
       <div class="panel"><h3>Team star</h3><p class="dim">Pick one creature on the Roster tab as your team star. In games it plays with +3 to every rating, teammates look for it more on passes, and it wears a gold star above its head. Every CPU team stars its best creature too. The star only counts while it's in your starting five.</p></div>
       <div class="panel"><h3>Draft classes and scouting</h3><p class="dim">Each rookie draft is Weak, Thin, Average, Deep or Loaded. Strong classes have more rares, more Potential and natural talent that adds to every rating. A Loaded class's No. 1 prospect is a generational talent. The Scouting tab shows what your scouts know: a better Scouting Office gives a more accurate grade, reveals more of the top prospects, and scouts next year's class. CPU teams know the true strength, so picks in strong classes cost more in trades.</p></div>
-      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${Object.values(RARE).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}</div>
+      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm. Breed two creatures that each have a Rare trait and there is a 20% chance of a mutation: a fusion with its own name and the boosts and powers of both traits (Juggernaut + The Wall = Titan), or the Apex version if both parents share the trait (boost 1.5 times bigger). The farm shows which one you are rolling for before you pay.</span></div></div>
       <div class="panel"><h3>You</h3><p class="dim">Your own creature joins your team as its locked star and can never be traded or released. You start below average with maxed Potential, choose your position on the Roster tab, and play the Legend style: whoever is in front of you (the closest opponent within 6 ft) loses 1 on every rating every 6 seconds, and you gain it. With the Legendary aura the drain doubles to 2 every 6 seconds. It resets when you're benched or the game ends. You can level to 99, your ratings have no cap, you grow as you level, and you never decline with age. Get every rating to 100+ and max everything (all three categories, Eternal Youth and the Ultimate Edge) to unlock the Legendary aura and form: only you can have it, and it makes you taller, longer, stronger and 8% faster.</p></div>
       <div class="panel"><h3>Aging and Eternal Youth</h3><p class="dim">Creatures improve for their first ${AGE_PRIME} seasons in the league. Seasons ${AGE_PRIME + 1} to ${AGE_CLIFF} each cost ${AGE_STEP} on every rating. After season ${AGE_CLIFF} comes the major decline: ${AGE_DROP} on every rating each season (up to −${AGE_MAX} in total). Eternal Youth from the Shop stops it for good; your own creature and Kaine never decline this way. Only your team can own it. Eternal Youth is also the fourth branch of the max aura: max Stats, Physique and Mental, add Eternal Youth, and the creature unlocks the Eternal aura (+10 to every rating in total).</p></div>
       <div class="panel"><h3>Ultimate Edge</h3><p class="dim">The most expensive prize in the Shop, and only your team can own it. The creature wearing it always plays with the full element edge (about +10% on shots, steals, interceptions and blocks), opponents facing it always have the worst edge, and any opponent within 7 feet moves 6% slower and shoots 4% worse. It shows as a shifting, spectrum-colored aura with all ten elements orbiting it. Trading or releasing the creature puts the Ultimate Edge back in your bag.</p></div>
@@ -6979,7 +7003,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 225;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 226;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8927,7 +8951,7 @@ function farmCost(a, b){ return Math.round((300 + 25*Math.max(0, (tradeValue(a) 
      both parents have a trait   the hatchling ALWAYS gets one: 40% each parent's (80% if they share it), 20% a brand new one
      one parent has a trait      65% that trait, 15% a brand new one, 20% none
      neither has one             a small chance (FARM_MUT) of a brand new one
-   "A brand new one" is a random Rare trait that neither parent has (a mutation).
+   "A brand new one" is a mutation: see farmMutation and the MUTATIONS note next to RARE.
    The odds panel and the hatching both read this one table, so what you see is what is rolled. */
 function farmRareTable(A, B){
   const m = Math.round(FARM_MUT*100);
@@ -8937,14 +8961,23 @@ function farmRareTable(A, B){
 }
 function farmRareRoll(A, B){
   let r = rand()*100, got = null; for(const [k, pct] of farmRareTable(A, B)){ if(r < pct){ got = k; break; } r -= pct; }
-  if(got !== 'new') return got;
-  const fresh = Object.keys(RARE).filter(k => k !== A.rare && k !== B.rare); return fresh.length ? pick(fresh) : pick(Object.keys(RARE));
+  return got === 'new' ? farmMutation(A, B) : got;
+}
+/* What the mutation is. Both parents carry a base trait: the fusion of the two (or the Apex version if they share one),
+   so you know before you pay exactly which new trait you are rolling for. Otherwise (one traited parent, none, or a
+   parent that is already a mutation): a random base trait neither parent has, decided when the egg hatches. */
+function farmMutation(A, B, peek){
+  const base = k => !!k && BASE_RARE.includes(k);
+  if(base(A.rare) && base(B.rare)) return A.rare === B.rare ? A.rare + '+' + A.rare : fuseKey(A.rare, B.rare);
+  if(peek) return null;
+  const fresh = BASE_RARE.filter(k => k !== A.rare && k !== B.rare && !(RARE[A.rare] && (RARE[A.rare].has || []).includes(k)) && !(RARE[B.rare] && (RARE[B.rare].has || []).includes(k)));
+  return fresh.length ? pick(fresh) : pick(BASE_RARE);
 }
 // the chances for each part of the hatchling, as lists of [label, percent]
 function farmOdds(A, B){
   const lines = [A.line, B.line].filter(l => l >= 0);   // legends have no evolution line to pass on
   const species = !lines.length ? [['A random species', 100]] : lines.length === 1 || lines[0] === lines[1] ? [[babyOf(lines[0]).name, 100]] : lines.map(l => [babyOf(l).name, 50]);
-  const rare = farmRareTable(A, B).map(([k, pct]) => [k === 'new' ? 'a brand new Rare trait (mutation)' : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]);
+  const rare = farmRareTable(A, B).map(([k, pct]) => { const m = k === 'new' ? farmMutation(A, B, true) : null; return [k === 'new' ? (m ? '🧬 ' + RARE[m].name + ' (a new mutation: ' + rareBoostText(m) + ')' : 'a Rare trait neither parent has') : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]; });
   const att = A.att === B.att ? [[ATT[A.att].icon + ' ' + ATT[A.att].name, 80], ['a random attitude', 20]] : [[ATT[A.att].icon + ' ' + ATT[A.att].name, 40], [ATT[B.att].icon + ' ' + ATT[B.att].name, 40], ['a random attitude', 20]];
   const pm = Math.round((A.pot + B.pot)/2), tm = Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2);
   return { species, rare, att, pot:[clamp(pm - 1, 0, TRAIN_MAX), clamp(pm + 1, 0, TRAIN_MAX)], tal:[clamp(tm - 3, -15, 18), clamp(tm + 4, -15, 18)] };
