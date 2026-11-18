@@ -1123,7 +1123,7 @@ const CROWN_KIT = [null,
   { rare:'juggernaut', keys:{ meteor:true } },                                  // Tempest: Comet (his dunks can be blocked and he can be stripped)
   { rare:'wall',       keys:{ guardian:true } },                                // Colossus: The Wall
   { rare:'phenom',     keys:{} } ];                                             // Vex: Prodigy
-const KAINE_FINAL_KEYS = { unstoppable:true, unblockable:true, handles:true, guardian:true, gravity:true };
+const KAINE_FINAL_KEYS = { unstoppable:true, unblockable:true, handles:true, gravity:true };
 function storyKeys(p){ if(p.crown && CROWN_KIT[p.crown]) return CROWN_KIT[p.crown].keys;
   if(p.nemesis && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.kaine && LEAGUE.kaine.ending === 'final') return KAINE_FINAL_KEYS;
   return null; }
@@ -1500,10 +1500,11 @@ function createGame(teams, opts){
   // Captain keystone: every teammate plays +4
   if(opts.edge && opts.mine != null){ const ot = 1 - opts.mine; G.ents.concat(G.bench[ot]).filter(e => e.team === ot).forEach(e => { e.edge = opts.edge; e.r = rateFor(e, e.slot); }); }   // fired up against you
   /* v199 double teams: every CPU team sends a second defender at your Legend. You shoot and dunk worse (SHT -14, DNK -12;
-     -24 and -20 against the story bosses), and because someone is always left open, each of your teammates shoots +3 (+4 against bosses).
+     -24 and -20 against the Five Crowns, -18 and -15 against Vex's team and final-boss Kaine), and because someone is always left open, each of your teammates shoots +3 (+4 against bosses).
      It is applied after the rating leveling-off, so it bites no matter how strong you are. You do not tire any faster. */
   if(opts.mine != null){ const mine = G.ents.concat(G.bench[opts.mine]).filter(e => e.team === opts.mine), me = mine.find(e => e.avatar);
-    if(me){ G.dbl = opts.boss ? 2 : 1; mine.forEach(e => { e.dbl = e === me ? (opts.boss ? { sht:-24, dnk:-20 } : { sht:-14, dnk:-12 }) : { sht:opts.boss ? 4 : 3 }; e.r = rateFor(e, e.slot); });
+    if(opts.boss){ G.bossT = 1 - opts.mine; G.bossK = opts.boss >= 2 ? [0.25, 0.33] : [0.5, 0.6]; }   // steals against this side: strips and picked-off passes work this fraction as often
+    if(me){ G.dbl = opts.boss ? 2 : 1; mine.forEach(e => { e.dbl = e === me ? (opts.boss >= 2 ? { sht:-24, dnk:-20 } : opts.boss ? { sht:-18, dnk:-15 } : { sht:-14, dnk:-12 }) : { sht:opts.boss ? 4 : 3 }; e.r = rateFor(e, e.slot); });
       me.S = dblStyle(me.S); } }   // when the computer plays your Legend (sims, Watch), he takes fewer shots and passes out of the double
   for(const ti of [0, 1]){ const me = G.ents.find(e => e.team === ti && e.avatar), kn = G.ents.find(e => e.team === ti && e.p.nemesis); if(me && kn){ for(const e of [me, kn]){ e.mood = (e.mood || 0) + 3; e.r = rateFor(e, e.slot); } } }   // Kaine on your team: light and shadow together
   for(const ti of [0, 1]) if(G.ents.concat(G.bench[ti]).some(e => e.team === ti && hasKey(e, 'captain'))) G.ents.concat(G.bench[ti]).filter(e => e.team === ti && !hasKey(e, 'captain')).forEach(e => { e.mood = (e.mood || 0) + 4; e.r = rateFor(e, e.slot); });
@@ -2281,7 +2282,7 @@ function updateBall(G, dt){
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (o.rare === 'ballhawk' ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((b.passer.rare === 'maestro' ? 0.6 : 1)*(0.1 + (o.rare === 'ballhawk' ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
-        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
+        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(G.bossT === b.passer.team ? G.bossK[1] : 1)){ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
     if(u >= 1){
@@ -2393,7 +2394,7 @@ function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
   if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
   const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (e.rare === 'ballhawk' ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
-  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
+  if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))*(G.bossT === h.team ? G.bossK[0] : 1)){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
 function shove(G, e, o){
   e.cd = 1.0; e.swipe = 0.3; if(!e.fire) e.turbo = Math.max(0, e.turbo - 30);
@@ -2698,14 +2699,14 @@ function activateUlt(G, e){
     case 'Lightning': e.speedT = 5; break;
     case 'Ice': opp.slice().sort((a, b) => dist(a, e) - dist(b, e)).slice(0, 3).forEach(o => { o.rootT = 3; o.frozen = 3; }); break;
     case 'Earth': near(13).forEach(o => { o.stun = 1.6; o.shooting = null; }); break;
-    case 'Wind': { const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && dist(b.holder, e) < 20 && !hasKey(b.holder, 'handles')){ G.stats[e.id].stl++; G.stats[b.holder.id].to++; giveBall(G, e); } else opp.forEach(o => o.slowT = 2.5); break; }
+    case 'Wind': { const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && dist(b.holder, e) < 20 && !hasKey(b.holder, 'handles') && G.bossT !== b.holder.team){   /* v203: the Wind ultimate's swipe does not work on story bosses; it slows them instead */ G.stats[e.id].stl++; G.stats[b.holder.id].to++; giveBall(G, e); } else opp.forEach(o => o.slowT = 2.5); break; }
     case 'Shadow': e.vanishT = 4.5; break;
     case 'Metal': G.ents.filter(o => o.team === e.team).forEach(o => o.ironT = 6); break;
     case 'Light': opp.forEach(o => o.blindT = 3.5); break;
     case 'Legend': opp.forEach(o => { o.stun = 2; o.shooting = null; knock(o, 8); }); e.hyper = 7; e.judgment = true; break;
   }
   // a stunned ball handler coughs it up
-  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0){ const h = b.holder; G.stats[h.id].to++; Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
+  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0 && G.bossT !== b.holder.team){ const h = b.holder; G.stats[h.id].to++;   /* v203: story bosses hold on to the ball through an Ultimate */ Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
   return true;
 }
 // timers for the effects, ticked every frame for every creature
@@ -2727,7 +2728,7 @@ function tickUltFx(e, dt){
 // o.mine: which side (0/1) is your team; o.diff: how sharp the OTHER side plays (Settings > CPU difficulty, rivals a bit more)
 function simulateMatch(teams, qlen, o){
   o = o || {};
-  const G = createGame(teams, { user:null, qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge });
+  const G = createGame(teams, { user:null, qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss });
   // your simmed games still follow your standing orders (📌 in the Calls tab)
   const R = o.mine != null && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.coachRules;
   if(R && Object.values(R).some(v => v && v !== 'off')){ G.coach = { tos:3, refs:0, log:[], subQ:[], lock:false, tab:'calls', guards:{}, sim:true }; liveCoachRates(G); }
@@ -4736,8 +4737,8 @@ const injTag = p => p.inj > 0 ? `<span class="injchip" title="${esc(p.injName ||
 function applyGame(L, a, b, res, playoff){
   const [sa, sb] = res.score, A = L.teams[a], B = L.teams[b];
   if(a === L.user || b === L.user){ const opp = a === L.user ? b : a, m = a === L.user ? sa - sb : sb - sa;
-    if(kaineFinalOn(L) && opp === L.rival){ const X = L.kaine.final; m > 0 ? X.w++ : X.l++; X.edge = clamp((X.edge || 0) + (m > 0 ? clamp(m*0.5, 3, 10) : -3), 50, 250); }   /* climbs fast when you win, eases slowly when you lose, never below 50 */
-    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + (m > 0 ? clamp(m*0.4, 2, 8) : -3), 20, 200); }   /* climbs when you win (more after a blowout), eases by 3 when you lose, never below 20 */
+    if(kaineFinalOn(L) && opp === L.rival){ const X = L.kaine.final; m > 0 ? X.w++ : X.l++; X.edge = clamp((X.edge || 0) + (m > 0 ? clamp(m*0.5, 3, 10) : -4), 0, 250); }   /* climbs fast when you win, eases by 4 when you lose */
+    if(isFiveTeam(L, opp)){ const F = L.five; m > 0 ? F.w++ : F.l++; F.edge = clamp((F.edge || 0) + (m > 0 ? clamp(m*0.4, 2, 8) : -5), 0, 200); }   /* climbs when you win (more after a blowout), eases by 5 when you lose */
     if(isSuper(L, opp)) L.era.edge = clamp((L.era.edge || 0) + clamp((m - 2)*0.8, -12, 12), 0, 200);   // superteams keep adjusting until games with you are close
     else updateHeat(L, a === L.user ? sa : sb, a === L.user ? sb : sa); }
   if(!playoff){ if(sa > sb){ A.w++; B.l++; } else { B.w++; A.l++; } A.pf += sa; A.pa += sb; B.pf += sb; B.pa += sa; }
@@ -6765,7 +6766,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 202;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 203;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7457,6 +7458,7 @@ function afterUserGame(L, won, margin){
   const N = L.nemesis != null ? L.players[L.nemesis] : null, Av = L.avatar != null ? L.players[L.avatar] : null;
   if(N && Av && N.lvl < Av.lvl - 1){ N.lvl = Av.lvl - 1; N.xp = xpFor(N.lvl); }   // Kaine trains as hard as you do
   fiveLevel(L);   // and so do the Five Crowns
+  if(kaineFinalOn(L) && N){ N.inj = 0; N.injName = null; }   // the final boss never misses a game
   L.morale = L.morale == null ? 60 : L.morale; L.owner = L.owner == null ? 60 : L.owner;
   L.streak = won ? Math.max(1, (L.streak || 0) + 1) : Math.min(-1, (L.streak || 0) - 1);
   L.morale += won ? 3 : -3; L.morale += (55 - L.morale)*0.05;   // drifts back toward steady
@@ -7545,7 +7547,7 @@ function kaineGone(L){
 /* ---------- THE LAST SHADOW (v195): Kaine as the final boss ----------
    Only on the branch where you turned him down twice. The season after you beat the Five Crowns in a playoff series,
    he is back on his old team: far stronger than before, his starters trained up to your level, a boost against you
-   that never drops below 50, and (like Vex before him) always waiting for you deep in the playoffs.
+   that climbs fast when you win, and (like Vex before him) always waiting for you deep in the playoffs.
    Beat him in a playoff series and the story is over. */
 const kaineFinalOn = L => !!(L.kaine && L.kaine.ending === 'final' && L.nemesis != null && L.rival != null && L.teams[L.rival] && L.teams[L.rival].roster.includes(L.nemesis));
 const kaineFinalDue = L => { const K = L.kaine, F = L.five; return !!(K && K.ending === 'gone' && F && (F.joined || F.beatS != null) && L.phase === 'season' && L.season > (F.joined || F.beatS) && L.players[L.nemesis] && L.rival != null && L.teams[L.rival] && L.rival !== L.user); };
@@ -7553,10 +7555,10 @@ function kaineFinalIntro(L){
   const K = L.kaine, N = L.players[L.nemesis], R = L.teams[L.rival], U = L.teams[L.user], Av = L.players[L.avatar], M = $('#modal');
   const lv = Math.max(Av ? Av.lvl : 0, Math.round(U.roster.reduce((t, id) => t + (L.players[id].lvl || 0), 0)/U.roster.length));
   if(R.roster.length >= ROSTER){ const out = R.roster.slice().sort((a, b) => value(L.players[a]) - value(L.players[b]))[0]; R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); }
-  N.lvl = Math.max(N.lvl || 0, lv); N.xp = xpFor(N.lvl); N.kaineEdge = (N.kaineEdge || 0) + 20; N.contract = { sal:0, yrs:99, legend:true }; N.inj = 0;
+  N.lvl = Math.max(N.lvl || 0, lv); N.xp = xpFor(N.lvl); N.kaineEdge = (N.kaineEdge || 0) + 5; N.contract = { sal:0, yrs:99, legend:true }; N.inj = 0;
   R.roster.unshift(N.id); sortRosterByOvr(L, R);
-  R.roster.slice(0, STARTERS).forEach(id => { const p = L.players[id]; if(p === N) return; p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); CATS.forEach(c => addTP(p, c, 8)); autoTrain(p); });   // his starters train up to your level
-  sortRosterByOvr(L, R); R.star = N.id; K.ending = 'final'; K.final = { s:L.season, edge:(L.five && L.five.joined ? 85 : 60), w:0, l:0 };   /* starts far above anyone before him (more if the Five play for you) */ memoClear();
+  R.roster.slice(0, STARTERS).forEach(id => { const p = L.players[id]; if(p === N) return; p.lvl = Math.max(p.lvl || 0, lv); p.xp = xpFor(p.lvl); autoEvolve(p); autoTrain(p); });   // his starters train up to your level
+  sortRosterByOvr(L, R); R.star = N.id; K.ending = 'final'; K.final = { s:L.season, edge:(L.five && L.five.joined ? 30 : 20), w:0, l:0 };   /* starts far above anyone before him (more if the Five play for you) */ memoClear();
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine is back with the ${R.name}. Nobody has ever seen a creature play like this.`, rival:true, me:true });
   saveLeague(true); M.hidden = false; fanfare(true);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
@@ -8020,7 +8022,7 @@ function formFive(L){
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
     const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
-  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 60 : (L.heat || 0) >= 50 ? 40 : 25 };
+  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 30 : (L.heat || 0) >= 50 ? 20 : 10 };   /* lower than before v203: the hard double team and the steal protection now do most of the work */
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
 }
@@ -8149,7 +8151,7 @@ function hubPlay(L){
         ${matchupPoster(L, g)}
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
-        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const hard = isFiveTeam(L, g.b) || vexTeam(L) === g.b || (kaineFinalOn(L) && g.b === L.rival); return `<div class="dim cond">👥 They will double-team you: ${hard ? 'SHT −24, DNK −20' : 'SHT −14, DNK −12'} for you, SHT +${hard ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
+        ${L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.${lv ? ` <b>They protect the ball:</b> your steals work about ${lv >= 2 ? 'a quarter' : 'half'} as often tonight, and Ultimates no longer knock the ball loose.` : ''}</div>`; })() : ''}
         <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
@@ -9043,7 +9045,7 @@ function showUltimate(p, done){
 // Play or sim the user's next franchise game, then sim the rest of that round.
 // How a franchise game is simmed: which side is yours, and how hard the other side plays.
 function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
-  const opp0 = g.a === L.user ? g.b : g.a, boss = five || vexTeam(L) === opp0 || (kaineFinalOn(L) && opp0 === L.rival);   // story bosses double you harder
+  const opp0 = g.a === L.user ? g.b : g.a, boss = five ? 2 : vexTeam(L) === opp0 || (kaineFinalOn(L) && opp0 === L.rival) ? 1 : 0;   // story bosses double you harder: 2 = the Five Crowns, 1 = Vex's team and final-boss Kaine
   return { boss, mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : SET.balance === false ? 0 : Math.round(L.heat || 0) }; }   // superteams ignore the balance switch: they're meant to be hard
 /* Competitive balance ("the league studies your tape"): after each of your games, L.heat moves toward whatever keeps
    your average winning margin near +7. Blow teams out and opponents get fired up against you (+heat to every rating);
@@ -9477,7 +9479,7 @@ function playOverlay(G, ctx, s){
 function liveStart(L, g, watch){
   const teams = gameTeams(L, g.a, g.b), o = simOpts(L, g);
   const play = watch === 'play';   // 🎮 you control a player (the engine's G.user), otherwise just watch and coach
-  const G = createGame(teams, { user:play ? o.mine : null, qlen:SET.qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge });
+  const G = createGame(teams, { user:play ? o.mine : null, qlen:SET.qlen, headless:true, mine:o.mine, diff:o.diff, edge:o.edge, boss:o.boss });
   if(play){ G.playAutoSub = true; PIN.keys.clear(); PIN.tx = PIN.ty = 0; playClearEdges(); }   // your bench still rotates by itself
   document.body.classList.add('coaching');   // hides the bottom bar while you coach
   G.coach = { tos:3, refs:1, log:[], subQ:[], lock:false, tab:'calls', sel:null, guards:{}, pickFor:null };
