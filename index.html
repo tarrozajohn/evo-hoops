@@ -6939,7 +6939,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 213;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 214;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8342,13 +8342,14 @@ function hubPlay(L){
       const O = L.teams[g.b];
       main = `<div class="panel" style="display:flex;flex-direction:column;gap:14px">
         <span class="${g.playoff ? 'cond' : 'dim cond'}">${g.playoff ? `<b>${roundName(L)}</b> · Game ${g.s.wa + g.s.wb + 1} · <b>${seriesYou(L, g.s)}</b> <span class="dim">· first to ${Math.ceil(g.s.bestOf/2)} wins</span>` : (isFiveTeam(L, g.b) ? `<b style="color:var(--bad)">👑 Five Crowns game</b>${g.b === L.rival ? ' · +60 coins for a win' : ''}` : g.b === L.rival ? '<b style="color:var(--bad)">Rivalry game</b> · +60 coins for a win' : 'Next game')}</span>
+        ${(() => { const f = featuredGame(L, g); return f ? `<div class="uplock" style="background:rgba(255,210,58,.1);box-shadow:inset 0 0 0 1px rgba(255,210,58,.55)">${f.icon} <b>Featured game · ${f.tag}.</b> ${esc(f.why)}</div>` : ''; })()}
         ${matchupPoster(L, g)}
         ${isFiveTeam(L, g.b) ? (() => { const q = fiveSay(L, 'pre', (L.gameNo || 0)); return `<div class="panel rivalquote" style="margin:0"><span class="speaker rival">${esc(q.who)}</span><p>“${q.text}”</p></div>
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
         ${rookieYear(L) ? (() => { const me = L.players[L.avatar], fr = L.friend != null ? L.players[L.friend] : null, U0 = L.teams[L.user], left = Math.max(0, ((L.schedule || []).length || 29) - (U0.w + U0.l));
           return `<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year: the grind.</b> You${fr && fr.dev != null ? ' and ' + esc(pname(fr)) : ''} started at ${ROOKIE_OVR} overall, far behind everyone. You are at <b>OVR ${ovr(me)}</b>${fr && fr.dev != null ? ` (${esc(pname(fr))} ${ovr(fr)})` : ''} and gain after every game${L.phase === 'season' ? `: ${left} game${left === 1 ? '' : 's'} left to catch the league's best (OVR ${Math.round(topOvr(L))})` : ''}. Until then the team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up.</div>`; })() : ''}
         ${!rookieYear(L) && L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −24, DNK −20' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
-        <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
+        <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simfeat" ${UI.busy || L.event || featuredGame(L, g) ? 'disabled' : ''} title="Sims ordinary games and stops before a rivalry game, a 3-game skid, or a game that matters for the playoffs">⏭ Sim to next featured game</button><button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
         ${planPanel(L)}
@@ -9275,7 +9276,7 @@ function updateHeat(L, myScore, theirScore){
    - Timeout (3 per game): your players on the floor get +25 energy and +2 on everything for half a quarter
    - Work the refs (once per game): 55% the crowd gets loud (+3 on everything this quarter);
      45% you get a technical (they get a free point and you play −1 this quarter) */
-const isBigGame = (L, g) => !!g.playoff || g.a === L.rival || g.b === L.rival || (L.phase === 'season' && L.round >= L.schedule.length - 3);
+const isBigGame = (L, g) => !!g.playoff || !!featuredGame(L, g) || g.a === L.rival || g.b === L.rival || (L.phase === 'season' && L.round >= L.schedule.length - 3);
 // Simple game ratings for the coaching screen, from the creature's ratings tonight (plan and mood included).
 // Your live calls are taken back out (cmod), so doubling or attacking a player never changes his OFF/DEF:
 // the best scorer stays the best scorer, and the "best defender on him" button keeps pointing at the right guy.
@@ -10655,6 +10656,51 @@ function franchiseGame(sim, mode){
   if(mode === 'live' || mode === 'watch' || mode === 'play'){ liveStart(L, g, mode === 'play' ? 'play' : mode === 'watch'); return; }
   if(sim){ UI.busy = 'Simulating…'; renderHub(); setTimeout(() => { UI.busy = false; after(simulateMatch(teams, SET.qlen, simOpts(L, g))); }, 30); }
 }
+/* ---------- FEATURED GAMES (v214) ----------
+   featuredGame(L, g) looks at your next game and says why it matters, or returns null for an ordinary night.
+   "Sim to next featured game" sims ordinary games and stops in front of the first one that matters. The reasons:
+     - a rivalry game (Kaine's team, Vex's team, or the Five)
+     - a losing skid: you have lost exactly 3 in a row (checked once per skid, so a long skid does not stop you every night)
+     - the playoff race: 6 or fewer games left and you are within 1 win of the last playoff spot, on either side
+     - a must-win: you are outside the playoff line and one more loss ends your chances
+     - a clincher: win tonight and nobody outside the line can catch you */
+function playoffLine(L){
+  const U = L.teams[L.user], n = playoffTeams(L), list = n === 16 ? confStandings(L, confOf(L, L.user)) : standings(L), k = n === 16 ? 8 : n;
+  const rank = list.indexOf(U) + 1, left = Math.max(0, L.schedule.length - (U.w + U.l));
+  const lastIn = list[k - 1], firstOut = list[k];                       // the team holding the last spot, and the first team outside
+  return { rank, k, left, inW: lastIn ? lastIn.w : 0, outW: firstOut ? firstOut.w : 0, isIn: rank <= k };
+}
+function featuredGame(L, g){
+  if(!g || L.phase !== 'season') return null; const opp = g.a === L.user ? g.b : g.a, U = L.teams[L.user];
+  if(isFiveTeam(L, opp)) return { icon:'👑', tag:'Rivalry game', why:`The Five are next. ${L.five.w || 0}-${L.five.l || 0} against them so far.` };
+  if(opp === vexTeam(L)) return { icon:'⚔️', tag:'Rivalry game', why:`Vex and the ${L.teams[opp].name} are next.` };
+  if(opp === L.rival) return { icon:'🔥', tag:'Rivalry game', why:`${L.nemesis != null && L.teams[opp].roster.includes(L.nemesis) ? 'Kaine and the ' : 'Your rivals, the '}${L.teams[opp].name} are next.` };
+  const P = playoffLine(L);
+  if(P.left >= 1 && P.left <= 10){
+    if(!P.isIn && P.inW - U.w <= P.left && P.inW - U.w >= P.left - 1 && P.inW > U.w) return { icon:'🚨', tag:'Must win', why:`You are ${P.inW - U.w} win${P.inW - U.w === 1 ? '' : 's'} out of the last playoff spot with ${P.left} to play. Lose tonight and the season is as good as over.` };
+    if(P.isIn && U.w - P.outW === P.left) return   /* one more win puts you out of reach even if the first team out wins every game it has left */ { icon:'🎟', tag:'Clinch game', why:`Win tonight and you clinch a playoff spot.` };
+    if(P.left <= 6 && (P.isIn ? U.w - P.outW <= 1 : P.inW - U.w <= 1)) return { icon:'📈', tag:'Playoff race', why: P.isIn ? `You hold the ${P.rank === P.k ? 'last' : 'number ' + P.rank} playoff spot by ${U.w - P.outW} win${U.w - P.outW === 1 ? '' : 's'} with ${P.left} to play.` : `You are ${P.inW - U.w === 0 ? 'tied for' : '1 win out of'} the last playoff spot with ${P.left} to play.` };
+  }
+  if((L.streak || 0) === -3) return { icon:'🧯', tag:'Stop the skid', why:`You have lost 3 in a row. This is the one to turn it around.` };
+  return null;
+}
+// Sim ordinary games one per tick, and stop in front of the first featured game. Like "Sim rest of season", it does not stop for locker-room events.
+function simFeatured(){
+  const L = LEAGUE, pending = [], w0 = L.teams[L.user].w, l0 = L.teams[L.user].l; let n = 0;
+  const stop = msg => { UI.busy = false; saveLeague(); const evos = pending.filter((v, i, a) => a.indexOf(v) === i && canEvolve(L.players[v])); runEvolutions(evos, () => { UI.msg = msg; UI.featMsg = msg; UI.tab = 'play'; renderHub(); }); };
+  const went = () => { const U = L.teams[L.user]; return n ? `Simmed ${n} game${n === 1 ? '' : 's'} (${U.w - w0}-${U.l - l0}). ` : ''; };
+  const step = () => {
+    if(L.phase !== 'season') return stop(`${went()}The regular season is over. Playoff time.`);
+    const g = userGame(L), f = featuredGame(L, g);
+    if(f) return stop(`${went()}${f.icon} ${f.tag}: ${f.why}`);
+    ensureGoals(L); if(g){ autoPractice(L); if(autoOf(L).book){ setBook(L, suggestPlaybook(L, g.b).id); setDefBook(L, suggestDefense(L, g.b).id); }
+      const res = simulateMatch(gameTeams(L, g.a, g.b), SET.qlen, simOpts(L, g)); applyGame(L, g.a, g.b, res, false).forEach(r => { if(r.evo) pending.push(r.pid); }); n++; }
+    simRestOfRound(L);
+    UI.busy = `Simulating to the next featured game… round ${Math.min(L.round + 1, L.schedule.length)} of ${L.schedule.length}`; renderHub();
+    setTimeout(step, 20);
+  };
+  UI.busy = 'Simulating…'; renderHub(); setTimeout(step, 20);
+}
 // Sim many games without freezing the page: one game per timeout tick.
 function simSeason(){
   const L = LEAGUE; const pending = [], coins0 = L.coins;
@@ -10778,6 +10824,7 @@ if(typeof document !== 'undefined'){
       case 'game-mode': $('#modal').hidden = true; franchiseGame(true, id); break;
       case 'live': liveCall(id); break;
       case 'simseason': simSeason(); break;
+      case 'simfeat': simFeatured(); break;
       case 'simplayoffs': simPlayoffs(); break;
       case 'simday': simPlayoffDay(); break;
       // Breed farm: pick or unpick a parent, clear the pair, or pay for the egg
