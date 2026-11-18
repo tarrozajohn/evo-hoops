@@ -82,6 +82,19 @@ button,.btn,.tab,.subtab,.bnavitem{-webkit-user-select:none;user-select:none}
 .tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);padding-bottom:0}
 .tab{background:none;border:none;padding:10px 14px;font-family:var(--cond);font-weight:700;font-size:16px;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);border-bottom:3px solid transparent;white-space:nowrap}
 .tab.on{color:var(--text);border-bottom-color:var(--hot)}
+.tabs .tab{font-size:19px;padding:12px 22px}
+/* v207 computer: show what the mouse is over. Buttons brighten and get a white edge; tabs, rows and cards get a highlight. */
+@media (hover:hover){
+  .btn:hover:not(:disabled){filter:brightness(1.22) saturate(1.1);box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)!important;cursor:pointer}
+  .tab:hover{color:var(--text);background:rgba(255,255,255,.1)}
+  .subtab:hover:not(.on){color:var(--text);background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 2px rgba(255,255,255,.7)}
+  .subtab.on:hover{filter:brightness(1.1)}
+  [data-act]:not(.btn):not(.tab):not(.subtab):not(.bnavitem):hover,.autotog:hover,label.btn:hover{outline:2px solid rgba(143,211,255,.9);outline-offset:2px;cursor:pointer;filter:brightness(1.12)}
+  tr[data-act]:hover td,tr:hover > td[data-act]{background:rgba(143,211,255,.14)}
+  select:hover,input[type=checkbox]:hover{outline:2px solid rgba(143,211,255,.9);outline-offset:1px;cursor:pointer}
+  .bnavitem:hover{color:#fff;background:rgba(255,255,255,.1)}
+  button:disabled{cursor:not-allowed}
+}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;gap:12px;min-width:0}
 .card img{width:64px;height:70px;flex:none}
@@ -275,7 +288,7 @@ select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
 .crowdbars{display:flex;align-items:flex-end;gap:3px;height:60px}.crowdbars i{flex:1;min-width:6px;border-radius:3px 3px 0 0}
 /* phone navigation */
 .endspace{height:32px;flex:none}
-.bnav,.subtabs,.phoneonly{display:none}
+.bnav,.phoneonly{display:none}.subtabs{display:flex;flex-wrap:wrap;margin-top:10px}   /* v207: the second row of tabs shows on computers too */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;justify-content:space-around;gap:2px;padding:6px max(8px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px));background:rgba(11,14,34,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .bnavitem{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 2px;font:600 12px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
 .bnavitem .bi{font-size:20px;line-height:1}.bnavitem.on{color:var(--text)}.bnavitem.on .bi{filter:drop-shadow(0 0 6px rgba(255,107,44,.7))}
@@ -374,7 +387,7 @@ details.stylebox > summary{font-size:16px;padding:10px 12px;border:1px solid var
 details.stylebox > summary::before{content:'🎨 '}
 .sheet{flex-direction:column;gap:8px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
 @media (max-width:760px), (pointer:coarse) and (max-height:500px){
-  .phoneblock{display:block!important}.bnav{display:flex}.subtabs{display:flex}.phoneonly{display:inline-flex}.sheet.phoneonly{display:flex}.deskonly{display:none!important}.tabs{display:none}
+  .phoneblock{display:block!important}.bnav{display:flex}.subtabs{display:flex;flex-wrap:nowrap;margin-top:0}.phoneonly{display:inline-flex}.sheet.phoneonly{display:flex}.deskonly{display:none!important}.tabs{display:none}
   #view{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:0}
   .endspace{height:calc(170px + env(safe-area-inset-bottom,0px))}   /* clears the bottom bar and Safari's toolbar */
   #modal{align-items:flex-start;padding-bottom:calc(120px + env(safe-area-inset-bottom,0px))}#modal .storycard,#modal .evo{max-height:none;margin-bottom:120px}
@@ -1319,7 +1332,7 @@ function autoOffseason(L){
   if(A.resign) expiring(L, L.user).filter(i => !L.players[i].resign).forEach(i => runAct('resign', i));
   if(A.farm && !L.farm && L.farmLast !== L.season){   // breed your two most valuable creatures if the coins allow
     const ps = L.teams[L.user].roster.map(id => L.players[id]).filter(farmOk).sort((a, b) => tradeValue(b) - tradeValue(a));
-    if(ps.length >= 2 && L.coins - farmCost(ps[0], ps[1]) >= A.keep){ L.coins -= farmCost(ps[0], ps[1]); L.farm = { s:L.season, snap:[farmSnap(ps[0]), farmSnap(ps[1])] }; L.farmLast = L.season; autoNote(L, `Bred ${pname(ps[0])} × ${pname(ps[1])}`); }
+    if(ps.length >= 2 && L.coins - farmCost(ps[0], ps[1]) >= A.keep){ L.coins -= farmCost(ps[0], ps[1]); L.farm = { s:L.season, g:L.gameNo || 0, snap:[farmSnap(ps[0]), farmSnap(ps[1])] }; L.farmLast = L.season; autoNote(L, `Bred ${pname(ps[0])} × ${pname(ps[1])}`); }
   }
 }
 function autoPractice(L){
@@ -4859,7 +4872,7 @@ function applyGame(L, a, b, res, playoff){
   });
   if(L.coins != null && (A.user || B.user)){ reports.econ = payout(L, A.user ? 0 : 1, res, playoff);
     const opp = A.user ? b : a; L.coinHist = [{ s:L.season, opp, won:reports.econ.won, playoff:!!playoff, pay:reports.econ.total, gate:0, home:false }].concat(L.coinHist || []).slice(0, 15); }
-  if(A.user || B.user){ autoDevelop(L); L.gameNo = (L.gameNo || 0) + 1; autoAfterGame(L); L._home = playoff ? (() => { const S = L.playoffs.series.find(x => (x.a === L.user || x.b === L.user)); return S ? ((S.wa + S.wb) % 2 === 0) === (S.a === L.user) : false; })() : !!(L.schedule[L.round] && L.schedule[L.round].some(m => m[0] === L.user)); L._ctx = { res, won: A.user ? sa > sb : sb > sa, oppTid: A.user ? b : a }; L.dramaLog = null; afterUserGame(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb)); reports.fallout = gameFallout(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb), res, A.user ? b : a, playoff); const fresh = checkAchievements(L, gameFacts(L, a, b, res)); if(fresh.length) reports.ach = fresh; }
+  if(A.user || B.user){ autoDevelop(L); L.gameNo = (L.gameNo || 0) + 1; if(L.farm && farmLeft(L) <= 0){ farmHatch(L, true); syncBredYouth(L); } autoAfterGame(L); L._home = playoff ? (() => { const S = L.playoffs.series.find(x => (x.a === L.user || x.b === L.user)); return S ? ((S.wa + S.wb) % 2 === 0) === (S.a === L.user) : false; })() : !!(L.schedule[L.round] && L.schedule[L.round].some(m => m[0] === L.user)); L._ctx = { res, won: A.user ? sa > sb : sb > sa, oppTid: A.user ? b : a }; L.dramaLog = null; afterUserGame(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb)); reports.fallout = gameFallout(L, A.user ? sa > sb : sb > sa, Math.abs(sa - sb), res, A.user ? b : a, playoff); const fresh = checkAchievements(L, gameFacts(L, a, b, res)); if(fresh.length) reports.ach = fresh; }
   if(L.story && L.rival != null && ((A.user && b === L.rival) || (B.user && a === L.rival))){
     const won = A.user ? sa > sb : sb > sa, S = L.story;
     if(won){ S.rivalW++; S.seasonRivalW++; if(playoff) S.rivalPlayoffW++; if(reports.econ){ reports.econ.rivalBonus = 60; reports.econ.total += 60; L.coins += 60; if(L.coinHist && L.coinHist[0]) L.coinHist[0].pay += 60; } }
@@ -5834,6 +5847,7 @@ function migrate(L){
   if(L.players){ if(L.kaine && L.kaine.vex != null && L.players[L.kaine.vex]) L.players[L.kaine.vex].sp = CROWN_SP + 5;
     Object.values(L.players).forEach(p => { if(p.crown >= 1 && p.crown <= 6){ p.sp = CROWN_SP + p.crown - 1; p.rare = CROWN_KIT[p.crown].rare; } }); }
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
+  if(L.farm && L.farm.g == null) L.farm.g = L.gameNo || 0;   // eggs laid before v207 hatch 3 games from now
   if(L.kaine && L.kaine.ending === 'ally' && L.kaine.allyS == null){ L.kaine.allyS = L.season; L.kaine.allyG = L.gameNo || 0; }   // saves from before the Shadow and Light storyline start it from now
   if(L.avatar != null && L.players && L.players[L.avatar]){ const fixed = cleanTree(L.players[L.avatar]); if(fixed) L.keyNote = `Your skill tree had ${fixed} node${fixed > 1 ? 's' : ''} from an older version of the tree. ${fixed > 1 ? 'They were' : 'It was'} removed and the skill point${fixed > 1 ? 's' : ''} refunded.`; }
   if(L.avatar != null && L.players && L.players[L.avatar]){ const n = trimKeystones(L.players[L.avatar], L); if(n) L.keyNote = `Keystones now have ${keySlots(L)} slots. Your last ${n} keystone${n > 1 ? 's were' : ' was'} refunded as skill points.`; }
@@ -6162,6 +6176,13 @@ function hubModals(L){
   if(kaineFinalDue(L)) return kaineFinalIntro(L);   // he is back
   if(fiveDue(L)) return fiveIntro(L);
   if(L.five && L.five.offer && !L.five.joined) return fiveOffer(L);   // you beat them in a playoff series   // Kaine is yours: his old team answers with the Five Crowns
+  if(L.hatchShow != null){ const c = L.players[L.hatchShow], U = L.teams[L.user], M = $('#modal'); L.hatchShow = null; saveLeague(true);   // v207: your egg just hatched
+    if(c){ M.hidden = false; fanfare(false);
+      M.innerHTML = `<div class="storycard showcard" style="--tc:${U.color}">${SHOW_BEAMS}${showConfetti([U.color, '#ffd23a', '#ffffff'])}<div class="news-kicker">🥚 Breed farm</div><div class="showaward">YOUR EGG HATCHED</div>
+        <div class="showreveal"><img src="${portrait(c, U.color)}" alt=""><div class="showname">${esc(pname(c))}</div><div class="cond">${posLabel(c)} · OVR ${ovr(c)} · Potential ${trainOf(c).mind.pot}/5${c.rare ? ' · ★ ' + RARE[c.rare].name : ''}</div><div>${talentTags(L, c, starCut(L))}</div></div>
+        <div class="cond">${c.bred ? `${esc(c.bred.a)} × ${esc(c.bred.b)}. ` : ''}${c.reserved != null ? 'Your roster is full, so it is waiting in Free Agents, reserved for you at the minimum salary.' : 'It joined your roster on a 3-year minimum deal, with Eternal Youth for as long as it stays with you.'}</div>
+        <button class="btn hot" id="sh-ok">Welcome it</button></div>`;
+      $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); }; return; } }
   if(UI.pendingReveal){ const r = UI.pendingReveal; UI.pendingReveal = null; return draftReveal(L, r.pid, r.n, r.rank); }   // you just drafted someone
   if(L.draftRecap === L.season && !L.rookie){ L.draftRecap = null; saveLeague(true); const M = $('#modal'), G = draftGrade(L), U = L.teams[L.user]; M.hidden = false; fanfare(true);
     const pickLine = (x, label) => x && L.players[x.pid] ? `<div class="cond">${label}: <b>${esc(pname(L.players[x.pid]))}</b> <span class="dim">No. ${x.n} · </span><b style="color:${L.teams[x.tid].color}">${L.teams[x.tid].abbr}</b></div>` : '';
@@ -6634,7 +6655,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
       <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰</button>
     </div>
     ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
-    <div class="tabs">${TABS.map(([k, n]) => { const c = k === 'play' ? todoList(L).length : 0; return `<button class="tab ${UI.tab === k ? 'on' : ''}" data-act="tab" data-id="${k}">${n}${c ? ` <span class="tabbadge">${c}</span>` : ''}</button>`; }).join('')}</div>
+    <div class="tabs">${NAV_GROUPS.map(g => { const c = g.id === 'play' ? todoList(L).length : 0, o = g.id === 'office' ? offersWaiting(L) : 0; return `<button class="tab ${groupOf(UI.tab).id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}">${g.icon} ${g.label}${c ? ` <span class="tabbadge">${c}</span>` : ''}${o ? ` <span class="tabbadge" style="background:var(--good)">${o}</span>` : ''}</button>`; }).join('')}</div>
     ${subTabs()}
     ${rivalBar(L)}${fiveOn(L) && !L.five.joined && L.five.tid !== L.rival ? fiveBar(L) : ''}
     ${UI.saveFail ? '<div class="msg" style="border-color:var(--bad);color:#ffb0bd">⚠ Your browser refused to save (Private Browsing or no storage space). Make a backup code in Settings so you don\'t lose this franchise.</div>' : ''}
@@ -6873,7 +6894,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 206;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 207;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8822,14 +8843,17 @@ function farmMake(L, A, B){
   c.age = 0; c.bred = { a:A.name, b:B.name, s:L.season + 1 };
   return c;
 }
-// called when a new season starts: the egg hatches and joins your roster (or waits in Free Agents if the roster is full)
-function farmHatch(L){
+const FARM_GAMES = 3;   // an egg hatches after this many of your games
+const farmLeft = L => L.farm ? Math.max(0, FARM_GAMES - ((L.gameNo || 0) - (L.farm.g == null ? (L.gameNo || 0) : L.farm.g))) : 0;   // games until the egg hatches
+// called after each of your games (and when a new season starts, in case an egg is still waiting):
+// the egg hatches and joins your roster (or waits in Free Agents if the roster is full). now = hatched during the season
+function farmHatch(L, now){
   const F = L.farm; L.farm = null; L.farmNote = null;
   if(!F || !F.snap) return;
-  const c = farmMake(L, F.snap[0], F.snap[1]), U = L.teams[L.user];
+  const c = farmMake(L, F.snap[0], F.snap[1]), U = L.teams[L.user]; if(now){ c.bred.s = L.season; L.hatchShow = c.id; }
   if(U.roster.length < ROSTER){ assignNumber(L, U, c); U.roster.push(c.id); c.contract = { sal:MIN_SAL, yrs:3 }; }
   else { c.reserved = L.user; L.fa.push(c.id); }
-  (L.farmLog = L.farmLog || []).unshift({ s:L.season + 1, id:c.id, a:F.snap[0].name, b:F.snap[1].name }); L.farmLog.length = Math.min(L.farmLog.length, 8);
+  (L.farmLog = L.farmLog || []).unshift({ s:now ? L.season : L.season + 1, id:c.id, a:F.snap[0].name, b:F.snap[1].name }); L.farmLog.length = Math.min(L.farmLog.length, 8);
   L.farmNote = `🥚 Your egg hatched into ${pname(c)}${c.rare ? ', a ★ ' + RARE[c.rare].name : ''} (${ATT[c.att].name}). ${c.reserved != null ? 'Your roster is full, so it is waiting in Free Agents, reserved for you at the $' + MIN_SAL + 'M minimum.' : 'It joined your roster on a 3-year minimum deal, with Eternal Youth for as long as it stays with you.'}`;
 }
 const oddsList = list => list.map(([n, pct]) => `${esc(n)} <b>${pct}%</b>`).join(' · ');
@@ -8845,10 +8869,10 @@ function hubFarm(L){
   const U = L.teams[L.user], F = L.farm, used = L.farmLast === L.season;
   const sel = UI.farmSel = (UI.farmSel || []).filter(id => U.roster.includes(id) && farmOk(L.players[id]));
   const tal = p => { const t = (p.genes && p.genes.tal) || 0; return (t > 0 ? '+' : '') + t; };
-  const intro = `<div class="panel"><h3>🥚 Breed farm</h3><p class="dim" style="margin:0">Pick two creatures from your roster. They keep playing. Their egg hatches when the next season starts, as a level 0 rookie on a 3-year minimum deal. Hatchlings take a while to grow, so they are born with Eternal Youth: they never decline with age while they are on your team. If one leaves, it ages like anyone else. One egg a season. You and Kaine can't be parents.</p></div>`;
+  const intro = `<div class="panel"><h3>🥚 Breed farm</h3><p class="dim" style="margin:0">Pick two creatures from your roster. They keep playing. Their egg hatches after your next 3 games, as a level 0 rookie on a 3-year minimum deal. Hatchlings take a while to grow, so they are born with Eternal Youth: they never decline with age while they are on your team. If one leaves, it ages like anyone else. One egg a season. You and Kaine can't be parents.</p></div>`;
   let main;
   if(F && F.snap){
-    main = `<div class="panel"><h3>Egg in the nest</h3><p style="margin:0"><b>${esc(F.snap[0].name)}</b> × <b>${esc(F.snap[1].name)}</b>. It hatches when season ${L.season + 1} starts.</p>${farmOddsHtml(farmOdds(F.snap[0], F.snap[1]))}</div>`;
+    main = `<div class="panel"><h3>Egg in the nest</h3><p style="margin:0"><b>${esc(F.snap[0].name)}</b> × <b>${esc(F.snap[1].name)}</b>. It hatches after ${farmLeft(L) === 1 ? 'your next game' : `${farmLeft(L)} more of your games`}.</p>${farmOddsHtml(farmOdds(F.snap[0], F.snap[1]))}</div>`;
   } else if(used){
     main = `<div class="panel"><h3>Nest is resting</h3><p class="dim" style="margin:0">You already bred an egg this season. You can breed again next season.</p></div>`;
   } else {
@@ -10715,7 +10739,7 @@ if(typeof document !== 'undefined'){
         const [a, b] = (UI.farmSel || []).map(x => L.players[x]);
         if(!farmOk(a) || !farmOk(b) || L.farm || L.farmLast === L.season) break;
         const cost = farmCost(a, b); if(L.coins < cost) break;
-        L.coins -= cost; L.farm = { s:L.season, snap:[farmSnap(a), farmSnap(b)] }; L.farmLast = L.season; UI.farmSel = [];
+        L.coins -= cost; L.farm = { s:L.season, g:L.gameNo || 0, snap:[farmSnap(a), farmSnap(b)] };   // g: your game count when the egg was laid L.farmLast = L.season; UI.farmSel = [];
         saveLeague(); UI.msg = `🥚 ${pname(a)} and ${pname(b)} left an egg in the nest. It hatches when season ${L.season + 1} starts.`; renderHub(); break; }
       // decision prompts
       case 'prompt-skip': renderHub(); break;
