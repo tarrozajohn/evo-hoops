@@ -5964,6 +5964,7 @@ function migrate(L){
     Object.values(L.players).forEach(p => { if(p.crown >= 1 && p.crown <= 6){ p.sp = CROWN_SP + p.crown - 1; p.rare = CROWN_KIT[p.crown].rare; } }); }
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
   if(L.five && !L.five.joined && L.teams[L.five.tid]){ memoClear(); sortRosterByOvr(L, L.teams[L.five.tid]); L.teams[L.five.tid].star = L.five.ids[0]; }   // v233: Vex moves up to sixth on their roster
+  if(L.five && !L.five.joined && L.kaine && L.kaine.ending === 'ally' && L.teams[L.five.tid] && !L.five.third){ try { if(kaineJoinsCrowns(L)) L.keyNote = '💔 Kaine has left your team and joined the Five Crowns. "Come and take the crown from me."'; } catch(err){} }   // v235
   if(L.five && !L.five.joined && L.five.beatS == null) L.five.edge = Math.max(L.five.edge || 0, FIVE_FLOOR);   // v230: a Five era already in progress is raised to the new floor
   if(L.kaine && L.kaine.final && L.kaine.ending === 'final') L.kaine.final.edge = Math.max(L.kaine.final.edge || 0, KAINE_FINAL_FLOOR);   // v229: a final boss already in progress is raised to the new floor
   if(L.farm && L.farm.g == null) L.farm.g = L.gameNo || 0;   // eggs laid before v207 hatch 3 games from now
@@ -7036,7 +7037,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 234;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 235;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7788,7 +7789,7 @@ const KAINE_SCENES = {
 };
 const kaineOf = L => L.kaine || (L.kaine = { stage:0, act:1, wins:0, ending:null, queue:[] });
 const kaineAlly = L => L.kaine && L.kaine.ending === 'ally';
-const kaineOff = K => K.ending === 'ally' || !!K.away || !!K.retired || K.ending === 'gone' || K.ending === 'final' || K.ending === 'done';
+const kaineOff = K => K.ending === 'ally' || K.ending === 'crown' || !!K.away || !!K.retired || K.ending === 'gone' || K.ending === 'final' || K.ending === 'done';
 // after one of your games against the rival team
 function kaineAfterGame(L, won){
   const K = kaineOf(L); if(kaineOff(K)) return;
@@ -7941,7 +7942,7 @@ function vexScene(L){
     UI.msg = 'Vex cleared out his locker that night. Kaine: "Five. Pryce has been busy."'; done(); });
 }
 function kaineGoal(L){
-  const K = kaineOf(L); if(K.ending === 'final') return `The last shadow. Beat him in a playoff series: he waits in the ${vexRound(L)}.`; if(K.ending === 'gone') return 'Kaine is gone. He said he would be the last one standing in your way.'; if(K.ending === 'done') return 'Kaine has retired. Nobody stands above you.'; if(K.ending === 'ally' && K.vexGone != null && !L.five) return 'Vex is gone. He said five more are coming.'; if(K.ending === 'ally') return K.vex != null && !K.vexDone && L.teams[L.rival].roster.includes(K.vex) ? `Kaine plays for you now. Knock Vex out of the playoffs ${2 - (K.vexS || 0) === 1 ? 'once more' : 'twice'}: he waits in the ${vexRound(L)}.` : 'Kaine plays for you now.'; if(K.away) return 'Kaine is away training alone. He will be back next season.';
+  const K = kaineOf(L); if(K.ending === 'crown') return 'Kaine left you for the Five Crowns. Beat them in a playoff series.'; if(K.ending === 'final') return `The last shadow. Beat him in a playoff series: he waits in the ${vexRound(L)}.`; if(K.ending === 'gone') return 'Kaine is gone. He said he would be the last one standing in your way.'; if(K.ending === 'done') return 'Kaine has retired. Nobody stands above you.'; if(K.ending === 'ally' && K.vexGone != null && !L.five) return 'Vex is gone. He said five more are coming.'; if(K.ending === 'ally') return K.vex != null && !K.vexDone && L.teams[L.rival].roster.includes(K.vex) ? `Kaine plays for you now. Knock Vex out of the playoffs ${2 - (K.vexS || 0) === 1 ? 'once more' : 'twice'}: he waits in the ${vexRound(L)}.` : 'Kaine plays for you now.'; if(K.away) return 'Kaine is away training alone. He will be back next season.';
   return K.stage === 0 ? 'Beat Kaine\'s team once.' : K.stage === 1 ? `Beat Kaine\'s team ${5 - K.wins} more time${5 - K.wins === 1 ? '' : 's'} to earn his respect.` : 'Meet Kaine in a playoff series: the Showdown.';
 }
 // show the next queued scene (called from the hub)
@@ -8326,8 +8327,24 @@ function formFive(L){
   sortRosterByOvr(L, R); R.star = ids[0];
   L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 140 : (L.heat || 0) >= 50 ? 110 : 85 };   /* v232: starts at 85, 110 or 140 (60 higher than the original 25, 50, 80) */
   memoClear(); sortRosterByOvr(L, R); R.star = ids[0];   // v233: sort again now that L.five exists, because Vex's story rating only counts once it does
+  if(!third) kaineJoinsCrowns(L);   // v235: he was your ally. Not any more
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
+}
+/* v235, the harder ending: even if you took Kaine in, he does not stay. The day the Five Crowns arrive he walks out
+   on you and joins them (K.ending = 'crown'). He is their first man off the bench (the lineup code keeps the five Crowns starting), so the team
+   you have to beat is the Five plus Kaine, and you no longer have him. When the Five later join you, he leaves them too and comes back the next season as
+   the final boss, exactly as on the other paths. Returns true if he moved. */
+function kaineJoinsCrowns(L){
+  const K = L.kaine, N = L.nemesis != null ? L.players[L.nemesis] : null, U = L.teams[L.user], F = L.five, R = F ? L.teams[F.tid] : null;
+  if(!K || !N || !R || R.user || !U.roster.includes(N.id) || F.joined) return false;
+  U.roster = U.roster.filter(x => x !== N.id);
+  if(R.roster.length >= ROSTER){ const out = R.roster.filter(x => !fiveAll(L).includes(x)).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0]; if(out != null){ R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); } }   // their weakest makes room
+  R.roster.push(N.id); assignNumber(L, R, N); N.contract = { sal:0, yrs:99, legend:true }; N.inj = 0; N.youth = false; N.ultimate = false;   // Eternal Youth and Ultimate Edge are your team's items
+  K.ending = 'crown'; K.crownS = L.season; K.queue = []; K.away = null; L.rival = R.id;
+  fillRosters(L); memoClear(); sortRosterByOvr(L, U); sortRosterByOvr(L, R); R.star = N.id; autoLineup(L); memoClear();
+  L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine has left the ${U.name} and joined the Five Crowns on the ${R.name}.`, rival:true, me:true });
+  return true;
 }
 // every new season: anyone of the Five who ended up elsewhere goes back, and they keep up with your level
 function fiveSeason(L){
@@ -8344,15 +8361,15 @@ function fiveLevel(L){ const Av = L.avatar != null ? L.players[L.avatar] : null;
 // He comes back the next season as the Last Shadow, the final boss. (Not if he is already gone, retired, or the final boss.)
 const kaineLeavesIfFive = L => { const K = L.kaine; return !!(K && L.nemesis != null && L.players[L.nemesis] && !K.retired && !['gone', 'final', 'done'].includes(K.ending)); };
 function kaineLeaves(L){
-  const K = L.kaine, N = L.players[L.nemesis], U = L.teams[L.user], M = $('#modal'), wasAlly = K.ending === 'ally';
+  const K = L.kaine, N = L.players[L.nemesis], U = L.teams[L.user], M = $('#modal'), wasAlly = K.ending === 'ally', wasCrown = K.ending === 'crown';
   L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== N.id); }); K.ending = 'gone'; K.goneS = L.season; K.away = null; K.queue = []; K.leftForFive = true;
   fillRosters(L); sortRosterByOvr(L, U); autoLineup(L); memoClear();
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine has left ${wasAlly ? `the ${U.name}` : 'the league'}. He did not say where he was going.`, me:true });
   saveLeague(); M.hidden = false;
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}<div class="news-kicker" style="color:#ff8fa3">Light and Shadow</div><div class="showaward">KAINE WALKS AWAY</div>
     <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, U.color)}" alt=""><div class="showname">Kaine</div></div>
-    <div class="showline">Kaine: "You have five crowns now. You don't need a shadow."</div>
-    <div class="cond" style="text-align:left">${wasAlly ? 'He packed his locker while the Five were still shaking hands.' : 'He was gone from his team by morning.'} "Everyone who ever stood in your way plays for you. Everyone but me. There is one thing left I have to know, and I can't find it out standing next to you."</div>
+    <div class="showline">Kaine: "${wasCrown ? 'They knelt. I will not.' : "You have five crowns now. You don't need a shadow."}"</div>
+    <div class="cond" style="text-align:left">${wasCrown ? 'The Five walked into your locker room. He walked the other way.' : wasAlly ? 'He packed his locker while the Five were still shaking hands.' : 'He was gone from his team by morning.'} "Everyone who ever stood in your way plays for you. Everyone but me. There is one thing left I have to know, and I can't find it out standing next to you."</div>
     <div class="cond" style="color:#ffb0bd">Kaine: "Next season. One last time. Don't hold back."</div>
     <button class="btn hot" id="sh-ok">One last time</button></div>`;
   $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
@@ -8395,7 +8412,8 @@ function fiveIntro(L){
     <div class="cond" style="text-align:left">Five 👑 Generational rookies nobody scouted, one at every position, each one Light or Shadow like you and Kaine, all on the ${esc(R.name)}. They are Crowned: they never decline, they level up with you, and each one is rated above a normal Generational. No trade or signing will ever bring one to your side. <b>They exist for one thing: to take you down.</b> Nobody has beaten all five in a playoff series.</div>
     ${L.five.six != null ? `<div class="cond" style="text-align:left">👁 And first off their bench: <b>Vex</b> (OVR ${ovr(L.players[L.five.six])}). He tried to warn you.</div>` : ''}
     <div class="fivequotes">${[5, 1, 4].map(n => fiveSay(L, 'pre', n)).map(q => `<div><b>${esc(q.who)}:</b> "${q.text}"</div>`).join('')}</div>
-    <div class="cond" style="color:#ffb0bd">${L.five.third ? (L.kaine.ending === 'gone' ? 'Somewhere, Kaine is watching.' : 'Kaine: "They beat my team by 40 last night. Stay out of my way. They are mine."') : 'Kaine: "Five of me, and they never stop talking. Good. I was getting bored."'}</div>
+    <div class="cond" style="color:#ffb0bd">${L.five.third ? (L.kaine.ending === 'gone' ? 'Somewhere, Kaine is watching.' : 'Kaine: "They beat my team by 40 last night. Stay out of my way. They are mine."') : L.kaine.ending === 'crown' ? '' : 'Kaine: "Five of me, and they never stop talking. Good. I was getting bored."'}</div>
+    ${L.kaine.ending === 'crown' ? `<div class="uplock" style="text-align:left;background:rgba(255,51,68,.12);box-shadow:inset 0 0 0 1px rgba(255,51,68,.6)">💔 <b>Kaine has left your team and joined them.</b> His locker was empty this morning. He plays for the ${esc(R.name)} now, first off the bench behind the five Crowns.<br>Kaine: "I stood next to you to find out who was strongest. It was never going to be answered on the same side. Come and take the crown from me."</div>` : ''}
     <button class="btn hot" id="sh-ok">Bring them on</button></div>`;
   $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
 }
