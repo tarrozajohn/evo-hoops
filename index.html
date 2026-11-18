@@ -6670,7 +6670,15 @@ function renderHub(){ if(MEMO.on) return renderHub0(); memoClear(); MEMO.on = tr
   try { return renderHub0(); } finally { MEMO.on = false; PORT_LAZY.on = false; memoClear(); fillPortraits(); markWideTables(); } }
 // tables wider than the screen scroll sideways; this marks them so a "swipe" hint shows under them
 function markWideTables(){ try { document.querySelectorAll('#view .tablewrap').forEach(w => w.classList.toggle('wide', w.scrollWidth > w.clientWidth + 4)); } catch(e){} }   // faces fill in right after the tab shows
-function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGUE) syncBredYouth(LEAGUE);   // keeps the Arena look's team color in step with the loaded league
+/* v215: a locker-room event names one or two of your creatures. If you answered "decide later" and then traded,
+   released or lost one of them (or a sim moved them), the event is out of date, so it is dropped instead of
+   asking you about someone who is no longer on your team. Story scenarios (ev.scn) are left alone. */
+function dropStaleEvent(L){
+  const ev = L && L.event; if(!ev || ev.scn || !ev.d) return;
+  const R = L.teams[L.user].roster, ids = [ev.d.p, ev.d.a, ev.d.b].concat(Array.isArray(ev.d.v) ? ev.d.v : []).filter(x => x != null);
+  if(ids.some(id => !R.includes(id) || !L.players[id])) L.event = null;
+}
+function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.teams) dropStaleEvent(LEAGUE); if(typeof LEAGUE !== 'undefined' && LEAGUE) syncBredYouth(LEAGUE);   // keeps the Arena look's team color in step with the loaded league
   const L = LEAGUE; if(!L){ renderMenu(); return; }
   applyUiScale();   // full size on the skill tree tab, your chosen size everywhere else
   if(L.phase === 'draft'){ renderDraft(); return; }
@@ -6939,7 +6947,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 214;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 215;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
