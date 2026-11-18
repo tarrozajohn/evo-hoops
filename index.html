@@ -6303,7 +6303,7 @@ function hubModals(L){
   if(UI.outcome){ const o = UI.outcome; UI.outcome = null; return showOutcome(o); }
   if(L.kaine && L.kaine.vexShow) return vexScene(L);   // Vex after a playoff series
   if(L.kaine && L.kaine.finalShow) return kaineFinalScene(L);   // the last series against Kaine
-  if(kaineFinalDue(L)) return kaineFinalIntro(L);   // he is back
+  if(kaineFinalDue(L)) return L.kaine.skip ? kaineSkipIntro(L) : kaineFinalIntro(L);   // he is back (the Easter egg brings the Five and Vex with him)
   if(kaineCrownDue(L)) return kaineCrownIntro(L);   // timeline B: he leaves you for the Five
   if(fiveDue(L)) return fiveIntro(L);
   if(L.five && L.five.offer && !L.five.joined) return fiveOffer(L);   // you beat them in a playoff series   // Kaine is yours: his old team answers with the Five Crowns
@@ -7041,7 +7041,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 240;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 241;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7854,13 +7854,13 @@ function kaineFinalScene(L){
   M.hidden = false;
   if(kind === 'lost'){ N.kaineEdge = (N.kaineEdge || 0) + 1;
     M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}<div class="news-kicker" style="color:#ff8fa3">The last shadow</div><div class="showaward">HE IS STILL STANDING</div>
-      <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div></div><div class="showline">Kaine: "${K.ending === 'crown' ? 'Six crowns. You brought one light. Again next year.' : K.leftForFive ? 'Not yet. Again next year.' : 'You should have said yes when you had the chance.'}"</div>
+      <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div></div><div class="showline">Kaine: "${K.skip ? 'You said no twice for this? Again next year.' : K.ending === 'crown' ? 'Six crowns. You brought one light. Again next year.' : K.leftForFive ? 'Not yet. Again next year.' : 'You should have said yes when you had the chance.'}"</div>
       <div class="cond">He ended your season. He will be waiting again next year.</div><button class="btn hot" id="sh-ok">Next year</button></div>`;
     $('#sh-ok').onclick = done; return; }
   fanfare(true); L.coins += 2000; const me = L.players[L.avatar]; if(me) (me.trophies = me.trophies || []).push(`The Last Shadow (S${L.season})`);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ffd23a">${SHOW_BEAMS}${showConfetti(['#ffd23a', L.teams[L.user].color, '#ffffff'])}<div class="news-kicker">The end of the story</div><div class="showaward">LIGHT PREVAILS</div>
     <div class="showreveal" style="animation-delay:.2s"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div></div>
-    <div class="showline">Kaine: "${K.ending === 'crown' ? 'I left to find out which of us it was. Six of us, and it still was not close. That is all I needed to know.' : K.leftForFive ? 'High school. College. I kept waiting for you to catch up. You went past me. That is all I needed to know.' : K.skip ? 'Twice I asked to stand next to you. Now I understand why you said no. You never needed anyone.' : 'I asked to stand next to you. Now I understand why you said no. You never needed anyone.'}"</div>
+    <div class="showline">Kaine: "${K.skip ? 'Twice I asked to stand next to you. Then I brought everyone, and it still was not close. You never needed anyone.' : K.ending === 'crown' ? 'I left to find out which of us it was. Six of us, and it still was not close. That is all I needed to know.' : K.leftForFive ? 'High school. College. I kept waiting for you to catch up. You went past me. That is all I needed to know.' : K.skip ? 'Twice I asked to stand next to you. Now I understand why you said no. You never needed anyone.' : 'I asked to stand next to you. Now I understand why you said no. You never needed anyone.'}"</div>
     <div class="cond" style="text-align:left">You beat the strongest opponent of your career in a playoff series. Kaine retires tonight and goes into the Hall of Fame. <b>Nobody is left standing above you.</b> +2,000 coins, and "The Last Shadow" is added to your legacy.</div>
     <button class="btn hot" id="sh-ok">Take a bow</button></div>`;
   $('#sh-ok').onclick = () => { R.roster = R.roster.filter(x => x !== N.id);
@@ -7966,7 +7966,8 @@ function showKaineScene(L, key, done){
   const close = next => { saveLeague(); M.hidden = true; if(next) return showKaineScene(L, next, done); done(); };
   if(sc.choice){ $('#k-ally').onclick = () => { kaineAlliance(L); close('ally'); }; $('#k-free').onclick = () => { K.declined = (K.declined || 0) + 1;
     /* Easter egg (v240): say "not yet" a second time and he is done asking. He leaves the league that night, Vex and
-       the Five Crowns never come, and next season he is back as the Last Shadow: straight to the final boss. */
+       the Five Crowns eras are skipped, and next season he is back as the Last Shadow with the Five and Vex on his
+       team (see kaineSkipIntro): straight to the final boss. */
     if(K.declined >= 2){ kaineGone(L); K.skip = true; return close('gone'); }
     close('later'); }; }   /* v239: saying no only delays the story. He stays your rival and asks again the next time you beat him in a playoff series */
   else $('#k-ok').onclick = () => close();
@@ -8351,22 +8352,49 @@ function formFive(L){
                                   L.five.fin = 1). The final boss is the Five Crowns AND Kaine on one team, with Kaine
                                   starting. This is the harder ending. Beat them in a playoff series to end the story
                                   (L.five.fin = 2): Kaine retires, and the Five ask to join you once more.
-   Easter egg (v240): say "not yet" to Kaine twice and the story skips Vex and the Five: he returns the next season as
-   the Last Shadow (K.skip).
+   Easter egg (v240, v241): say "not yet" to Kaine twice and the story skips ahead: he returns the next season with
+   the Five Crowns and Vex on his team, as the final boss (K.skip, kaineSkipIntro).
    No side roads (v239): every choice that does not move the story forward only delays it. If you say "not yet" when
    Kaine asks to join, he stays your rival and asks again the next time you beat him in a playoff series.
    (Saves from older versions where he already left the league keep working: Vex, the Five, then Kaine alone.)
    kaineJoinsCrowns moves him. Returns true if he moved. */
 function kaineJoinsCrowns(L){
   const K = L.kaine, N = L.nemesis != null ? L.players[L.nemesis] : null, U = L.teams[L.user], F = L.five, R = F ? L.teams[F.tid] : null;
-  if(!K || !N || !R || R.user || !U.roster.includes(N.id) || F.joined) return false;
-  U.roster = U.roster.filter(x => x !== N.id);
+  if(!K || !N || !R || R.user || F.joined) return false;
+  if(!U.roster.includes(N.id) && L.teams.some(T => T !== R && T.roster.includes(N.id))) return false;   // he comes from your team, or from nowhere (the Easter egg), never from another club
+  L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== N.id); });
   if(R.roster.length >= ROSTER){ const out = R.roster.filter(x => !fiveAll(L).includes(x)).sort((a, b) => value(L.players[a]) - value(L.players[b]))[0]; if(out != null){ R.roster = R.roster.filter(x => x !== out); L.players[out].contract = null; L.fa.push(out); } }   // their weakest makes room
   R.roster.push(N.id); assignNumber(L, R, N); N.contract = { sal:0, yrs:99, legend:true }; N.inj = 0; N.youth = false; N.ultimate = false;   // Eternal Youth and Ultimate Edge are your team's items
   K.ending = 'crown'; K.crownS = L.season; K.queue = []; K.away = null; L.rival = R.id;
   fillRosters(L); memoClear(); sortRosterByOvr(L, U); sortRosterByOvr(L, R); R.star = N.id; autoLineup(L); memoClear();
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine has left the ${U.name} and joined the Five Crowns on the ${R.name}.`, rival:true, me:true });
   return true;
+}
+/* The Easter egg, part 2 (v241). You said "not yet" twice, so Kaine skipped the story, and he did not come back alone:
+   he recruited everyone Pryce ever built to beat you. This creates Vex and the Five Crowns on Kaine's old team, puts
+   Kaine in their starting five, and makes them the final boss straight away (the same fight as the "keep Kaine" ending). */
+function kaineSkipIntro(L){
+  const K = L.kaine, N = L.players[L.nemesis], U = L.teams[L.user], Av = L.players[L.avatar], M = $('#modal');
+  const lv = Math.max(Av ? Av.lvl : 0, Math.round(U.roster.reduce((t, id) => t + (L.players[id].lvl || 0), 0)/U.roster.length));
+  if(K.vex == null || !L.players[K.vex]){   // Vex never appeared in this career, so make him now (the same recipe as in the main story)
+    const v = genPlayer(L, { lvl:lv + 4, rareChance:1 }); autoEvolve(v); v.sp = CROWN_SP + 5; v.nick = 'Vex'; v.generational = true; v.gift = Math.max(v.gift || 0, 10); v.tr.mind.pot = 5; v.prodigy = true; v.contract = { sal:0, yrs:99, legend:true }; K.vex = v.id; }
+  K.vexDone = 1; K.vexGone = L.season - 1; K.vexShow = null;
+  if(!L.five) formFive(L);                                                     // the Five (and Vex as their sixth man) on Kaine's old team
+  const F = L.five, R = L.teams[F.tid];
+  N.lvl = Math.max(N.lvl || 0, lv); N.xp = xpFor(N.lvl); N.kaineEdge = (N.kaineEdge || 0) + 5;
+  kaineJoinsCrowns(L); F.fin = 1; F.edge = Math.max(F.edge || 0, FIVE_FLOOR) + FIVE_FINAL_EDGE; memoClear(); sortRosterByOvr(L, R); R.star = N.id; memoClear();
+  L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine is back, and he brought the Five Crowns and Vex with him to the ${R.name}.`, rival:true, me:true });
+  saveLeague(true); M.hidden = false; fanfare(true);
+  M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
+    <div class="news-kicker" style="color:#ff8fa3">The final chapter</div><div class="showaward" style="background:linear-gradient(90deg,#ff3344,#ffb0bd,#ff3344);background-size:250% 100%;-webkit-background-clip:text;background-clip:text">THE LAST SHADOW</div>
+    <div class="showreveal"><img src="${portrait(NEMESIS_SP, R.color)}" alt=""><div class="showname">Kaine</div><div class="cond">Lv ${N.lvl} · OVR ${ovr(N)} · ${esc(R.name)}</div></div>
+    <div class="showline">Kaine: "Twice. So I went and found everyone who was ever built to beat you."</div>
+    <div class="fivefaces" style="justify-content:center">${fiveAll(L).filter(id => R.roster.includes(id)).map(id => { const p = L.players[id]; return `<span><img src="${portrait(p, R.color)}" alt=""><b>${esc(p.nick || pname(p))}</b><i>${ovr(p)}</i></span>`; }).join('')}</div>
+    <div class="cond" style="text-align:left">You turned him down twice, so he skipped everything in between. He is back on the ${esc(R.name)} with <b>the Five Crowns</b>, five generational players you have never seen, and <b>Vex</b> on their bench. Kaine starts next to the Crowns. They are the strongest thing you will ever face, and they will be waiting in the ${vexRound(L)} every season. <b>Beat them in a playoff series to finish the story.</b></div>
+    <div class="fivequotes" style="border-color:#ff8fa3">${FIVE.slice(0, 5).map(X => `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`).join('')}</div>
+    <div class="cond" style="color:#ffb0bd">Kaine: "No more offers. Only one of us walks out."</div>
+    <button class="btn hot" id="sh-ok">Finish it</button></div>`;
+  $('#sh-ok').onclick = () => { M.hidden = true; renderHub(); };
 }
 // Timeline B: the season after you beat the Five with Kaine on your team, he joins them. This is the final boss.
 const kaineCrownDue = L => !!(L.kaine && L.kaine.crownDue && kaineAlly(L) && fiveOn(L) && !L.five.joined);   // a safety net: normally it happens the moment you turn the Five down
