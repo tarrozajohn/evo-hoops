@@ -6979,7 +6979,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 224;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 225;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8923,15 +8923,28 @@ const babyOf = line => SPECIES.find(S => S.line === line && S.stage === 1);
 // what the farm remembers about a parent, so the egg still hatches if the parent is traded before then
 function farmSnap(p){ return { name:pname(p), line:SPECIES[p.sp].line, genes:{ ...(p.genes || {}) }, pot:trainOf(p).mind.pot || 0, rare:p.rare || null, att:p.att || 'pro', look:p.look || { tone:0, acc:0 }, bod:p.bod || { h:1, ws:1, wt:1 } }; }
 function farmCost(a, b){ return Math.round((300 + 25*Math.max(0, (tradeValue(a) + tradeValue(b))/2 - 60))/10)*10; }   // better parents cost more
+/* Rare trait inheritance (v225). farmRareTable gives the chances as [[trait key | 'new' | null, percent], ...]:
+     both parents have a trait   the hatchling ALWAYS gets one: 40% each parent's (80% if they share it), 20% a brand new one
+     one parent has a trait      65% that trait, 15% a brand new one, 20% none
+     neither has one             a small chance (FARM_MUT) of a brand new one
+   "A brand new one" is a random Rare trait that neither parent has (a mutation).
+   The odds panel and the hatching both read this one table, so what you see is what is rolled. */
+function farmRareTable(A, B){
+  const m = Math.round(FARM_MUT*100);
+  if(A.rare && B.rare) return A.rare === B.rare ? [[A.rare, 80], ['new', 20]] : [[A.rare, 40], [B.rare, 40], ['new', 20]];
+  if(A.rare || B.rare) return [[A.rare || B.rare, 65], ['new', 15], [null, 20]];
+  return [['new', m], [null, 100 - m]];
+}
+function farmRareRoll(A, B){
+  let r = rand()*100, got = null; for(const [k, pct] of farmRareTable(A, B)){ if(r < pct){ got = k; break; } r -= pct; }
+  if(got !== 'new') return got;
+  const fresh = Object.keys(RARE).filter(k => k !== A.rare && k !== B.rare); return fresh.length ? pick(fresh) : pick(Object.keys(RARE));
+}
 // the chances for each part of the hatchling, as lists of [label, percent]
 function farmOdds(A, B){
   const lines = [A.line, B.line].filter(l => l >= 0);   // legends have no evolution line to pass on
   const species = !lines.length ? [['A random species', 100]] : lines.length === 1 || lines[0] === lines[1] ? [[babyOf(lines[0]).name, 100]] : lines.map(l => [babyOf(l).name, 50]);
-  const nr = (A.rare ? 1 : 0) + (B.rare ? 1 : 0), none = nr === 2 ? 0.25 : nr === 1 ? 0.5 : 1, mut = Math.round(none*FARM_MUT*100);
-  const rare = [];
-  if(nr === 2 && A.rare === B.rare) rare.push(['★ ' + RARE[A.rare].name, 75]);
-  else { if(A.rare) rare.push(['★ ' + RARE[A.rare].name, nr === 2 ? 37.5 : 50]); if(B.rare) rare.push(['★ ' + RARE[B.rare].name, nr === 2 ? 37.5 : 50]); }
-  rare.push(['a new Rare trait', mut], ['no Rare trait', Math.round(none*100) - mut]);
+  const rare = farmRareTable(A, B).map(([k, pct]) => [k === 'new' ? 'a brand new Rare trait (mutation)' : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]);
   const att = A.att === B.att ? [[ATT[A.att].icon + ' ' + ATT[A.att].name, 80], ['a random attitude', 20]] : [[ATT[A.att].icon + ' ' + ATT[A.att].name, 40], [ATT[B.att].icon + ' ' + ATT[B.att].name, 40], ['a random attitude', 20]];
   const pm = Math.round((A.pot + B.pot)/2), tm = Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2);
   return { species, rare, att, pot:[clamp(pm - 1, 0, TRAIN_MAX), clamp(pm + 1, 0, TRAIN_MAX)], tal:[clamp(tm - 3, -15, 18), clamp(tm + 4, -15, 18)] };
@@ -8943,8 +8956,7 @@ function farmMake(L, A, B){
   for(const k of STATS) c.genes[k] = (rand() < 0.5 ? A : B).genes[k] || 0;   // each rating gene comes from one parent or the other
   c.genes.tal = clamp(Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2) + Math.floor(rand()*8) - 3, -15, 18);   // natural talent: near the parents' average
   c.tr.mind.pot = clamp(Math.round((A.pot + B.pot)/2) + pick([-1, 0, 0, 1]), 0, TRAIN_MAX);   // Potential: their average, give or take one
-  const passed = [A, B].filter(P => P.rare && rand() < 0.5).map(P => P.rare);   // each parent's Rare trait passes half the time
-  c.rare = passed.length ? pick(passed) : rand() < FARM_MUT ? pick(Object.keys(RARE)) : null;
+  c.rare = farmRareRoll(A, B);   // a parent's Rare trait, a brand new one, or none (see farmRareTable)
   const r = rand(); c.att = r < 0.4 ? A.att : r < 0.8 ? B.att : rollAtt();
   c.look = { tone: pick([A, B]).look.tone, acc: pick(ACC_POOL) };   // a parent's color, its own accessory
   c.bod = { h:(A.bod.h + B.bod.h)/2, ws:(A.bod.ws + B.bod.ws)/2, wt:(A.bod.wt + B.bod.wt)/2 };
