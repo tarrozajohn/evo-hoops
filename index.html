@@ -1808,6 +1808,7 @@ function autoSubs(G, side){
     if(G.ball.state === 'held' && G.ball.holder === e) continue;
     if(prio(e) && e.energy > 35 && mins(e.id) < elapsed*0.5) continue;   // a priority creature stays in until it's really tired or has played its share
     if(e.avatar && e.energy > 30) continue;   // you only sit when you're nearly out of gas
+    if(!yours && e.p && e.p.crown === 6 && crownSafe(e) && e.energy > 40 && mins(e.id) < elapsed*0.4) continue;   // Vex, the Five's sixth man, stays in until he has played his share (v233)
     const mine = side === G.mine && LEAGUE, kid = c => mine && LEAGUE.playKids && !c.avatar && (c.p.age || 0) <= 2;
     const fit = c => c.ov + (c.avatar ? 25 : 0) - posGap(c.p, e.slot)*4 + (mine && (c.p.mins === 'rot' || c.p.mins === 'start') ? 14 : 0) + (kid(c) ? 8 : 0);   // the coach gets you back in fast; minutes priority and Play the kids count
     let best = null, bs = -1e9;
@@ -1817,6 +1818,11 @@ function autoSubs(G, side){
     const betterBack = best.energy > 85 && fit(best) > fit(e) + 3 && e.energy < 80;
     if(tired || betterBack) swapIn(G, e, best);
   }
+  /* v233: the Five Crowns AND Vex. Vex is their sixth man, but the Crowns almost never tire, so he was not getting
+     off the bench at all. Now he is promised about 40% of the game: when he falls behind that pace he checks in for
+     whichever Crown is most tired, and the line above keeps him on the floor until he has played his share. */
+  if(!yours){ const v = G.bench[side].find(b => b.p && b.p.crown === 6 && crownSafe(b));
+    if(v && v.energy >= 60 && mins(v.id) < elapsed*0.4 - 0.5){ const out = G.ents.filter(x => x.team === side && !(G.ball.state === 'held' && G.ball.holder === x)).sort((x, y) => x.energy - y.energy)[0]; if(out) swapIn(G, out, v); } }
   // Minutes promise (your team): a bench creature on Rotation priority, or a young one with Play the kids, gets at least
   // about 30% of the game. When it falls behind that pace, it checks in for the most tired teammate who isn't you.
   if(yours){
@@ -2372,7 +2378,7 @@ function updateBall(G, dt){
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (rareHas(o.rare, 'ballhawk') ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((rareHas(b.passer.rare, 'maestro') ? 0.6 : 1)*(0.1 + (rareHas(o.rare, 'ballhawk') ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
-        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(b.passer.p && b.passer.p.crown >= 1 && b.passer.p.crown <= 5 ? 0.35 : 1)){   /* v230: the Five's passes are picked off about a third as often (Colossus alone was losing 13 a game) */ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
+        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(crownSafe(b.passer) ? 0.35 : 1)){   /* v230: the Five's passes are picked off about a third as often (Colossus alone was losing 13 a game). v233: Vex too, once he is their sixth man */ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
     if(u >= 1){
@@ -5961,6 +5967,7 @@ function migrate(L){
   if(L.players){ if(L.kaine && L.kaine.vex != null && L.players[L.kaine.vex]) L.players[L.kaine.vex].sp = CROWN_SP + 5;
     Object.values(L.players).forEach(p => { if(p.crown >= 1 && p.crown <= 6){ p.sp = CROWN_SP + p.crown - 1; p.rare = CROWN_KIT[p.crown].rare; } }); }
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
+  if(L.five && !L.five.joined && L.teams[L.five.tid]){ memoClear(); sortRosterByOvr(L, L.teams[L.five.tid]); L.teams[L.five.tid].star = L.five.ids[0]; }   // v233: Vex moves up to sixth on their roster
   if(L.five && !L.five.joined && L.five.beatS == null) L.five.edge = Math.max(L.five.edge || 0, FIVE_FLOOR);   // v230: a Five era already in progress is raised to the new floor
   if(L.kaine && L.kaine.final && L.kaine.ending === 'final') L.kaine.final.edge = Math.max(L.kaine.final.edge || 0, KAINE_FINAL_FLOOR);   // v229: a final boss already in progress is raised to the new floor
   if(L.farm && L.farm.g == null) L.farm.g = L.gameNo || 0;   // eggs laid before v207 hatch 3 games from now
@@ -7033,7 +7040,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 232;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 233;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7885,6 +7892,8 @@ const vexRound = L => { const t = stalkTeam(L); return t != null && L.teams[t].c
 /* v229: the final boss is meant to be very hard. His team's rating edge over you starts at 50 (60 if the Five play
    for you) and can never fall below this floor, however many times you lose to him. Before, it started at 20 to 30
    and dropped by 4 with every loss, so a few losses turned the last fight into a coin flip. */
+// Is this player one of the Five Crowns, or Vex playing as their sixth man? (Vex on his own team, before the Five arrive, does not count.)
+const crownSafe = e => { const c = e && e.p ? e.p.crown : 0; if(!c) return false; if(c <= 5) return true; const L = typeof LEAGUE !== 'undefined' ? LEAGUE : null; return !!(L && L.five && !L.five.joined && L.five.six === e.p.id); };
 const KAINE_FINAL_FLOOR = 40;   /* v232: was 34 */
 /* v230: the Five Crowns era is harder too. Three changes:
      - their rating edge starts 60 higher (85, 110 or 140 depending on how dominant you have been), never drops below
@@ -8317,9 +8326,10 @@ function formFive(L){
   // Vex: back as their sixth man, unless he is on your team or gone from the save
   let six = null; const vex = K.vex != null ? L.players[K.vex] : null;
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
-    const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; room(vex); R.roster.push(vex.id); assignNumber(L, R, vex); }
+    const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; vex.inj = 0; room(vex);   /* he arrives healthy */ R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
   L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 140 : (L.heat || 0) >= 50 ? 110 : 85 };   /* v232: starts at 85, 110 or 140 (60 higher than the original 25, 50, 80) */
+  memoClear(); sortRosterByOvr(L, R); R.star = ids[0];   // v233: sort again now that L.five exists, because Vex's story rating only counts once it does
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
 }
