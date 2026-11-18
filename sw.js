@@ -1,7 +1,7 @@
 // Service worker: keeps a copy of the game on the device.
 // The game page itself: try the internet first (so updates show up), and fall back to the saved copy
 // if the connection is slow (over 3 seconds) or offline. Icons and fonts: use the saved copy and refresh it in the background.
-const CACHE = 'evo-hoops-v245';
+const CACHE = 'evo-hoops-v246';
 const CORE = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE))); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
