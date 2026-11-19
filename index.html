@@ -1412,7 +1412,7 @@ function autoOffseason(L){
   if(A.resign) expiring(L, L.user).filter(i => !L.players[i].resign).forEach(i => runAct('resign', i));
   if(A.farm && !farmEggs(L).length && L.farmLast !== L.season){   // breed your two most valuable creatures if the coins allow
     const ps = L.teams[L.user].roster.map(id => L.players[id]).filter(farmOk).sort((a, b) => tradeValue(b) - tradeValue(a));
-    if(ps.length >= 2 && L.coins - farmCost(ps[0], ps[1]) >= A.keep){ L.coins -= farmCost(ps[0], ps[1]); farmEggs(L).push({ s:L.season, g:L.gameNo || 0, snap:[farmSnap(ps[0]), farmSnap(ps[1])] }); farmEggs(L); L.farmLast = L.season; autoNote(L, `Bred ${pname(ps[0])} × ${pname(ps[1])}`); }
+    if(ps.length >= 2 && L.coins - farmCost(ps[0], ps[1]) >= A.keep){ L.coins -= farmCost(ps[0], ps[1]); farmEggs(L).push({ s:L.season, g:L.gameNo || 0, aim:aimOf(L.farmAim), snap:[farmSnap(ps[0]), farmSnap(ps[1])] }); farmEggs(L); L.farmLast = L.season; autoNote(L, `Bred ${pname(ps[0])} × ${pname(ps[1])}`); }
   }
 }
 function autoPractice(L){
@@ -4493,8 +4493,34 @@ const WILD = {
   w_warden:     { name:'Warden',       style:'rim',     boost:{ pdf:10, idf:10 },          desc:'Wild mutation: nobody gets by, inside or out. +10 perimeter D, +10 inside D.' },
   w_pickpocket: { name:'Pickpocket',   style:'threeD',  boost:{ stl:16, spd:4 },           desc:'Wild mutation: the ball is never safe near it. +16 STL, +4 SPD.' },
   w_glasscannon:{ name:'Glass Cannon', style:'sharp',   boost:{ sht:18, pdf:-6, idf:-6 },  desc:'Wild mutation: a deadly shooter who cannot guard anyone. +18 SHT, -6 perimeter D, -6 inside D.' },
-  w_chimera:    { name:'Chimera',      style:'twoway',  boost:{ spd:3, sht:3, dnk:3, blk:3, stl:3, pdf:3, idf:3, sta:3 }, desc:'Wild mutation: a little of everything. +3 to every rating.' } };
+  w_chimera:    { name:'Chimera',      style:'twoway',  boost:{ spd:3, sht:3, dnk:3, blk:3, stl:3, pdf:3, idf:3, sta:3 }, desc:'Wild mutation: a little of everything. +3 to every rating.' },
+  // v259: 12 more Wild traits (20 in all). Each desc is built from its boost below, so only name, style and boost are set here
+  w_wizard:     { name:'Ball Wizard',  style:'slasher', boost:{ spd:8, stl:8, sht:4 } },
+  w_bulldozer:  { name:'Bulldozer',    style:'rim',     boost:{ dnk:14, sta:6 } },
+  w_spider:     { name:'Spider',       style:'threeD',  boost:{ stl:10, blk:8 } },
+  w_zen:        { name:'Zen Archer',   style:'sharp',   boost:{ sht:12, sta:8 } },
+  w_skyscraper: { name:'Skyscraper',   style:'rim',     boost:{ blk:14, idf:6 } },
+  w_shadowstep: { name:'Shadowstep',   style:'threeD',  boost:{ spd:10, pdf:10 } },
+  w_volcano:    { name:'Volcano',      style:'slasher', boost:{ dnk:10, sht:6, blk:4 } },
+  w_vise:       { name:'Vise Grip',    style:'threeD',  boost:{ pdf:16, stl:4 } },
+  w_engine:     { name:'Perpetual Engine', style:'twoway', boost:{ sta:14, spd:6, pdf:4 } },
+  w_mirror:     { name:'Mirror Image', style:'twoway',  boost:{ sht:6, pdf:6, spd:6 } },
+  w_gambler:    { name:'Gambler',      style:'threeD',  boost:{ stl:18, sht:4, pdf:-4 } },
+  w_mountain:   { name:'Mountain',     style:'rim',     boost:{ idf:14, blk:6, spd:-4 } } };
 const WILD_RARE = Object.keys(WILD); for(const k of WILD_RARE) RARE[k] = { ...WILD[k], arch:null, mut:true, tier:'Wild' };
+/* v259: two more kinds of mutation, built only from Wild traits (they are rating boosts only, like the Wild ones):
+     Wild Apex    both parents have the same Wild trait: its boost 1.5 times bigger. Key "wapex:" + the Wild key. 20 of them.
+     Wild Hybrid  the parents have two different Wild traits: both boosts added together, with both names.
+                  Key "wh:" + the two Wild keys in alphabetical order joined by "|". 190 of them. */
+const wildBoostText = b => Object.entries(b).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_NAME[k]}`).join(', ');   // "+14 Speed, +6 Stealing"
+WILD_RARE.forEach(k => { const W = RARE[k]; if(!W.desc) W.desc = `Wild mutation: ${wildBoostText(W.boost)}.`; });   // descs for the new ones
+const wildHybridKey = (a, b) => 'wh:' + [a, b].sort().join('|');
+WILD_RARE.forEach((a, i) => {
+  const A = RARE[a], ab = {}; for(const st in A.boost) ab[st] = Math.round(A.boost[st]*1.5);
+  RARE['wapex:' + a] = { name:'Apex ' + A.name, arch:null, style:A.style, boost:ab, mut:true, tier:'Wild Apex', desc:`Mutation: ${A.name} from both parents, pushed further. ${wildBoostText(ab)}.` };
+  WILD_RARE.slice(i + 1).forEach(b => { const B = RARE[b], hb = {}; for(const st of STATS){ const v = (A.boost[st] || 0) + (B.boost[st] || 0); if(v) hb[st] = v; }
+    RARE[wildHybridKey(a, b)] = { name:A.name + ' ' + B.name, arch:null, style:A.style, boost:hb, mut:true, tier:'Wild Hybrid', desc:`Mutation: ${A.name} and ${B.name} in one creature. ${wildBoostText(hb)}.` }; });
+});
 // the base traits inside a trait: itself for a base trait, the parts for a Fusion / Apex / Mythic, none for a Wild one
 const rareParts = r => !r || !RARE[r] ? [] : RARE[r].has || (BASE_RARE.includes(r) ? [r] : []);
 // does a creature with trait r have base trait k's signature power? (true for k itself and for mutations built from k)
@@ -6710,7 +6736,7 @@ function renderHelp(back){
       <div class="panel"><h3>Genes</h3><p class="dim">Every creature has its own genes: a random spread on every stat, one standout strength (green ▲) and one clear weakness (red ▼). Two creatures of the same species and level can look very different, so check the cards before you draft.</p></div>
       <div class="panel"><h3>Team star</h3><p class="dim">Pick one creature on the Roster tab as your team star. In games it plays with +3 to every rating, teammates look for it more on passes, and it wears a gold star above its head. Every CPU team stars its best creature too. The star only counts while it's in your starting five.</p></div>
       <div class="panel"><h3>Draft classes and scouting</h3><p class="dim">Each rookie draft is Weak, Thin, Average, Deep or Loaded. Strong classes have more rares, more Potential and natural talent that adds to every rating. A Loaded class's No. 1 prospect is a generational talent. The Scouting tab shows what your scouts know: a better Scouting Office gives a more accurate grade, reveals more of the top prospects, and scouts next year's class. CPU teams know the true strength, so picks in strong classes cost more in trades.</p></div>
-      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm, 92 in all. <b>Fusion:</b> two parents with different Rare traits have a 35% chance of a fusion with its own name and the boosts and powers of both (Juggernaut + The Wall = Titan). <b>Apex:</b> both parents share the trait, 35% chance of a version with a boost 1.5 times bigger. This works for fusions too (Titan + Titan = Apex Titan). <b>Mythic:</b> breed a fusion with a third trait and there is a 35% chance of all three in one creature. <b>Wild:</b> eight traits that exist nowhere else (Quicksilver, Iron Lung, Skywalker, Hot Blood, Warden, Pickpocket, Glass Cannon, Chimera). Any pair can roll one: 17% with no traits, 22% if one parent has a trait. The farm shows what you are rolling for before you pay.</span></div></div>
+      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm, 314 in all. <b>Fusion:</b> two parents with different Rare traits can make a fusion with its own name and the boosts and powers of both (Juggernaut + The Wall = Titan). <b>Apex:</b> both parents share the trait, for a version with a boost 1.5 times bigger. This works for fusions too (Titan + Titan = Apex Titan). <b>Mythic:</b> breed a fusion with a third trait for all three in one creature. <b>Wild:</b> 20 traits that exist nowhere else (Quicksilver, Skywalker, Glass Cannon, Bulldozer, Shadowstep, Volcano and more). Any pair can roll one, even with no traits. <b>Wild Apex and Wild Hybrid:</b> breed two Wild creatures: the same Wild trait makes a 1.5 times stronger version, two different ones combine both boosts. Pick a goal for each egg (Keep a trait, Balanced, Go for a mutation) to change the odds. The farm shows what you are rolling for before you pay.</span></div></div>
       <div class="panel"><h3>You</h3><p class="dim">Your own creature joins your team as its locked star and can never be traded or released. You start below average with maxed Potential, choose your position on the Roster tab, and play the Legend style: whoever is in front of you (the closest opponent within 6 ft) loses 1 on every rating every 6 seconds, and you gain it. With the Legendary aura the drain doubles to 2 every 6 seconds. It resets when you're benched or the game ends. You can level to 99, your ratings have no cap, you grow as you level, and you never decline with age. Get every rating to 100+ and max everything (all three categories, Eternal Youth and the Ultimate Edge) to unlock the Legendary aura and form: only you can have it, and it makes you taller, longer, stronger and 8% faster.</p></div>
       <div class="panel"><h3>Aging and Eternal Youth</h3><p class="dim">Creatures improve for their first ${AGE_PRIME} seasons in the league. Seasons ${AGE_PRIME + 1} to ${AGE_CLIFF} each cost ${AGE_STEP} on every rating. After season ${AGE_CLIFF} comes the major decline: ${AGE_DROP} on every rating each season (up to −${AGE_MAX} in total). Eternal Youth from the Shop stops it for good; your own creature and Kaine never decline this way. Only your team can own it. Eternal Youth is also the fourth branch of the max aura: max Stats, Physique and Mental, add Eternal Youth, and the creature unlocks the Eternal aura (+10 to every rating in total).</p></div>
       <div class="panel"><h3>Ultimate Edge</h3><p class="dim">The most expensive prize in the Shop, and only your team can own it. The creature wearing it always plays with the full element edge (about +10% on shots, steals, interceptions and blocks), opponents facing it always have the worst edge, and any opponent within 7 feet moves 6% slower and shoots 4% worse. It shows as a shifting, spectrum-colored aura with all ten elements orbiting it. Trading or releasing the creature puts the Ultimate Edge back in your bag.</p></div>
@@ -7217,7 +7243,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 258;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 259;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9256,21 +9282,31 @@ const farmOk = p => p && !p.avatar && !p.nemesis;
 const babyOf = line => SPECIES.find(S => S.line === line && S.stage === 1);
 // what the farm remembers about a parent, so the egg still hatches if the parent is traded before then
 function farmSnap(p){ return { name:pname(p), line:SPECIES[p.sp].line, genes:{ ...(p.genes || {}) }, pot:trainOf(p).mind.pot || 0, rare:p.rare || null, att:p.att || 'pro', look:p.look || { tone:0, acc:0 }, bod:p.bod || { h:1, ws:1, wt:1 } }; }
-function farmCost(a, b){ return Math.round((150 + 12*Math.max(0, (tradeValue(a) + tradeValue(b))/2 - 60))/10)*10; }   // better parents cost more. v255: about half the old price (was 300 + 25 per point)
+function farmCost(a, b){ return Math.round((80 + 6*Math.max(0, (tradeValue(a) + tradeValue(b))/2 - 60))/10)*10; }   // better parents cost more. v259: about half again (v255 was 150 + 12 per point, before that 300 + 25)
 /* Rare trait inheritance (v225). farmRareTable gives the chances as [[trait key | 'new' | null, percent], ...]:
      both parents have a trait   the hatchling ALWAYS gets one: about 33% each parent's (65% if they share it), 35% a mutation
      one parent has a trait      58% that trait, 22% a mutation, 20% none
      neither has one             17% a mutation (FARM_MUT)
    "A brand new one" is a mutation: see farmMutation and the MUTATIONS notes next to RARE.
    The odds panel and the hatching both read this one table, so what you see is what is rolled. */
-function farmRareTable(A, B){
-  const m = Math.round(FARM_MUT*100);
-  if(A.rare && B.rare) return A.rare === B.rare ? [[A.rare, 50], ['new', 50]] : [[A.rare, 25], [B.rare, 25], ['new', 50]];   // v256: mutation 50% (35% in v255, 30% in v254, 40% in v253, 20% before that)
-  if(A.rare || B.rare) return [[A.rare || B.rare, 50], ['new', 32], [null, 18]];                                            // v256: mutation 32% (22% in v255, 18% in v254, 25% in v253, 15% before that)
-  return [['new', m], [null, 100 - m]];                                                                                     // v253: 8% -> 20%
+/* v259: you pick a goal for each egg, and it changes the odds:
+     keep    keep a parent's trait           mix     a bit of both (the default)     mutate    go for a mutation
+   Each row below is [both share a trait, two different traits, one parent has a trait, neither has one].
+   The numbers are percents: [parent trait(s), mutation, no trait]. With two different traits, the parent share is split evenly. */
+const FARM_AIMS = {
+  keep:  { name:'Keep a trait',   desc:'Best odds of passing on a parent\'s trait.', same:[90, 10, 0], diff:[90, 10, 0], one:[85, 10, 5], none:[0, 35, 65] },
+  mix:   { name:'Balanced',       desc:'A good shot at either.',                     same:[55, 45, 0], diff:[60, 40, 0], one:[60, 30, 10], none:[0, 35, 65] },
+  mutate:{ name:'Go for a mutation', desc:'Best odds of something new.',               same:[15, 85, 0], diff:[15, 85, 0], one:[20, 70, 10], none:[0, 60, 40] } };
+const aimOf = k => FARM_AIMS[k] ? k : 'mix';   // eggs from older versions have no goal: they use Balanced
+function farmRareTable(A, B, aim){
+  const T = FARM_AIMS[aimOf(aim)];
+  if(A.rare && B.rare){ if(A.rare === B.rare) return [[A.rare, T.same[0]], ['new', T.same[1]]];
+    const h = Math.ceil(T.diff[0]/2); return [[A.rare, h], [B.rare, T.diff[0] - h], ['new', T.diff[1]]]; }
+  if(A.rare || B.rare) return [[A.rare || B.rare, T.one[0]], ['new', T.one[1]], [null, T.one[2]]].filter(x => x[1] > 0);
+  return [['new', T.none[1]], [null, T.none[2]]];
 }
-function farmRareRoll(A, B){
-  let r = rand()*100, got = null; for(const [k, pct] of farmRareTable(A, B)){ if(r < pct){ got = k; break; } r -= pct; }
+function farmRareRoll(A, B, aim){
+  let r = rand()*100, got = null; for(const [k, pct] of farmRareTable(A, B, aim)){ if(r < pct){ got = k; break; } r -= pct; }
   return got === 'new' ? farmMutation(A, B) : got;
 }
 /* What the mutation is (v253). It is worked out from the base traits inside each parent's trait (rareParts):
@@ -9283,6 +9319,8 @@ function farmRareRoll(A, B){
    peek = true is used by the odds panel: it returns the exact mutation when it is known in advance, or null for "a Wild one". */
 function farmMutation(A, B, peek){
   const wild = () => { if(peek) return null; const pool = WILD_RARE.filter(k => k !== A.rare && k !== B.rare); return pick(pool.length ? pool : WILD_RARE); };
+  const wa = WILD_RARE.includes(A.rare), wb = WILD_RARE.includes(B.rare);   // v259: two plain Wild traits make a Wild Apex (same) or a Wild Hybrid (different)
+  if(wa && wb) return A.rare === B.rare ? 'wapex:' + A.rare : wildHybridKey(A.rare, B.rare);
   const a = rareParts(A.rare), b = rareParts(B.rare); if(!a.length || !b.length) return wild();
   if(A.rare === B.rare){ const k = a.length === 1 ? a[0] + '+' + a[0] : a.length === 2 ? 'apex:' + fuseKey(a[0], a[1]) : null; return k && k !== A.rare && RARE[k] ? k : wild(); }
   const u = [...new Set(a.concat(b))].sort();
@@ -9291,22 +9329,22 @@ function farmMutation(A, B, peek){
   return wild();
 }
 // the chances for each part of the hatchling, as lists of [label, percent]
-function farmOdds(A, B){
+function farmOdds(A, B, aim){
   const lines = [A.line, B.line].filter(l => l >= 0);   // legends have no evolution line to pass on
   const species = !lines.length ? [['A random species', 100]] : lines.length === 1 || lines[0] === lines[1] ? [[babyOf(lines[0]).name, 100]] : lines.map(l => [babyOf(l).name, 50]);
-  const rare = farmRareTable(A, B).map(([k, pct]) => { const m = k === 'new' ? farmMutation(A, B, true) : null; return [k === 'new' ? (m ? '🧬 ' + RARE[m].name + ' (' + (RARE[m].tier || (RARE[m].has.length === 1 ? 'Apex' : 'Fusion')) + ' mutation: ' + rareBoostText(m) + ')' : '🧬 a Wild mutation (one of ' + WILD_RARE.length + ' traits that only breeding can make)') : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]; });
+  const rare = farmRareTable(A, B, aim).map(([k, pct]) => { const m = k === 'new' ? farmMutation(A, B, true) : null; return [k === 'new' ? (m ? '🧬 ' + RARE[m].name + ' (' + (RARE[m].tier || (RARE[m].has && RARE[m].has.length === 1 ? 'Apex' : 'Fusion')) + ' mutation: ' + rareBoostText(m) + ')' : '🧬 a Wild mutation (one of ' + WILD_RARE.length + ' traits that only breeding can make)') : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]; });
   const att = A.att === B.att ? [[ATT[A.att].icon + ' ' + ATT[A.att].name, 80], ['a random attitude', 20]] : [[ATT[A.att].icon + ' ' + ATT[A.att].name, 40], [ATT[B.att].icon + ' ' + ATT[B.att].name, 40], ['a random attitude', 20]];
   const pm = Math.round((A.pot + B.pot)/2), tm = Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2);
   return { species, rare, att, pot:[clamp(pm - 1, 0, TRAIN_MAX), clamp(pm + 1, 0, TRAIN_MAX)], tal:[clamp(tm - 3, -15, 18), clamp(tm + 4, -15, 18)] };
 }
 // makes the hatchling from the two saved parents
-function farmMake(L, A, B){
+function farmMake(L, A, B, aim){
   const lines = [A.line, B.line].filter(l => l >= 0);
   const c = genPlayer(L, { line: lines.length ? pick(lines) : null, lvl:0, rareChance:0 });
   for(const k of STATS) c.genes[k] = (rand() < 0.5 ? A : B).genes[k] || 0;   // each rating gene comes from one parent or the other
   c.genes.tal = clamp(Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2) + Math.floor(rand()*8) - 3, -15, 18);   // natural talent: near the parents' average
   c.tr.mind.pot = clamp(Math.round((A.pot + B.pot)/2) + pick([-1, 0, 0, 1]), 0, TRAIN_MAX);   // Potential: their average, give or take one
-  c.rare = farmRareRoll(A, B);   // a parent's Rare trait, a brand new one, or none (see farmRareTable)
+  c.rare = farmRareRoll(A, B, aim);   // a parent's Rare trait, a brand new one, or none (see farmRareTable)
   const r = rand(); c.att = r < 0.4 ? A.att : r < 0.8 ? B.att : rollAtt();
   c.look = { tone: pick([A, B]).look.tone, acc: pick(ACC_POOL) };   // a parent's color, its own accessory
   c.bod = { h:(A.bod.h + B.bod.h)/2, ws:(A.bod.ws + B.bod.ws)/2, wt:(A.bod.wt + B.bod.wt)/2 };
@@ -9327,7 +9365,7 @@ function farmHatch(L, now){
   const E = farmEggs(L), U = L.teams[L.user], due = E.filter(e => e && e.snap && (!now || eggLeft(L, e) <= 0)), notes = [];   // now: only the eggs whose 3 games are up. New season: every egg
   L.eggs = E.filter(e => !due.includes(e)); L.farm = L.eggs[0] || null; L.farmNote = null;
   for(const F of due){
-    const c = farmMake(L, F.snap[0], F.snap[1]); if(now){ c.bred.s = L.season; if(L.hatchShow == null) L.hatchShow = c.id; else (L.hatchQ = L.hatchQ || []).push(c.id); }   // one reveal at a time; the rest wait in L.hatchQ
+    const c = farmMake(L, F.snap[0], F.snap[1], F.aim); if(now){ c.bred.s = L.season; if(L.hatchShow == null) L.hatchShow = c.id; else (L.hatchQ = L.hatchQ || []).push(c.id); }   // one reveal at a time; the rest wait in L.hatchQ
     if(U.roster.length < ROSTER){ assignNumber(L, U, c); U.roster.push(c.id); c.contract = { sal:MIN_SAL, yrs:3 }; }
     else { c.reserved = L.user; L.fa.push(c.id); }
     (L.farmLog = L.farmLog || []).unshift({ s:now ? L.season : L.season + 1, id:c.id, a:F.snap[0].name, b:F.snap[1].name }); L.farmLog.length = Math.min(L.farmLog.length, 12);
@@ -9350,8 +9388,8 @@ function hubFarm(L){
   const tal = p => { const t = (p.genes && p.genes.tal) || 0; return (t > 0 ? '+' : '') + t; };
   const intro = `<div class="panel"><h3>🥚 Breed farm</h3><p class="dim" style="margin:0">Pick two creatures from your roster. They keep playing. Their egg hatches after your next 3 games, as a level 0 rookie on a 3-year minimum deal. Hatchlings take a while to grow, so they are born with Eternal Youth: they never decline with age while they are on your team. If one leaves, it ages like anyone else. The nest holds up to ${FARM_NEST} eggs at once, so you can breed several pairs as long as you have the coins. If your roster is full when one hatches, it waits in Free Agents, reserved for you. You and Kaine can't be parents.</p></div>`;
   // the eggs waiting in the nest, oldest first, each with its own countdown and its chance of a mutation
-  const mutPct = e => { const m = farmOdds(e.snap[0], e.snap[1]).rare.find(x => x[0].startsWith('🧬')); return m ? m[1] : 0; };
-  const nest = E.length ? `<div class="panel"><h3>Eggs in the nest (${E.length}/${FARM_NEST})</h3>${E.map(e => { const left = eggLeft(L, e); return `<div class="frow"><span style="font-size:26px">🥚</span><span class="tmain"><b>${esc(e.snap[0].name)}</b> × <b>${esc(e.snap[1].name)}</b><br><span class="dim">Hatches after ${left === 1 ? 'your next game' : left + ' more of your games'} · ${mutPct(e)}% mutation chance</span></span></div>`; }).join('')}</div>` : '';
+  const mutPct = e => { const m = farmOdds(e.snap[0], e.snap[1], e.aim).rare.find(x => x[0].startsWith('🧬')); return m ? m[1] : 0; };
+  const nest = E.length ? `<div class="panel"><h3>Eggs in the nest (${E.length}/${FARM_NEST})</h3>${E.map(e => { const left = eggLeft(L, e); return `<div class="frow"><span style="font-size:26px">🥚</span><span class="tmain"><b>${esc(e.snap[0].name)}</b> × <b>${esc(e.snap[1].name)}</b><br><span class="dim">Hatches after ${left === 1 ? 'your next game' : left + ' more of your games'} · ${FARM_AIMS[aimOf(e.aim)].name} · ${mutPct(e)}% mutation chance</span></span></div>`; }).join('')}</div>` : '';
   let main;
   if(full){
     main = `<div class="panel"><h3>The nest is full</h3><p class="dim" style="margin:0">All ${FARM_NEST} spots have an egg. You can breed again as soon as one hatches.</p></div>`;
@@ -9359,7 +9397,9 @@ function hubFarm(L){
     const [a, b] = sel.map(id => L.players[id]);
     const pair = a && b ? (() => { const cost = farmCost(a, b), short = cost - L.coins;
       return `<div class="farmpair"><img src="${portrait(a, U.color)}" alt=""><span class="x">×</span><img src="${portrait(b, U.color)}" alt=""></div>
-        ${farmOddsHtml(farmOdds(farmSnap(a), farmSnap(b)))}
+        <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">${Object.entries(FARM_AIMS).map(([k, G]) => `<button class="btn sm ${aimOf(L.farmAim) === k ? 'hot' : ''}" data-act="farm-aim" data-id="${k}">${G.name}</button>`).join('')}</div>
+        <div class="dim cond" style="margin-bottom:6px">Goal: ${FARM_AIMS[aimOf(L.farmAim)].desc}</div>
+        ${farmOddsHtml(farmOdds(farmSnap(a), farmSnap(b), L.farmAim))}
         <div class="row" style="gap:8px"><button class="btn hot" data-act="farm-go" ${short > 0 ? 'disabled' : ''}>🥚 Breed${E.length ? ' another' : ''} · ${cost} coins</button><button class="btn sm" data-act="farm-clear">Clear</button>${short > 0 ? `<span class="dim cond">You need ${short} more coins.</span>` : ''}</div>`; })()
       : `<p class="dim" style="margin:0">${sel.length ? 'Pick one more parent.' : 'Pick two parents from the list.'} The odds for the hatchling show up here before you pay.</p>`;
     const rows = U.roster.map(id => L.players[id]).filter(farmOk).map(p => { const on = sel.includes(p.id), S = SPECIES[p.sp];
@@ -11352,11 +11392,12 @@ if(typeof document !== 'undefined'){
       // Breed farm: pick or unpick a parent, clear the pair, or pay for the egg
       case 'farm-pick': { const n = +id, cur = UI.farmSel || []; UI.farmSel = cur.includes(n) ? cur.filter(x => x !== n) : cur.length < 2 ? cur.concat(n) : cur; renderHub(); break; }
       case 'farm-clear': UI.farmSel = []; renderHub(); break;
+      case 'farm-aim': L.farmAim = aimOf(id); saveLeague(); renderHub(); break;   // v259: the breeding goal, remembered for the next pair too
       case 'farm-go': {
         const [a, b] = (UI.farmSel || []).map(x => L.players[x]);
         if(!farmOk(a) || !farmOk(b) || farmEggs(L).length >= FARM_NEST) break;   // up to FARM_NEST eggs at once (v255)
         const cost = farmCost(a, b); if(L.coins < cost) break;
-        L.coins -= cost; farmEggs(L).push({ s:L.season, g:L.gameNo || 0, snap:[farmSnap(a), farmSnap(b)] }); farmEggs(L);   /* g: your game count when the egg was laid. The second call points L.farm at the oldest egg */
+        L.coins -= cost; farmEggs(L).push({ s:L.season, g:L.gameNo || 0, aim:aimOf(L.farmAim), snap:[farmSnap(a), farmSnap(b)] }); farmEggs(L);   /* g: your game count when the egg was laid. The second call points L.farm at the oldest egg */
         UI.farmSel = [];
         saveLeague(); UI.msg = `🥚 ${pname(a)} and ${pname(b)} left an egg in the nest (${farmEggs(L).length} of ${FARM_NEST}). It hatches after your next ${FARM_GAMES} games.`; renderHub(); break; }
       // decision prompts
