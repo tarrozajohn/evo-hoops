@@ -4445,6 +4445,36 @@ BASE_RARE.forEach((a, i) => BASE_RARE.forEach((b, j) => {
   RARE[key] = { name: ph ? 'Prime ' + RARE[ph].name.replace(/^The /, '') : FUSION_NAMES[key] || A.name + ' ' + B.name, arch:null, style:(ph ? RARE[ph] : A).style, boost, has:[a, b], mut:true,
     desc:`Mutation: ${A.name} and ${B.name} in one creature. It has the rating boosts and the signature powers of both. ${ph ? RARE[ph].desc : A.desc + ' ' + B.desc}` };
 }));
+/* ---------- MORE MUTATIONS (v253): 64 new ones, 92 in all ----------
+   Mythic   three different base traits in one creature (35 of them). Breed a Fusion with a creature whose trait is
+            not already in it. It has the boosts and the signature powers of all three. Key: the three keys in
+            alphabetical order joined by "+". Named after the fusion of two of them with a word for the third in front
+            ("Iron Stampede" = Ball Hawk + Juggernaut + The Wall); with Two-Way Phenom it is "Prime <fusion>".
+   Apex Fusion  the same Fusion from both parents (21 of them): its boost 1.5 times bigger. Key "apex:" + the fusion key.
+   Wild     eight traits that exist nowhere else and do not come from the parents' traits at all. Any pair can roll one,
+            even two creatures with no trait. They are rating boosts only (no signature power). */
+const MYTHIC_WORD = { unicorn:'Towering', maestro:'Grand', juggernaut:'Raging', sniper:'Deadeye', ballhawk:'Shadow', wall:'Iron' };
+for(let i = 0; i < BASE_RARE.length; i++) for(let j = i + 1; j < BASE_RARE.length; j++){
+  const fk = fuseKey(BASE_RARE[i], BASE_RARE[j]), Fz = RARE[fk], ab = {}; for(const st in Fz.boost) ab[st] = Math.round(Fz.boost[st]*1.5);
+  RARE['apex:' + fk] = { name:'Apex ' + Fz.name, arch:null, style:Fz.style, boost:ab, has:Fz.has, mut:true, tier:'Apex Fusion', desc:`Mutation: ${Fz.name} from both parents, pushed further. Its rating boost is 1.5 times bigger, with the signature powers of ${Fz.has.map(k => RARE[k].name).join(' and ')}.` };
+  for(let k = j + 1; k < BASE_RARE.length; k++){
+    const tri = [BASE_RARE[i], BASE_RARE[j], BASE_RARE[k]].sort(), boost = {}; for(const t of tri){ const bo = boostObj(t); for(const st of STATS) if(bo[st]) boost[st] = (boost[st] || 0) + bo[st]; }
+    const np = tri.filter(t => t !== 'phenom'), name = np.length === 2 ? 'Prime ' + RARE[fuseKey(np[0], np[1])].name : MYTHIC_WORD[np[2]] + ' ' + RARE[fuseKey(np[0], np[1])].name;
+    RARE[tri.join('+')] = { name, arch:null, style:RARE[np[0]].style, boost, has:tri, mut:true, tier:'Mythic', desc:`Mythic mutation: ${tri.map(t => RARE[t].name).join(', ')} in one creature. It has the rating boosts and the signature powers of all three.` };
+  }
+}
+const WILD = {
+  w_quicksilver:{ name:'Quicksilver',  style:'slasher', boost:{ spd:14, stl:6 },           desc:'Wild mutation: the fastest thing on the floor. +14 SPD, +6 STL.' },
+  w_ironlung:   { name:'Iron Lung',    style:'twoway',  boost:{ sta:20, spd:4 },           desc:'Wild mutation: it does not get tired. +20 STA, +4 SPD.' },
+  w_skywalker:  { name:'Skywalker',    style:'slasher', boost:{ dnk:12, blk:8 },           desc:'Wild mutation: lives above the rim. +12 DNK, +8 BLK.' },
+  w_hotblood:   { name:'Hot Blood',    style:'sharp',   boost:{ sht:8, dnk:8 },            desc:'Wild mutation: scores from anywhere. +8 SHT, +8 DNK.' },
+  w_warden:     { name:'Warden',       style:'rim',     boost:{ pdf:10, idf:10 },          desc:'Wild mutation: nobody gets by, inside or out. +10 perimeter D, +10 inside D.' },
+  w_pickpocket: { name:'Pickpocket',   style:'threeD',  boost:{ stl:16, spd:4 },           desc:'Wild mutation: the ball is never safe near it. +16 STL, +4 SPD.' },
+  w_glasscannon:{ name:'Glass Cannon', style:'sharp',   boost:{ sht:18, pdf:-6, idf:-6 },  desc:'Wild mutation: a deadly shooter who cannot guard anyone. +18 SHT, -6 perimeter D, -6 inside D.' },
+  w_chimera:    { name:'Chimera',      style:'twoway',  boost:{ spd:3, sht:3, dnk:3, blk:3, stl:3, pdf:3, idf:3, sta:3 }, desc:'Wild mutation: a little of everything. +3 to every rating.' } };
+const WILD_RARE = Object.keys(WILD); for(const k of WILD_RARE) RARE[k] = { ...WILD[k], arch:null, mut:true, tier:'Wild' };
+// the base traits inside a trait: itself for a base trait, the parts for a Fusion / Apex / Mythic, none for a Wild one
+const rareParts = r => !r || !RARE[r] ? [] : RARE[r].has || (BASE_RARE.includes(r) ? [r] : []);
 // does a creature with trait r have base trait k's signature power? (true for k itself and for mutations built from k)
 const rareHas = (r, k) => r === k || !!(r && RARE[r] && RARE[r].has && RARE[r].has.includes(k));
 function rollRare(S, chance){
@@ -6652,7 +6682,7 @@ function renderHelp(back){
       <div class="panel"><h3>Genes</h3><p class="dim">Every creature has its own genes: a random spread on every stat, one standout strength (green ▲) and one clear weakness (red ▼). Two creatures of the same species and level can look very different, so check the cards before you draft.</p></div>
       <div class="panel"><h3>Team star</h3><p class="dim">Pick one creature on the Roster tab as your team star. In games it plays with +3 to every rating, teammates look for it more on passes, and it wears a gold star above its head. Every CPU team stars its best creature too. The star only counts while it's in your starting five.</p></div>
       <div class="panel"><h3>Draft classes and scouting</h3><p class="dim">Each rookie draft is Weak, Thin, Average, Deep or Loaded. Strong classes have more rares, more Potential and natural talent that adds to every rating. A Loaded class's No. 1 prospect is a generational talent. The Scouting tab shows what your scouts know: a better Scouting Office gives a more accurate grade, reveals more of the top prospects, and scouts next year's class. CPU teams know the true strength, so picks in strong classes cost more in trades.</p></div>
-      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm. Breed two creatures that each have a Rare trait and there is a 20% chance of a mutation: a fusion with its own name and the boosts and powers of both traits (Juggernaut + The Wall = Titan), or the Apex version if both parents share the trait (boost 1.5 times bigger). The farm shows which one you are rolling for before you pay.</span></div></div>
+      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm, 92 in all. <b>Fusion:</b> two parents with different Rare traits have a 40% chance of a fusion with its own name and the boosts and powers of both (Juggernaut + The Wall = Titan). <b>Apex:</b> both parents share the trait, 40% chance of a version with a boost 1.5 times bigger. This works for fusions too (Titan + Titan = Apex Titan). <b>Mythic:</b> breed a fusion with a third trait and there is a 40% chance of all three in one creature. <b>Wild:</b> eight traits that exist nowhere else (Quicksilver, Iron Lung, Skywalker, Hot Blood, Warden, Pickpocket, Glass Cannon, Chimera). Any pair can roll one: 20% with no traits, 25% if one parent has a trait. The farm shows what you are rolling for before you pay.</span></div></div>
       <div class="panel"><h3>You</h3><p class="dim">Your own creature joins your team as its locked star and can never be traded or released. You start below average with maxed Potential, choose your position on the Roster tab, and play the Legend style: whoever is in front of you (the closest opponent within 6 ft) loses 1 on every rating every 6 seconds, and you gain it. With the Legendary aura the drain doubles to 2 every 6 seconds. It resets when you're benched or the game ends. You can level to 99, your ratings have no cap, you grow as you level, and you never decline with age. Get every rating to 100+ and max everything (all three categories, Eternal Youth and the Ultimate Edge) to unlock the Legendary aura and form: only you can have it, and it makes you taller, longer, stronger and 8% faster.</p></div>
       <div class="panel"><h3>Aging and Eternal Youth</h3><p class="dim">Creatures improve for their first ${AGE_PRIME} seasons in the league. Seasons ${AGE_PRIME + 1} to ${AGE_CLIFF} each cost ${AGE_STEP} on every rating. After season ${AGE_CLIFF} comes the major decline: ${AGE_DROP} on every rating each season (up to −${AGE_MAX} in total). Eternal Youth from the Shop stops it for good; your own creature and Kaine never decline this way. Only your team can own it. Eternal Youth is also the fourth branch of the max aura: max Stats, Physique and Mental, add Eternal Youth, and the creature unlocks the Eternal aura (+10 to every rating in total).</p></div>
       <div class="panel"><h3>Ultimate Edge</h3><p class="dim">The most expensive prize in the Shop, and only your team can own it. The creature wearing it always plays with the full element edge (about +10% on shots, steals, interceptions and blocks), opponents facing it always have the worst edge, and any opponent within 7 feet moves 6% slower and shoots 4% worse. It shows as a shifting, spectrum-colored aura with all ten elements orbiting it. Trading or releasing the creature puts the Ultimate Edge back in your bag.</p></div>
@@ -7159,7 +7189,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 252;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 253;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8831,7 +8861,7 @@ function tradeDetails(L, T, U, O){
    A deal bar pinned above the bottom bar always shows the deal, their answer, and the buttons (Propose / Bribe / Clear). */
 function starCut(L){ const sc = salaryScale(L); return sc.length ? sc[Math.floor(sc.length*0.9)] : 99; }
 // what a rare archetype's boost is, in a few characters ("+12 SHT", "+5 all")
-const rareBoostText = r => RARE[r].boost === 'all' ? '+5 all' : Object.entries(RARE[r].boost).map(([k, v]) => `+${v} ${STAT_LABEL[k]}`).join(' ');
+const rareBoostText = r => RARE[r].boost === 'all' ? '+5 all' : Object.entries(RARE[r].boost).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_LABEL[k]}`).join(' ');
 function talentTags(L, p, cut){
   const out = [], pot = trainOf(p).mind.pot || 0;
   if(p.generational && genIntel(L, p) === 'known') out.push('<span class="ttag gen" title="Generational: permanent. At least +10 natural talent on every rating and Potential 4+/5. Other teams value it highly.">👑 Generational · +10 every rating</span>');
@@ -9193,43 +9223,50 @@ function cosmeticsPanel(L){
    The hatchling mixes its parents: species from one of them, each rating gene from one or the other,
    natural talent and Potential near their average, a 50% chance to get each parent's Rare trait
    (or a small chance of a brand new one), and usually one parent's attitude. One egg in the nest at a time, no limit per season. */
-const FARM_MUT = 0.08;   // chance of a new Rare trait when neither parent's trait passes down
+const FARM_MUT = 0.20;   // chance of a Wild mutation when neither parent has a trait (v253: was 0.08)
 const farmOk = p => p && !p.avatar && !p.nemesis;
 const babyOf = line => SPECIES.find(S => S.line === line && S.stage === 1);
 // what the farm remembers about a parent, so the egg still hatches if the parent is traded before then
 function farmSnap(p){ return { name:pname(p), line:SPECIES[p.sp].line, genes:{ ...(p.genes || {}) }, pot:trainOf(p).mind.pot || 0, rare:p.rare || null, att:p.att || 'pro', look:p.look || { tone:0, acc:0 }, bod:p.bod || { h:1, ws:1, wt:1 } }; }
 function farmCost(a, b){ return Math.round((300 + 25*Math.max(0, (tradeValue(a) + tradeValue(b))/2 - 60))/10)*10; }   // better parents cost more
 /* Rare trait inheritance (v225). farmRareTable gives the chances as [[trait key | 'new' | null, percent], ...]:
-     both parents have a trait   the hatchling ALWAYS gets one: 40% each parent's (80% if they share it), 20% a brand new one
-     one parent has a trait      65% that trait, 15% a brand new one, 20% none
-     neither has one             a small chance (FARM_MUT) of a brand new one
-   "A brand new one" is a mutation: see farmMutation and the MUTATIONS note next to RARE.
+     both parents have a trait   the hatchling ALWAYS gets one: 30% each parent's (60% if they share it), 40% a mutation
+     one parent has a trait      55% that trait, 25% a mutation, 20% none
+     neither has one             20% a mutation (FARM_MUT)
+   "A brand new one" is a mutation: see farmMutation and the MUTATIONS notes next to RARE.
    The odds panel and the hatching both read this one table, so what you see is what is rolled. */
 function farmRareTable(A, B){
   const m = Math.round(FARM_MUT*100);
-  if(A.rare && B.rare) return A.rare === B.rare ? [[A.rare, 80], ['new', 20]] : [[A.rare, 40], [B.rare, 40], ['new', 20]];
-  if(A.rare || B.rare) return [[A.rare || B.rare, 65], ['new', 15], [null, 20]];
-  return [['new', m], [null, 100 - m]];
+  if(A.rare && B.rare) return A.rare === B.rare ? [[A.rare, 60], ['new', 40]] : [[A.rare, 30], [B.rare, 30], ['new', 40]];   // v253: the mutation chance doubled (20% -> 40%)
+  if(A.rare || B.rare) return [[A.rare || B.rare, 55], ['new', 25], [null, 20]];                                            // v253: 15% -> 25%
+  return [['new', m], [null, 100 - m]];                                                                                     // v253: 8% -> 20%
 }
 function farmRareRoll(A, B){
   let r = rand()*100, got = null; for(const [k, pct] of farmRareTable(A, B)){ if(r < pct){ got = k; break; } r -= pct; }
   return got === 'new' ? farmMutation(A, B) : got;
 }
-/* What the mutation is. Both parents carry a base trait: the fusion of the two (or the Apex version if they share one),
-   so you know before you pay exactly which new trait you are rolling for. Otherwise (one traited parent, none, or a
-   parent that is already a mutation): a random base trait neither parent has, decided when the egg hatches. */
+/* What the mutation is (v253). It is worked out from the base traits inside each parent's trait (rareParts):
+     same trait on both parents      the Apex version of it (a base trait or a Fusion). Already Apex or Mythic: a Wild one
+     two different traits            put their parts together:
+                                       2 different base traits  -> their Fusion (or its Apex if one parent already is that Fusion)
+                                       3 different base traits  -> the Mythic of those three
+                                       more than 3              -> a Wild one
+     one parent has no trait, or a Wild one is involved -> a Wild mutation, picked when the egg hatches
+   peek = true is used by the odds panel: it returns the exact mutation when it is known in advance, or null for "a Wild one". */
 function farmMutation(A, B, peek){
-  const base = k => !!k && BASE_RARE.includes(k);
-  if(base(A.rare) && base(B.rare)) return A.rare === B.rare ? A.rare + '+' + A.rare : fuseKey(A.rare, B.rare);
-  if(peek) return null;
-  const fresh = BASE_RARE.filter(k => k !== A.rare && k !== B.rare && !(RARE[A.rare] && (RARE[A.rare].has || []).includes(k)) && !(RARE[B.rare] && (RARE[B.rare].has || []).includes(k)));
-  return fresh.length ? pick(fresh) : pick(BASE_RARE);
+  const wild = () => { if(peek) return null; const pool = WILD_RARE.filter(k => k !== A.rare && k !== B.rare); return pick(pool.length ? pool : WILD_RARE); };
+  const a = rareParts(A.rare), b = rareParts(B.rare); if(!a.length || !b.length) return wild();
+  if(A.rare === B.rare){ const k = a.length === 1 ? a[0] + '+' + a[0] : a.length === 2 ? 'apex:' + fuseKey(a[0], a[1]) : null; return k && k !== A.rare && RARE[k] ? k : wild(); }
+  const u = [...new Set(a.concat(b))].sort();
+  if(u.length === 3){ const k = u.join('+'); return RARE[k] && k !== A.rare && k !== B.rare ? k : wild(); }   // a parent that already is that Mythic gives a Wild one instead
+  if(u.length === 2){ const fk = fuseKey(u[0], u[1]), k = a.length === 1 && b.length === 1 ? fk : 'apex:' + fk; return RARE[k] && k !== A.rare && k !== B.rare ? k : wild(); }
+  return wild();
 }
 // the chances for each part of the hatchling, as lists of [label, percent]
 function farmOdds(A, B){
   const lines = [A.line, B.line].filter(l => l >= 0);   // legends have no evolution line to pass on
   const species = !lines.length ? [['A random species', 100]] : lines.length === 1 || lines[0] === lines[1] ? [[babyOf(lines[0]).name, 100]] : lines.map(l => [babyOf(l).name, 50]);
-  const rare = farmRareTable(A, B).map(([k, pct]) => { const m = k === 'new' ? farmMutation(A, B, true) : null; return [k === 'new' ? (m ? '🧬 ' + RARE[m].name + ' (a new mutation: ' + rareBoostText(m) + ')' : 'a Rare trait neither parent has') : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]; });
+  const rare = farmRareTable(A, B).map(([k, pct]) => { const m = k === 'new' ? farmMutation(A, B, true) : null; return [k === 'new' ? (m ? '🧬 ' + RARE[m].name + ' (' + (RARE[m].tier || (RARE[m].has.length === 1 ? 'Apex' : 'Fusion')) + ' mutation: ' + rareBoostText(m) + ')' : '🧬 a Wild mutation (one of ' + WILD_RARE.length + ' traits that only breeding can make)') : k ? '★ ' + RARE[k].name : 'no Rare trait', pct]; });
   const att = A.att === B.att ? [[ATT[A.att].icon + ' ' + ATT[A.att].name, 80], ['a random attitude', 20]] : [[ATT[A.att].icon + ' ' + ATT[A.att].name, 40], [ATT[B.att].icon + ' ' + ATT[B.att].name, 40], ['a random attitude', 20]];
   const pm = Math.round((A.pot + B.pot)/2), tm = Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2);
   return { species, rare, att, pot:[clamp(pm - 1, 0, TRAIN_MAX), clamp(pm + 1, 0, TRAIN_MAX)], tal:[clamp(tm - 3, -15, 18), clamp(tm + 4, -15, 18)] };
