@@ -4493,34 +4493,31 @@ const WILD = {
   w_warden:     { name:'Warden',       style:'rim',     boost:{ pdf:10, idf:10 },          desc:'Wild mutation: nobody gets by, inside or out. +10 perimeter D, +10 inside D.' },
   w_pickpocket: { name:'Pickpocket',   style:'threeD',  boost:{ stl:16, spd:4 },           desc:'Wild mutation: the ball is never safe near it. +16 STL, +4 SPD.' },
   w_glasscannon:{ name:'Glass Cannon', style:'sharp',   boost:{ sht:18, pdf:-6, idf:-6 },  desc:'Wild mutation: a deadly shooter who cannot guard anyone. +18 SHT, -6 perimeter D, -6 inside D.' },
-  w_chimera:    { name:'Chimera',      style:'twoway',  boost:{ spd:3, sht:3, dnk:3, blk:3, stl:3, pdf:3, idf:3, sta:3 }, desc:'Wild mutation: a little of everything. +3 to every rating.' },
-  // v259: 12 more Wild traits (20 in all). Each desc is built from its boost below, so only name, style and boost are set here
-  w_wizard:     { name:'Ball Wizard',  style:'slasher', boost:{ spd:8, stl:8, sht:4 } },
-  w_bulldozer:  { name:'Bulldozer',    style:'rim',     boost:{ dnk:14, sta:6 } },
-  w_spider:     { name:'Spider',       style:'threeD',  boost:{ stl:10, blk:8 } },
-  w_zen:        { name:'Zen Archer',   style:'sharp',   boost:{ sht:12, sta:8 } },
-  w_skyscraper: { name:'Skyscraper',   style:'rim',     boost:{ blk:14, idf:6 } },
-  w_shadowstep: { name:'Shadowstep',   style:'threeD',  boost:{ spd:10, pdf:10 } },
-  w_volcano:    { name:'Volcano',      style:'slasher', boost:{ dnk:10, sht:6, blk:4 } },
-  w_vise:       { name:'Vise Grip',    style:'threeD',  boost:{ pdf:16, stl:4 } },
-  w_engine:     { name:'Perpetual Engine', style:'twoway', boost:{ sta:14, spd:6, pdf:4 } },
-  w_mirror:     { name:'Mirror Image', style:'twoway',  boost:{ sht:6, pdf:6, spd:6 } },
-  w_gambler:    { name:'Gambler',      style:'threeD',  boost:{ stl:18, sht:4, pdf:-4 } },
-  w_mountain:   { name:'Mountain',     style:'rim',     boost:{ idf:14, blk:6, spd:-4 } } };
+  w_chimera:    { name:'Chimera',      style:'twoway',  boost:{ spd:3, sht:3, dnk:3, blk:3, stl:3, pdf:3, idf:3, sta:3 }, desc:'Wild mutation: a little of everything. +3 to every rating.' } };
 const WILD_RARE = Object.keys(WILD); for(const k of WILD_RARE) RARE[k] = { ...WILD[k], arch:null, mut:true, tier:'Wild' };
-/* v259: two more kinds of mutation, built only from Wild traits (they are rating boosts only, like the Wild ones):
-     Wild Apex    both parents have the same Wild trait: its boost 1.5 times bigger. Key "wapex:" + the Wild key. 20 of them.
-     Wild Hybrid  the parents have two different Wild traits: both boosts added together, with both names.
-                  Key "wh:" + the two Wild keys in alphabetical order joined by "|". 190 of them. */
-const wildBoostText = b => Object.entries(b).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_NAME[k]}`).join(', ');   // "+14 Speed, +6 Stealing"
-WILD_RARE.forEach(k => { const W = RARE[k]; if(!W.desc) W.desc = `Wild mutation: ${wildBoostText(W.boost)}.`; });   // descs for the new ones
-const wildHybridKey = (a, b) => 'wh:' + [a, b].sort().join('|');
-WILD_RARE.forEach((a, i) => {
-  const A = RARE[a], ab = {}; for(const st in A.boost) ab[st] = Math.round(A.boost[st]*1.5);
-  RARE['wapex:' + a] = { name:'Apex ' + A.name, arch:null, style:A.style, boost:ab, mut:true, tier:'Wild Apex', desc:`Mutation: ${A.name} from both parents, pushed further. ${wildBoostText(ab)}.` };
-  WILD_RARE.slice(i + 1).forEach(b => { const B = RARE[b], hb = {}; for(const st of STATS){ const v = (A.boost[st] || 0) + (B.boost[st] || 0); if(v) hb[st] = v; }
-    RARE[wildHybridKey(a, b)] = { name:A.name + ' ' + B.name, arch:null, style:A.style, boost:hb, mut:true, tier:'Wild Hybrid', desc:`Mutation: ${A.name} and ${B.name} in one creature. ${wildBoostText(hb)}.` }; });
-});
+/* v260: MORE MYTHICS and their Apex tier (the v259 Wild Apex / Wild Hybrid were taken out again)
+     Mythic (4 traits)  four different base traits in one creature (35 of them). Breed a Mythic with a creature that has
+                        a fourth trait, or two Fusions with no trait in common. Named with two words in front of a Fusion
+                        ("Iron Shadow Double Threat"); with Two-Way Phenom it is "Prime <3-trait Mythic>".
+     Apex Mythic        the same Mythic from both parents (3 or 4 traits, 70 of them): its boost 1.5 times bigger,
+                        with every signature power. Key "apex:" + the Mythic key.
+   With the 35 three-trait Mythics that makes 70 Mythics and 70 Apex Mythics. */
+const MYTHIC_KEYS = [];
+for(let a = 0; a < BASE_RARE.length; a++) for(let b = a + 1; b < BASE_RARE.length; b++) for(let c = b + 1; c < BASE_RARE.length; c++){
+  MYTHIC_KEYS.push([BASE_RARE[a], BASE_RARE[b], BASE_RARE[c]].sort().join('+'));   // the 35 three-trait ones made above
+  for(let d = c + 1; d < BASE_RARE.length; d++){
+    const quad = [BASE_RARE[a], BASE_RARE[b], BASE_RARE[c], BASE_RARE[d]].sort(), boost = {}; for(const t of quad){ const bo = boostObj(t); for(const st of STATS) if(bo[st]) boost[st] = (boost[st] || 0) + bo[st]; }
+    const np = quad.filter(t => t !== 'phenom');
+    const name = np.length === 3 ? 'Prime ' + RARE[np.join('+')].name : MYTHIC_WORD[np[3]] + ' ' + MYTHIC_WORD[np[2]] + ' ' + RARE[fuseKey(np[0], np[1])].name;
+    const key = quad.join('+'); RARE[key] = { name, arch:null, style:RARE[np[0]].style, boost, has:quad, mut:true, tier:'Mythic', desc:`Mythic mutation: ${quad.map(t => RARE[t].name).join(', ')} in one creature. It has the rating boosts and the signature powers of all four.` };
+    MYTHIC_KEYS.push(key);
+  }
+}
+MYTHIC_KEYS.forEach(k => { const M = RARE[k], ab = {}; for(const st in M.boost) ab[st] = Math.round(M.boost[st]*1.5);
+  RARE['apex:' + k] = { name:'Apex ' + M.name, arch:null, style:M.style, boost:ab, has:M.has, mut:true, tier:'Apex Mythic', desc:`Mutation: ${M.name} from both parents, pushed further. Its rating boost is 1.5 times bigger, with the signature powers of ${M.has.map(t => RARE[t].name).join(', ')}.` }; });
+const isMythicTier = k => !!(k && RARE[k] && (RARE[k].tier === 'Mythic' || RARE[k].tier === 'Apex Mythic'));
+// v260: creatures that got one of the removed v259 traits keep a Wild trait instead (the plain one inside it, or Chimera)
+const fixRemovedRare = r => { if(!r || RARE[r]) return r; const m = String(r).match(/w_[a-z]+/g) || []; return m.find(k => RARE[k]) || 'w_chimera'; };
 // the base traits inside a trait: itself for a base trait, the parts for a Fusion / Apex / Mythic, none for a Wild one
 const rareParts = r => !r || !RARE[r] ? [] : RARE[r].has || (BASE_RARE.includes(r) ? [r] : []);
 // does a creature with trait r have base trait k's signature power? (true for k itself and for mutations built from k)
@@ -6163,6 +6160,7 @@ function migrate(L){
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
   if(L.five && !L.five.joined && L.teams[L.five.tid]){ memoClear(); sortRosterByOvr(L, L.teams[L.five.tid]); L.teams[L.five.tid].star = L.five.ids[0]; }   // v233: Vex moves up to sixth on their roster
   if(!L.fix248){ L.fix248 = true; if(L.five && !L.five.joined && (L.five.edge || 0) >= 230) L.five.edge -= 25; if(L.kaine && L.kaine.final && L.kaine.ending === 'final' && (L.kaine.final.edge || 0) >= 196) L.kaine.final.edge -= 25; }   // v248: the short-lived +150 setting is dialled back to +125
+  if(!L.fix260){ L.fix260 = true; Object.values(L.players).forEach(p => { if(p.rare) p.rare = fixRemovedRare(p.rare); }); (L.eggs || []).concat(L.farm ? [L.farm] : []).forEach(e => (e.snap || []).forEach(sn => { if(sn.rare) sn.rare = fixRemovedRare(sn.rare); })); }   // v260: removed v259 traits
   if(!L.fix258){ L.fix258 = true; const F = L.five, K = L.kaine;   /* v258: lower a boss already in progress by the same amount the new numbers dropped */
     if(F && !F.joined && F.fin !== 2) F.edge = Math.max(FIVE_FLOOR, (F.edge || 0) - (F.fin === 1 ? 40 + 195 : 40));   /* the Five alone: -40; the Five and Kaine final: -40 and the final bonus 240 -> 45 */
     if(K && K.final && K.ending === 'final') K.final.edge = Math.max(KAINE_FINAL_FLOOR, (K.final.edge || 0) - 96); }
@@ -6736,7 +6734,7 @@ function renderHelp(back){
       <div class="panel"><h3>Genes</h3><p class="dim">Every creature has its own genes: a random spread on every stat, one standout strength (green ▲) and one clear weakness (red ▼). Two creatures of the same species and level can look very different, so check the cards before you draft.</p></div>
       <div class="panel"><h3>Team star</h3><p class="dim">Pick one creature on the Roster tab as your team star. In games it plays with +3 to every rating, teammates look for it more on passes, and it wears a gold star above its head. Every CPU team stars its best creature too. The star only counts while it's in your starting five.</p></div>
       <div class="panel"><h3>Draft classes and scouting</h3><p class="dim">Each rookie draft is Weak, Thin, Average, Deep or Loaded. Strong classes have more rares, more Potential and natural talent that adds to every rating. A Loaded class's No. 1 prospect is a generational talent. The Scouting tab shows what your scouts know: a better Scouting Office gives a more accurate grade, reveals more of the top prospects, and scouts next year's class. CPU teams know the true strength, so picks in strong classes cost more in trades.</p></div>
-      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm, 314 in all. <b>Fusion:</b> two parents with different Rare traits can make a fusion with its own name and the boosts and powers of both (Juggernaut + The Wall = Titan). <b>Apex:</b> both parents share the trait, for a version with a boost 1.5 times bigger. This works for fusions too (Titan + Titan = Apex Titan). <b>Mythic:</b> breed a fusion with a third trait for all three in one creature. <b>Wild:</b> 20 traits that exist nowhere else (Quicksilver, Skywalker, Glass Cannon, Bulldozer, Shadowstep, Volcano and more). Any pair can roll one, even with no traits. <b>Wild Apex and Wild Hybrid:</b> breed two Wild creatures: the same Wild trait makes a 1.5 times stronger version, two different ones combine both boosts. Pick a goal for each egg (Keep a trait, Balanced, Go for a mutation) to change the odds. The farm shows what you are rolling for before you pay.</span></div></div>
+      <div class="panel"><h3>Rare archetypes</h3><p class="dim">About 1 in 16 creatures, and every legend, is a rare archetype with a stat boost and a signature ability. Filter the draft by "Rare" to find them. Better scouting finds more.</p>${BASE_RARE.map(k => RARE[k]).map(R => `<div class="cond"><span class="rarechip">★ ${R.name}</span> <span class="dim">${R.desc}</span></div>`).join('')}<div class="cond" style="margin-top:6px"><span class="rarechip">🧬 Mutations</span> <span class="dim">Only from the Breed farm, 197 in all. <b>Fusion:</b> two parents with different Rare traits can make a fusion with its own name and the boosts and powers of both (Juggernaut + The Wall = Titan). <b>Apex:</b> both parents share the trait, for a version with a boost 1.5 times bigger. This works for fusions too (Titan + Titan = Apex Titan). <b>Mythic:</b> breed a fusion with a third trait for all three, and a Mythic with a fourth trait (or two fusions with nothing in common) for all four. <b>Apex Mythic:</b> both parents share the same Mythic, for a version 1.5 times stronger. Any pair that can make a Mythic gets +25% mutation chance (Balanced or Go for a mutation) in one creature. <b>Wild:</b> eight traits that exist nowhere else (Quicksilver, Iron Lung, Skywalker, Hot Blood, Warden, Pickpocket, Glass Cannon, Chimera). Any pair can roll one, even with no traits. Pick a goal for each egg (Keep a trait, Balanced, Go for a mutation) to change the odds. The farm shows what you are rolling for before you pay.</span></div></div>
       <div class="panel"><h3>You</h3><p class="dim">Your own creature joins your team as its locked star and can never be traded or released. You start below average with maxed Potential, choose your position on the Roster tab, and play the Legend style: whoever is in front of you (the closest opponent within 6 ft) loses 1 on every rating every 6 seconds, and you gain it. With the Legendary aura the drain doubles to 2 every 6 seconds. It resets when you're benched or the game ends. You can level to 99, your ratings have no cap, you grow as you level, and you never decline with age. Get every rating to 100+ and max everything (all three categories, Eternal Youth and the Ultimate Edge) to unlock the Legendary aura and form: only you can have it, and it makes you taller, longer, stronger and 8% faster.</p></div>
       <div class="panel"><h3>Aging and Eternal Youth</h3><p class="dim">Creatures improve for their first ${AGE_PRIME} seasons in the league. Seasons ${AGE_PRIME + 1} to ${AGE_CLIFF} each cost ${AGE_STEP} on every rating. After season ${AGE_CLIFF} comes the major decline: ${AGE_DROP} on every rating each season (up to −${AGE_MAX} in total). Eternal Youth from the Shop stops it for good; your own creature and Kaine never decline this way. Only your team can own it. Eternal Youth is also the fourth branch of the max aura: max Stats, Physique and Mental, add Eternal Youth, and the creature unlocks the Eternal aura (+10 to every rating in total).</p></div>
       <div class="panel"><h3>Ultimate Edge</h3><p class="dim">The most expensive prize in the Shop, and only your team can own it. The creature wearing it always plays with the full element edge (about +10% on shots, steals, interceptions and blocks), opponents facing it always have the worst edge, and any opponent within 7 feet moves 6% slower and shoots 4% worse. It shows as a shifting, spectrum-colored aura with all ten elements orbiting it. Trading or releasing the creature puts the Ultimate Edge back in your bag.</p></div>
@@ -7243,7 +7241,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 259;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 260;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9298,8 +9296,13 @@ const FARM_AIMS = {
   mix:   { name:'Balanced',       desc:'A good shot at either.',                     same:[55, 45, 0], diff:[60, 40, 0], one:[60, 30, 10], none:[0, 35, 65] },
   mutate:{ name:'Go for a mutation', desc:'Best odds of something new.',               same:[15, 85, 0], diff:[15, 85, 0], one:[20, 70, 10], none:[0, 60, 40] } };
 const aimOf = k => FARM_AIMS[k] ? k : 'mix';   // eggs from older versions have no goal: they use Balanced
+/* v260: Mythic boost. When the mutation this pair would make is a Mythic or an Apex Mythic, the mutation share
+   goes up by MYTHIC_BONUS points (taken from the parents' traits), up to 95%. */
+const MYTHIC_BONUS = 25;
 function farmRareTable(A, B, aim){
-  const T = FARM_AIMS[aimOf(aim)];
+  const T0 = FARM_AIMS[aimOf(aim)], my = aimOf(aim) !== 'keep' && (A.rare || B.rare) && isMythicTier(farmMutation(A, B, true));   /* the Keep goal is left alone */
+  const up = r => { const add = Math.min(MYTHIC_BONUS, 95 - r[1], r[0]); return [r[0] - add, r[1] + add, r[2]]; };
+  const T = my ? { same:up(T0.same), diff:up(T0.diff), one:up(T0.one), none:T0.none } : T0;
   if(A.rare && B.rare){ if(A.rare === B.rare) return [[A.rare, T.same[0]], ['new', T.same[1]]];
     const h = Math.ceil(T.diff[0]/2); return [[A.rare, h], [B.rare, T.diff[0] - h], ['new', T.diff[1]]]; }
   if(A.rare || B.rare) return [[A.rare || B.rare, T.one[0]], ['new', T.one[1]], [null, T.one[2]]].filter(x => x[1] > 0);
@@ -9319,12 +9322,13 @@ function farmRareRoll(A, B, aim){
    peek = true is used by the odds panel: it returns the exact mutation when it is known in advance, or null for "a Wild one". */
 function farmMutation(A, B, peek){
   const wild = () => { if(peek) return null; const pool = WILD_RARE.filter(k => k !== A.rare && k !== B.rare); return pick(pool.length ? pool : WILD_RARE); };
-  const wa = WILD_RARE.includes(A.rare), wb = WILD_RARE.includes(B.rare);   // v259: two plain Wild traits make a Wild Apex (same) or a Wild Hybrid (different)
-  if(wa && wb) return A.rare === B.rare ? 'wapex:' + A.rare : wildHybridKey(A.rare, B.rare);
   const a = rareParts(A.rare), b = rareParts(B.rare); if(!a.length || !b.length) return wild();
-  if(A.rare === B.rare){ const k = a.length === 1 ? a[0] + '+' + a[0] : a.length === 2 ? 'apex:' + fuseKey(a[0], a[1]) : null; return k && k !== A.rare && RARE[k] ? k : wild(); }
+  // v260: the same trait on both parents makes its Apex: base -> Apex, Fusion -> Apex Fusion, Mythic -> Apex Mythic
+  if(A.rare === B.rare){ const k = a.length === 1 ? a[0] + '+' + a[0] : A.rare.startsWith('apex:') ? null : 'apex:' + A.rare; return k && k !== A.rare && RARE[k] ? k : wild(); }   // already Apex: a Wild one
   const u = [...new Set(a.concat(b))].sort();
-  if(u.length === 3){ const k = u.join('+'); return RARE[k] && k !== A.rare && k !== B.rare ? k : wild(); }   // a parent that already is that Mythic gives a Wild one instead
+  if(u.length === 3 || u.length === 4){ const k = u.join('+');   // a 3- or 4-trait Mythic
+    if(k !== A.rare && k !== B.rare && RARE[k]) return k;
+    const ap = 'apex:' + k; return RARE[ap] && ap !== A.rare && ap !== B.rare ? ap : wild(); }   // a parent already is that Mythic: its Apex
   if(u.length === 2){ const fk = fuseKey(u[0], u[1]), k = a.length === 1 && b.length === 1 ? fk : 'apex:' + fk; return RARE[k] && k !== A.rare && k !== B.rare ? k : wild(); }
   return wild();
 }
