@@ -1100,6 +1100,10 @@ const MASTERIES = {
 };
 const TREE_RINGS = 36, NOTABLE_RINGS = { 3:1, 7:2, 12:3, 18:4, 27:5 }, CROSS_RINGS = [2, 5, 10, 15, 20, 22, 25, 30, 35], BRANCH_RINGS = [7.4, 15.4, 23.4, 31.4, 33.4];
 const ringR = r => 70 + r*56;
+/* v257: the Ascendant ring. Each of the 16 lanes keeps going past the old rim (ring 36) for 10 more nodes (rings 37-46).
+   Rings 40 and 45 give +1 to every rating and link to the next lane over; the last node of each lane is an
+   Ascendant mastery. These are all new node ids, so nodes you already own are not moved or changed. */
+const ASC_RINGS = 10, ASC_CROSS = [40, 45];
 const statName = st => Object.entries(st).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_NAME[k]}`).join(', ');
 function buildTree(){
   const N = {}, E = [], link = (a, b) => { E.push([a, b]); N[a].adj.push(b); N[b].adj.push(a); };
@@ -1153,6 +1157,20 @@ function buildTree(){
     N['key-' + k] = { id:'key-' + k, x:Math.cos(a)*R, y:Math.sin(a)*R, type:'key', key:k, g:K.g, name:K.name, stats:K.st || null, adj:[] };
     anchor.forEach(an => link('key-' + k, an));
   });
+  // v257: Ascendant ring, each lane continues outward from its ring-36 node
+  lanes.forEach((bk, li) => {
+    const ang = laneAng(li), B = BADGES[bk], [sa, sb] = LANE_STATS[bk];
+    let prev = `${bk}-${TREE_RINGS}`;
+    for(let r = TREE_RINGS + 1; r <= TREE_RINGS + ASC_RINGS; r++){
+      const id = `${bk}-${r}`, a = ang + (r % 2 ? 0.02 : -0.02), R = ringR(r + 2);   // +2 rings of room so it clears the outer keystones
+      const n = { id, x:Math.cos(a)*R, y:Math.sin(a)*R, g:B.g, lane:bk, ring:r, adj:[] };
+      if(r === TREE_RINGS + ASC_RINGS){ Object.assign(n, { type:'mastery', name:`Ascendant ${B.name}`, stats:Object.assign(Object.fromEntries(STATS.map(k => [k, 2])), { [sa]:6, [sb]:6 }) }); }   // capstone: +6 to the lane's two ratings, +2 to the rest
+      else if(ASC_CROSS.includes(r)){ n.type = 'small'; n.stats = Object.fromEntries(STATS.map(k => [k, 1])); n.name = '+1 to every rating'; }
+      else { n.type = 'small'; n.stats = { [sa]:2 }; if(r % 2 === 0) n.stats = { [sb]:2 }; n.name = statName(n.stats); }   // +2 to one of the lane's ratings (the old rings give +1)
+      N[id] = n; link(prev, id); prev = id;
+    }
+  });
+  lanes.forEach((bk, li) => { const nb = lanes[(li + 1) % 16]; ASC_CROSS.forEach(r => link(`${bk}-${r}`, `${nb}-${r}`)); });   // cross links around the Ascendant ring
   return { N, E };
 }
 const TREE = buildTree();
@@ -7155,7 +7173,7 @@ function hubBadges(L){
   const fx = treeEffects(A), earned = Object.entries(fx.badges);
   return `<div class="panel treehead"><div style="flex:1;min-width:220px"><h3>${esc(pname(A))}'s skill tree</h3>
       <div class="cond"><b class="gold" style="font-size:20px">${A.treePts}</b> skill point${A.treePts === 1 ? '' : 's'} to spend · ${A.tree.length - 1}/${Object.keys(TREE.N).length - 1} nodes taken</div>
-      <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses.</div></div>
+      <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses. Past the rim, the Ascendant ring (new) gives +2 nodes and a big Ascendant mastery at the end of every lane.</div></div>
     <div class="row" style="gap:6px;align-self:flex-start"><button class="btn sm" data-tree="in">＋</button><button class="btn sm" data-tree="out">－</button><button class="btn sm" data-tree="fit">Fit</button>
       <select id="tree-focus" aria-label="Auto-fill focus">${[['all', 'Balanced'], ['fin', 'Finishing'], ['sht', 'Shooting'], ['ply', 'Playmaking'], ['def', 'Defense']].map(([k, n]) => `<option value="${k}" ${(UI.treeFocus || 'all') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
       <button class="btn sm hot" data-act="tree-auto" ${A.treePts >= 1 ? '' : 'disabled'}>Auto-fill (${Math.floor(A.treePts)})</button><button class="btn sm cool" data-act="tree-buy" data-id="1" ${L.coins >= 220 ? '' : 'disabled'}>Buy 5 pts · 220 coins</button><button class="btn sm cool" data-act="tree-buy" data-id="max" ${L.coins >= 220 ? '' : 'disabled'}>Buy max (${Math.floor(L.coins/220)*5} pts)</button><button class="btn sm" data-act="tree-reset" ${A.tree.length > 1 ? '' : 'disabled'}>Reset tree · 200 coins</button></div></div>
@@ -7196,7 +7214,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 256;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 257;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7204,7 +7222,7 @@ function initTree(){
   const dpr = window.devicePixelRatio || 1;
   const size = () => { const w = wrap.clientWidth, h = Math.min(640, Math.max(380, window.innerHeight*0.62)); cv.width = w*dpr; cv.height = h*dpr; cv.style.width = w + 'px'; cv.style.height = h + 'px'; return [w, h]; };
   let [W, H] = size();
-  const fitView = () => { const z = Math.min(W, H - 70)/(ringR(TREE_RINGS + 3)*2 + 160); return { x:0, y:32/z, z }; };   // whole tree, nudged up above the info bar
+  const fitView = () => { const z = Math.min(W, H - 70)/(ringR(TREE_RINGS + ASC_RINGS + 2)*2 + 160); return { x:0, y:32/z, z }; };   // whole tree, nudged up above the info bar
   const V = UI.treeView || (UI.treeView = fitView());
   const ctx = cv.getContext('2d');
   const toScr = n => [W/2 + (n.x - V.x)*V.z, H/2 + (n.y - V.y)*V.z];
@@ -7216,7 +7234,7 @@ function initTree(){
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
     // faint rings
     ctx.strokeStyle = 'rgba(255,255,255,.04)'; ctx.lineWidth = 1;
-    for(let r = 4; r <= TREE_RINGS; r += 4){ const [cx, cy] = toScr({ x:0, y:0 }); ctx.beginPath(); ctx.arc(cx, cy, ringR(r)*V.z, 0, Math.PI*2); ctx.stroke(); }
+    for(let r = 4; r <= TREE_RINGS + ASC_RINGS + 2; r += 4){ const [cx, cy] = toScr({ x:0, y:0 }); ctx.beginPath(); ctx.arc(cx, cy, ringR(r)*V.z, 0, Math.PI*2); ctx.stroke(); }
     // edges
     for(const [a, b] of TREE.E){ const na = TREE.N[a], nb = TREE.N[b], [x1, y1] = toScr(na), [x2, y2] = toScr(nb);
       const oa = own.has(a), ob = own.has(b);
@@ -9652,7 +9670,7 @@ function showUltimate(p, done){
 /* v244: a little more for every boss. Kaine's team while he is still your rival, and Vex's team, had no rating edge
    of their own (only the league-wide "heat"). Now they get a small fixed one. The Five and the final fights were
    raised where their numbers are set (FIVE_FLOOR, FIVE_FINAL_EDGE, KAINE_FINAL_FLOOR and the starting edges). */
-const RIVAL_EDGE = 120, VEX_EDGE = 125;   /* v249: the boss boosts total +115 (v244 had 5 and 10) */
+const RIVAL_EDGE = 45, VEX_EDGE = 125;   /* v257: rival Kaine 120 -> 45, about a 50% win rate on a maxed save */   /* v249: the boss boosts total +115 (v244 had 5 and 10) */
 const storyEdge = (L, opp) => vexTeam(L) === opp ? VEX_EDGE : kaineHunt(L) && opp === L.rival ? RIVAL_EDGE : 0;
 function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
   const opp0 = g.a === L.user ? g.b : g.a, boss = five || (kaineFinalOn(L) && opp0 === L.rival) ? 2 : vexTeam(L) === opp0 ? 1 : 0;   /* story bosses double you harder: 2 = the Five Crowns and (v250) final-boss Kaine, 1 = Vex's team. v250: Kaine alone moved from 1 to 2 to bring him to about 1 win in 16 for a maxed team. More rating edge no longer changed his results (4-28 at an edge of 100, 130 and 155 alike), the heavier double team did (5-59). */
