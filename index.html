@@ -6790,15 +6790,29 @@ function applyUiScale(){ if(typeof document === 'undefined') return; const v = S
   document.documentElement.classList.toggle('skin', (SET.look || 'arena') === 'arena');   // Settings → Look
   try { if(LEAGUE && LEAGUE.teams && LEAGUE.teams[LEAGUE.user]) document.documentElement.style.setProperty('--team', LEAGUE.teams[LEAGUE.user].color); } catch(e){} }   // your team color drives the accents
 if(typeof window !== 'undefined'){ applyUiScale(); window.addEventListener('resize', applyUiScale); }
+/* v275 FIX: the save in this browser is read here, but it is only updated (migrate) by bootLeague() at the very end
+   of the script. Before, migrate ran right here, while parts of the game further down weren't defined yet. Since v255
+   that made migrate fail on every save ("Cannot access 'farmEggs' before initialization"), and the league was set
+   aside under SAVE_KEY + '.broken'. bootLeague() also brings that set-aside league back. */
 let LEAGUE = null;
-if(typeof document !== 'undefined'){
-  try { LEAGUE = migrate(loadLeague()); }
-  catch(e){   // keep the broken save under a backup key and start clean, instead of a dead page
-    try { localStorage.setItem(SAVE_KEY + '.broken', localStorage.getItem(SAVE_KEY) || ''); } catch(e2){}
-    LEAGUE = null; setTimeout(() => { UI.msg = '☁️ Your saved league in this browser could not be loaded (' + (e && e.message) + '). It was set aside; you can restore from a backup code in Settings.'; try { renderMenu(); } catch(e3){} }, 0);
-  }
+const BOOT_RAW = typeof document !== 'undefined' ? loadLeague() : null;
+function bootLeague(){
+  const brokenKey = SAVE_KEY + '.broken';
+  if(BOOT_RAW){ try { LEAGUE = migrate(BOOT_RAW); }
+    catch(e){   // keep the broken save under a backup key and start clean, instead of a dead page
+      try { localStorage.setItem(brokenKey, localStorage.getItem(SAVE_KEY) || ''); } catch(e2){}
+      LEAGUE = null; UI.msg = '☁️ Your saved league in this browser could not be loaded (' + (e && e.message) + '). It was set aside; you can restore from a backup code in Settings.'; } }
+  // a league set aside earlier: bring it back on its own if there is no other save, or offer it on the menu if there is
+  let br = null; try { br = localStorage.getItem(brokenKey); if(br && br === localStorage.getItem(SAVE_KEY) && LEAGUE){ localStorage.removeItem(brokenKey); br = null; } } catch(e){}   // the same league that just loaded fine: nothing to offer
+  if(br && br.length > 100){
+    let old = null; try { old = migrate(JSON.parse(br)); } catch(e){ old = null; }
+    if(old && old.teams){
+      if(!LEAGUE){ LEAGUE = old; saveLeague(true); try { localStorage.setItem(SAVE_KEY + '.recovered', br); localStorage.removeItem(brokenKey); } catch(e){}
+        UI.msg = `☁️ ✅ Your league was recovered: ${old.teams[old.user].name}, season ${old.season}. Tap Continue.`; }
+      else if(!UI.brokenOffer) UI.brokenOffer = { name:old.teams[old.user].name, season:old.season };
+    } }
+  if(LEAGUE && LEAGUE.avatarName) SPECIES[AVATAR_SP].name = LEAGUE.avatarName;
 }
-if(LEAGUE && LEAGUE.avatarName) SPECIES[AVATAR_SP].name = LEAGUE.avatarName;
 let UI = { tab:'play', filter:'All', sort:'ovr', trade:{ team:null, mine:[], theirs:[], minePk:[], theirsPk:[] }, faPick:null, msg:'', busy:false };
 const $ = s => document.querySelector(s);
 const view = () => $('#view');
@@ -6823,7 +6837,7 @@ function renderMenu(){
       <button class="btn" data-act="help">How to play<small>Game plans, types, supercharge, evolution</small></button>
       <button class="btn" data-act="settings">Settings<small>Quarter length ${SET.qlen} min · Difficulty ${diffName()}</small></button>
       ${CLOUD.state === 'off' && (location.protocol === 'file:' || window.EVO_WEB) ? `<button class="btn" data-act="restore">Restore a backup<small>${window.EVO_WEB ? 'Bring a league over from another device' : 'Bring your iPhone league to this computer'}</small></button>` : ''}
-    </div>${UI.msg && UI.msg.startsWith('☁️') ? `<div class="msg">${UI.msg}</div>` : ''}<p class="dim cond cloudline" style="margin:0">${cloudStatus()}</p></div></div>`);
+    </div>${UI.msg && UI.msg.startsWith('☁️') ? `<div class="msg">${UI.msg}</div>` : ''}${UI.brokenOffer ? `<div class="msg">An older league that couldn't load before was found: <b>${esc(UI.brokenOffer.name)}, season ${UI.brokenOffer.season}</b>. <button class="btn sm hot" data-act="restore-broken">Load it instead</button><br><span class="dim cond">The league you have now is kept as a backup in this browser.</span></div>` : ''}<p class="dim cond cloudline" style="margin:0">${cloudStatus()}</p></div></div>`);
 }
 const diffName = () => SET.diff < 1 ? 'Rookie' : SET.diff > 1 ? 'All-Star' : 'Pro';
 
@@ -7443,7 +7457,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 274;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 275;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -12105,12 +12119,17 @@ if(typeof document !== 'undefined'){
         UI.msg = `Signed ${pname(L.players[pid])} (${fmtM(chk.deal.sal)} × ${chk.deal.yrs}${chk.min ? ', minimum deal' : ''}) and released ${pname(L.players[out])}. ${rr.filter(t => !t.startsWith('Revenge')).join(' ')}`;
         UI.faPick = null; saveLeague(); renderHub(); break;
       }
+      case 'restore-broken': { try { const br = localStorage.getItem(SAVE_KEY + '.broken'), L2 = migrate(JSON.parse(br));
+          if(LEAGUE) localStorage.setItem(SAVE_KEY + '.swapped', JSON.stringify(LEAGUE)); LEAGUE = L2; saveLeague(true); localStorage.setItem(SAVE_KEY + '.recovered', br); localStorage.removeItem(SAVE_KEY + '.broken');
+          UI.brokenOffer = null; UI.msg = `☁️ ✅ Loaded ${L2.teams[L2.user].name}, season ${L2.season}. Tap Continue.`; } catch(e){ UI.msg = '☁️ That league could not be loaded: ' + (e && e.message); }
+        renderMenu(); break; }   // v275
       case 'post-continue': if(UI.postContinue) UI.postContinue(); break;
       case 'post-next': { if(UI.postContinue) UI.postContinue(); const L2 = LEAGUE; if(L2 && !L2.event && userGame(L2) && $('#modal').hidden) franchiseGame(true); break; }
     }
   });
   try{ localStorage.removeItem('evohoops.run.v1'); }catch(e){}   // the old Gauntlet save is no longer used
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => { PORTRAITS.clear(); });
+  bootLeague();   // v275: now that everything above is defined
   renderMenu();
 }
 </script>
