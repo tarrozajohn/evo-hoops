@@ -7498,7 +7498,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 279;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 280;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9310,7 +9310,7 @@ function tradeFinder(L){
 /* v268 AUTO DEAL. You pick who you want (their players and picks); this finds what to give so their team says yes.
    It tries every set of your players the same size as theirs (players must match), each with none, one or two of your
    draft picks, skips anything the salary cap blocks, and asks their team (evaluateTrade) about each one. Of the deals
-   they accept it picks the best one for you (dealEdge). If none works it returns the closest one, so you can see the
+   they accept it picks the one that costs you the least trade value (v280; before, the best dealEdge score). If none works it returns the closest one, so you can see the
    bribe price. Your Legend, your best friend and anyone else locked can't be offered. */
 function autoDeal(L, tid, theirs, theirsPk){
   theirsPk = theirsPk || []; const U = L.teams[L.user];
@@ -9321,7 +9321,11 @@ function autoDeal(L, tid, theirs, theirsPk){
   let best = null, close = null;
   for(const mine of sets){ if(!tradeCapCheck(L, L.user, mine, theirs).ok || !tradeCapCheck(L, tid, theirs, mine).ok) continue;
     for(const minePk of pkSets){ const r = evaluateTrade(L, tid, mine, theirs, minePk, theirsPk);
-      if(r.ok){ const e = dealEdge(L, mine, theirs, minePk, theirsPk).score - minePk.length*0.5; if(!best || e > best.edge) best = { mine, minePk, edge:e }; }
+      /* v280: of the deals they accept, take the one that costs you the least value: the trade value of the players you
+         give (OVR plus future worth, as tradeValue) plus what your picks are worth (pickWorth, the same scale the other
+         team uses). Ties go to fewer picks. */
+      if(r.ok){ const cost = mine.reduce((t, id) => t + tradeValue(L.players[id]), 0) + minePk.reduce((t, id) => t + pickWorth(L, L.picks.find(k => k.id === id)), 0);
+        if(!best || cost < best.cost - 0.01 || (Math.abs(cost - best.cost) <= 0.01 && minePk.length < best.minePk.length)) best = { mine, minePk, cost }; }
       else if(!close || r.score > close.score) close = { mine, minePk, score:r.score }; } }
   return { best, close };
 }
@@ -11905,7 +11909,8 @@ if(typeof document !== 'undefined'){
         if(!T || T.team == null || !(T.theirs.length + T.theirsPk.length)){ UI.toast = 'Pick who you want first.'; renderHub(); break; }
         if(!T.theirs.length){ UI.toast = 'Add at least one of their players: players must match one for one.'; renderHub(); break; }
         const R = autoDeal(L, T.team, T.theirs, T.theirsPk), O = L.teams[T.team];
-        if(R.best){ T.mine = R.best.mine; T.minePk = R.best.minePk; UI.msg = `⚡ Found a deal ${O.abbr} accepts. Check it in the bar below and tap Propose.`; UI.toast = 'Deal found.'; }
+        if(R.best){ T.mine = R.best.mine; T.minePk = R.best.minePk; const get = T.theirs.reduce((t, x) => t + tradeValue(L.players[x]), 0);
+          UI.msg = `⚡ Found the cheapest deal ${O.abbr} accepts: you give about ${Math.round(R.best.cost)} in trade value for ${Math.round(get)}. Check it in the bar below and tap Propose.`; UI.toast = 'Cheapest deal found.'; }
         else if(R.close){ T.mine = R.close.mine; T.minePk = R.close.minePk; UI.msg = `No deal ${O.abbr} would accept as is. This is the closest one: the bar below shows the bribe price to close it.`; UI.toast = 'No straight deal. Closest one loaded.'; }
         else { UI.msg = `Nothing works: the salary cap blocks every combination for this player.`; UI.toast = UI.msg; }
         renderHub(); break; }
