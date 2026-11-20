@@ -196,6 +196,7 @@ select{background:var(--panel2);color:var(--text);border:1px solid var(--line);b
 
 .fold{margin:10px 0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02)}.fold>summary{padding:10px 12px;cursor:pointer;list-style:none}.fold>summary::-webkit-details-marker{display:none}
 .fold>summary::before{content:'▸ ';color:var(--gold)}.fold[open]>summary::before{content:'▾ '}.foldbody{padding:0 10px 10px;display:flex;flex-direction:column;gap:10px}
+.autotip{border-color:var(--gold);background:rgba(255,210,58,.07)}
 .warnbox{margin:6px 0;padding:7px 10px;border-radius:8px;background:rgba(255,120,60,.12);border:1px solid rgba(255,140,60,.55);font-size:14px}
 .cmptab{width:100%;border-collapse:collapse;font-size:14px}.cmptab td,.cmptab th{padding:3px 6px;border-top:1px solid rgba(255,255,255,.07);text-align:left}.cmptab th{font-family:var(--cond)}
 .recap{border-color:var(--gold)}
@@ -6813,6 +6814,7 @@ function renderHelp(back){
   showView(`<div class="wrap">
     <div class="row" style="justify-content:space-between"><h2>How to play</h2><button class="btn" data-act="${back}">Back</button></div>
     <div class="split">
+      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has six groups: Play, Team (Roster, Train), Legend (Skill tree, Bonds), Office (Money, Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena) and League. ⚙️ Auto, How to play and Settings are in the ☰ menu at the top right. Tap anything underlined or a yellow ? to see what it means.</p></div>
       <div class="panel"><h3>How games work</h3><p class="dim">You are the GM and coach. Every game is simulated: your creatures play it out on their own, using their ratings, playstyles, badges, keystones and your game plan. Want to coach one yourself? Tap 📺 Watch on the Play tab to see it on the court and make calls any time (pace, shots, playbook, defense, double or hunt a player, subs, timeouts, working the refs), or 🎙 Quick coach to get a stop every half quarter instead. You decide who is on the roster, who starts and where, how they train, what they buy, who you trade for and draft, and how the team plays.</p>
         <h3 style="margin-top:12px">A 20-year career</h3><p class="dim">Your career runs 20 seasons: Rookie years, Rising, Prime, Veteran, Twilight and a Farewell season. Milestone scenes mark years 2, 5, 10, 15 and the end. From year 15 your body slows down (−2 per year in games), and Kaine ages with you. Every season goes on your timeline (Legacy tab). After the last one: a retirement ceremony, your career summary and legacy score, your number in the rafters and the Hall of Fame. Then retire and stay on as GM, or play one more season.</p>
         <h3 style="margin-top:12px">Playing time builds stars</h3><p class="dim">Each creature has a role from how much it actually plays: Starter, Rotation, Bench or Buried. Starters grow 25% faster from games, buried creatures 40% slower. Young starters can break out (+1 Potential); young creatures buried on the bench can stall (−1). Free agents check where they would play: prospects refuse to be buried, and anyone young asks more to sit.</p>
@@ -7178,7 +7180,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
         ${L.streak ? `<span class="deskonly">${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}</span>` : ''}</div></div></div>
       <button class="coins" data-act="tab" data-id="money" title="Coins: tap for the Money page"><span class="coin"></span><span class="num">${L.coins}</span></button>
       <div class="row deskonly"><button class="btn sm" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
-      <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰</button>
+      <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰${SET.autoTip ? '' : '<span class="tabbadge">!</span>'}</button>
     </div>
     ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
     <div class="tabs">${NAV_GROUPS.map(g => `<button class="tab ${groupOf(UI.tab).id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}">${g.icon} ${g.label} ${countBadge(groupCount(L, g))}</button>`).join('')}</div>
@@ -7423,7 +7425,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 269;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 270;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8935,7 +8937,12 @@ function fold(key, title, sub, open0, inner){ if(!inner || !inner.replace(/<!--[
   const F = SET.folds || {}, open = F[key] == null ? open0 : F[key];
   return `<details class="fold" ${open ? 'open' : ''} ontoggle="foldSet('${key}', this.open)"><summary><b>${title}</b> <span class="dim cond">${sub}</span></summary><div class="foldbody">${inner}</div></details>`; }
 function foldSet(k, v){ SET.folds = SET.folds || {}; if(SET.folds[k] === v) return; SET.folds[k] = v; saveSettings(); }
-function hubPlay(L){ return seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
+/* v270: where Auto is. Auto lives in the ☰ menu (top right) since v268, which is easy to miss, so the Play and Team
+   tabs show this note until you open Auto once or tap Got it. Kept in your settings (SET.autoTip). */
+function autoTipPanel(){ if(SET.autoTip) return '';
+  return `<div class="panel autotip"><div class="row" style="gap:8px;justify-content:space-between;flex-wrap:wrap"><span style="flex:1;min-width:200px">⚙️ <b>Auto</b> runs the chores for you: lineups, training, your skill tree, the farm, re-signing and more. It's in the <b>☰ menu</b> at the top right.</span>
+    <span class="row" style="gap:6px"><button class="btn sm hot" data-act="tab" data-id="auto">Open Auto</button><button class="btn sm" data-act="autotip-ok">Got it</button></span></div></div>`; }
+function hubPlay(L){ return autoTipPanel() + seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
 function hubPlay0(L){
   const U = L.teams[L.user];
   let main = '';
@@ -9070,7 +9077,7 @@ function hubRoster(L){
   const waiting = (L.fa || []).filter(id => L.players[id] && L.players[id].reserved === L.user);
   const waitBox = waiting.length ? `<div class="panel" style="border-color:var(--gold)"><h3 style="margin:0 0 4px">⏳ Reserved for you in Free Agents</h3><div class="dim cond" style="margin-bottom:6px">Only you can sign them, for the minimum. They're not on your roster until you sign them, and the reservation ends at the next offseason.</div>
     ${waiting.map(id => { const p = L.players[id]; return `<div class="frow"><span class="tmain"><b>${esc(pname(p))}</b> <span class="dim">${ovr(p)} OVR · ${posLabel(p)}</span> ${talentTags(L, p, starCut(L))}</span><button class="btn sm hot" data-act="sign-reserved" data-id="${id}">Sign</button></div>`; }).join('')}</div>` : '';
-  return waitBox + friendBox + mk + kidsBox + comparePanel(L) + needsBox(L) + capBar(L, L.user) + `<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:200px">${howto(`The top five start at PG, SG, SF, PF and C. Each creature has two natural positions; every step out of position costs 2 on every rating. Playstyle decides where it sets up, what it shoots and how it defends. Starters earn full game XP; the bench earns practice XP.`, 'How lineups work')}</div><label class="autotog"><input type="checkbox" data-auto="lineup" ${autoOf(L).lineup ? 'checked' : ''}>Auto</label><button class="btn sm cool" data-act="autolineup">Auto lineup</button></div>
+  return autoTipPanel() + waitBox + friendBox + mk + kidsBox + comparePanel(L) + needsBox(L) + capBar(L, L.user) + `<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:200px">${howto(`The top five start at PG, SG, SF, PF and C. Each creature has two natural positions; every step out of position costs 2 on every rating. Playstyle decides where it sets up, what it shoots and how it defends. Starters earn full game XP; the bench earns practice XP.`, 'How lineups work')}</div><label class="autotog"><input type="checkbox" data-auto="lineup" ${autoOf(L).lineup ? 'checked' : ''}>Auto</label><button class="btn sm cool" data-act="autolineup">Auto lineup</button></div>
   <div class="grid">${U.roster.map((id, i) => { const p = L.players[id], S = SPECIES[p.sp];
     return playerCard(L, id, { team:U, stats:true, cls: i < STARTERS ? 'starter' : '', actions: `<div class="row" style="gap:6px;margin-top:4px">
       <span class="chip" style="background:${i < STARTERS ? 'var(--hot)' : 'var(--line)'};color:${i < STARTERS ? '#1a0b02' : 'var(--text)'}">${i < STARTERS ? 'Starter · ' + POS_NAMES[i] : 'Bench'}</span>
@@ -11700,7 +11707,8 @@ if(typeof document !== 'undefined'){
         }
         saveLeague(); renderDraft(); break;
       }
-      case 'tab': UI.tab = id; UI.faPick = null; UI.use = null; UI.sheet = false; if(groupOf(id).tabs.includes(id)) (UI.lastIn = UI.lastIn || {})[groupOf(id).id] = id; renderHub(); break;   // v269: not for Auto, which sits in the menu
+      case 'autotip-ok': SET.autoTip = true; saveSettings(); renderHub(); break;   // v270
+      case 'tab': if(id === 'auto' && !SET.autoTip){ SET.autoTip = true; saveSettings(); } UI.tab = id; UI.faPick = null; UI.use = null; UI.sheet = false; if(groupOf(id).tabs.includes(id)) (UI.lastIn = UI.lastIn || {})[groupOf(id).id] = id; renderHub(); break;   // v269: not for Auto, which sits in the menu
       case 'navgrp': { const g = NAV_GROUPS.find(x => x.id === id); UI.sheet = false;
         if(g.tabs.includes(UI.tab)){ view().scrollTo({ top:0, behavior:'smooth' }); break; }   // v269: already on one of its tabs (Auto is on none, so Play now leaves it)
         UI.tab = (UI.lastIn && g.tabs.includes(UI.lastIn[id]) && UI.lastIn[id]) || g.tabs[0]; UI.faPick = null; UI.use = null; renderHub(); view().scrollTop = 0; break; }
@@ -11733,7 +11741,7 @@ if(typeof document !== 'undefined'){
       case 'prompt-skip': renderHub(); break;
       case 'prompt-off': SET.prompts = false; saveSettings(); UI.msg = 'Decision prompts are off. Tick "Prompt me for each decision" in the To do box to turn them back on.'; renderHub(); break;
       case 'prompt-auto': { const A = autoOf(L); A[id] = true; if(id === 'train') L.teams[L.user].roster.forEach(x => smartTrain(L.players[x], null)); if(id === 'practice') autoPractice(L); autoKits(L); autoLineup(L); autoHang(L);
-        UI.msg = 'Auto is on for that. You can turn it off on the Auto tab (Team).'; saveLeague(); renderHub(); break; }
+        UI.msg = 'Auto is on for that. You can turn it off in ⚙️ Auto (☰ menu, top right).'; saveLeague(); renderHub(); break; }
       // injury prompts: pick the replacement, heal him, or let the coach set the five; then decide if he gets his spot back
       case 'inj-sub': { const [a, b] = String(id).split(':').map(Number), R = L.teams[L.user].roster, i = R.indexOf(a), j = R.indexOf(b); if(i < 0 || j < 0) break;
         [R[i], R[j]] = [R[j], R[i]]; UI.msg = `${pname(L.players[b])} starts at ${POS_NAMES[i]} while ${pname(L.players[a])} is out. You'll be asked when he's healthy.`; saveLeague(); renderHub(); break; }
