@@ -1136,6 +1136,7 @@ const ringR = r => 70 + r*56;
 /* v257: the Ascendant ring. Each of the 16 lanes keeps going past the old rim (ring 36) for 10 more nodes (rings 37-46).
    Rings 40 and 45 give +1 to every rating and link to the next lane over; the last node of each lane is an
    Ascendant mastery. These are all new node ids, so nodes you already own are not moved or changed. */
+const START_COINS = 1000;   // v281: new leagues start with 1,000 coins (150 before), enough to breed right away
 const SEASON_TREE_BONUS = 35;   // v262: skill points at the start of every season after the first (a new career then earns about 1,450 by the end of season 13)
 const ASC_RINGS = 10, ASC_CROSS = [40, 45];
 /* v262: the Mythic ring, 12 more nodes on every lane past the Ascendant ring (rings 47-58, 192 nodes):
@@ -6304,7 +6305,7 @@ function migrate(L){
   if(L.kaine && L.kaine.ending === 'ally' && L.kaine.allyS == null){ L.kaine.allyS = L.season; L.kaine.allyG = L.gameNo || 0; }   // saves from before the Shadow and Light storyline start it from now
   if(L.avatar != null && L.players && L.players[L.avatar]){ const fixed = cleanTree(L.players[L.avatar]); if(fixed) L.keyNote = `Your skill tree had ${fixed} node${fixed > 1 ? 's' : ''} from an older version of the tree. ${fixed > 1 ? 'They were' : 'It was'} removed and the skill point${fixed > 1 ? 's' : ''} refunded.`; }
   if(L.avatar != null && L.players && L.players[L.avatar]){ const n = trimKeystones(L.players[L.avatar], L); if(n) L.keyNote = `Keystones now have ${keySlots(L)} slots. Your last ${n} keystone${n > 1 ? 's were' : ' was'} refunded as skill points.`; }
-  if(L.coins == null) L.coins = 150;
+  if(L.coins == null) L.coins = START_COINS;   // a brand-new league (saves always have coins already)
   L.fac = L.fac || { gym:0, arena:0, scout:0 };
   if(L.fac.rec == null) L.fac.rec = 0;
   if(L.phase !== 'draft' && L.teams) createNemesis(L);
@@ -7498,7 +7499,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 280;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 281;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
