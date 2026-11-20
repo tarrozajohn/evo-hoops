@@ -99,6 +99,8 @@ button,.btn,.tab,.subtab,.bnavitem{-webkit-user-select:none;user-select:none}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;gap:12px;min-width:0}
 .card img{width:64px;height:70px;flex:none}
 .card .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+@media (max-width:400px){ .bnav .bnavitem{font-size:10px;letter-spacing:.02em} }
+@media (max-width:360px){ .bnav .bnavitem{font-size:9px;letter-spacing:0} .bnav .bnavsim{width:52px!important} .bnav .bnavitem .bi{font-size:18px} .bnav{padding-left:4px!important;padding-right:4px!important;gap:0!important} }   /* v279: small phones (more specific than the base rule further down) */
 /* v278: on computers the cards were too narrow next to the 128px portrait, so the OVR number got cut off. Wider columns
    on bigger screens, and the OVR never shrinks. Phones keep one card per row as before. */
 .card .ovr{flex:none}.card .name{min-width:0;overflow-wrap:anywhere}
@@ -6792,7 +6794,7 @@ const isPhone = () => typeof matchMedia !== 'undefined' && matchMedia('(max-widt
 // inside a CSS-zoomed page (the drawing and your taps ended up in different places, so taps missed nodes and
 // taken nodes didn't light up where you expected).
 function applyUiScale(){ if(typeof document === 'undefined') return; const v = SET.ui || 'auto', onTree = (() => { try { return UI.tab === 'badges' && !!LEAGUE && LEAGUE.phase !== 'draft'; } catch(e){ return false; } })();   // try: this also runs at page load, before UI and LEAGUE exist
-  const mine = v === 'auto' ? (isPhone() ? 0.8 : 1) : +v, z = onTree ? 1 : mine;
+  const mine = v === 'auto' ? (isPhone() ? 0.8 : window.innerWidth >= 2300 ? 1.4 : window.innerWidth >= 1750 ? 1.2 : 1) : +v   /* v279: bigger on 1080p+ and 1440p+ monitors */, z = onTree ? 1 : mine;
   if(document.documentElement.style.getPropertyValue('--uiz') !== String(z)) document.documentElement.style.setProperty('--uiz', z);
   document.documentElement.style.setProperty('--uizm', mine);
   document.documentElement.classList.toggle('skin', (SET.look || 'arena') === 'arena');   // Settings → Look
@@ -7496,7 +7498,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 278;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 279;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
