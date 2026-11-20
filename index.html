@@ -99,6 +99,10 @@ button,.btn,.tab,.subtab,.bnavitem{-webkit-user-select:none;user-select:none}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;gap:12px;min-width:0}
 .card img{width:64px;height:70px;flex:none}
 .card .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+/* v278: on computers the cards were too narrow next to the 128px portrait, so the OVR number got cut off. Wider columns
+   on bigger screens, and the OVR never shrinks. Phones keep one card per row as before. */
+.card .ovr{flex:none}.card .name{min-width:0;overflow-wrap:anywhere}
+@media (min-width:761px){ .grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))} }
 .card .name{font-family:var(--cond);font-weight:700;font-size:19px;line-height:1.1}
 .chips{display:flex;gap:4px;flex-wrap:wrap}
 .chip{font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;color:#10132b}
@@ -7492,7 +7496,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 277;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 278;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9739,9 +9743,18 @@ function rareOddsHtml(A, B, aim){
 const pairMut = (a, b) => farmMutation(farmSnap(a), farmSnap(b), true);
 const mutPctOf = (a, b, aim) => { const r = farmRareTable(farmSnap(a), farmSnap(b), aim).find(x => x[0] === 'new'); return r ? r[1] : 0; };
 // the best pairs on your roster: rarest mutation first, then the best odds
+/* v278: the goal that fits a pair best, and why. A mutation that beats both parents' traits: Go for a mutation.
+   Parents with traits but no better mutation (or only a random Wild one): Keep a trait. No traits at all: Go for a
+   mutation (the best shot at a Wild trait). Picking a pair switches to this goal; you can still change it. */
+function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutation(A, B, true), best = Math.max(TIER_RANK[tierOf(A.rare)] || 0, TIER_RANK[tierOf(B.rare)] || 0);
+  const pct = (aim, k) => { const r = farmRareTable(A, B, aim).find(x => x[0] === k); return r ? r[1] : 0; };
+  if(m && (TIER_RANK[tierOf(m)] || 0) > best) return { aim:'mutate', why:`${pct('mutate', 'new')}% to make ${RARE[m].name} (${tierOf(m)}), which beats both parents' traits.` };
+  if(A.rare || B.rare){ const k = A.rare && B.rare && A.rare !== B.rare ? null : A.rare || B.rare, keep = farmRareTable(A, B, 'keep').filter(x => x[0] && x[0] !== 'new').reduce((t, x) => t + x[1], 0);
+    return { aim:'keep', why:`${keep}% the baby keeps ${k ? RARE[k].name : "a parent's trait"}. ${m ? `A mutation here (${RARE[m].name}) is no better than what they have.` : 'A mutation here would only be a random Wild trait.'}` }; }
+  return { aim:'mutate', why:`Neither parent has a trait, so this gives the best shot at a Wild trait (${pct('mutate', 'new')}%).` }; }
 function bestPairs(L, list, aim, n){
   const out = []; for(let i = 0; i < list.length; i++) for(let j = i + 1; j < list.length; j++){ const a = list[i], b = list[j]; if(!a.rare && !b.rare) continue;
-    const m = pairMut(a, b); if(!m) continue; out.push({ a, b, m, rank:TIER_RANK[tierOf(m)] || 0, pct:mutPctOf(a, b, aim) }); }
+    const m = pairMut(a, b); if(!m) continue; out.push({ a, b, m, rank:TIER_RANK[tierOf(m)] || 0, pct:mutPctOf(a, b, suggestAim(a, b).aim === 'mutate' ? 'mutate' : aim) }); }   // v278: odds on Go for a mutation when that is the goal it would pick
   out.sort((x, y) => y.rank - x.rank || y.pct - x.pct); const seen = new Set();
   return out.filter(o => !seen.has(o.m) && seen.add(o.m)).slice(0, n); }
 function farmOddsHtml(O, A, B, aim){
@@ -9785,6 +9798,7 @@ function hubFarm(L){
     const roomWarn = openSpots <= 0 ? `<div class="warnbox">⚠️ No roster spot for this hatchling (${U.roster.length}/${ROSTER}${E.length ? `, plus ${E.length} egg${E.length > 1 ? 's' : ''} already in the nest` : ''}). It will wait in Free Agents, reserved for you at the minimum. To sign it you release one creature. Your weakest: ${weakest.map(p => `<b>${esc(pname(p))}</b> (${ovr(p)} OVR, ${fmtM(p.contract ? p.contract.sal : 0)})`).join(', ')}.</div>` : `<div class="dim cond">Room on your roster: ${openSpots} spot${openSpots > 1 ? 's' : ''}, so it joins your team when it hatches.</div>`;
     const pair = a && b ? (() => { const cost = farmCost(a, b), short = cost - L.coins;
       return `<div class="farmpair"><img src="${portrait(a, U.color)}" alt=""><span class="x">×</span><img src="${portrait(b, U.color)}" alt=""></div>
+        ${(() => { const S = suggestAim(a, b), on = aimOf(L.farmAim) === S.aim; return `<div class="cond" style="margin:6px 0 0">💡 Best goal for this pair: <b>${FARM_AIMS[S.aim].name}</b>${on ? ' ✓' : ` <button class="btn sm hot" data-act="farm-aim" data-id="${S.aim}">Use it</button>`}<br><span class="dim">${esc(S.why)}</span></div>`; })()}
         <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">${Object.entries(FARM_AIMS).map(([k, G]) => `<button class="btn sm ${aimOf(L.farmAim) === k ? 'hot' : ''}" data-act="farm-aim" data-id="${k}">${G.name}</button>`).join('')}</div>
         <div class="dim cond" style="margin-bottom:6px">Goal ${qtip('goal')}: ${FARM_AIMS[aimOf(L.farmAim)].desc} Breeding cost ${qtip('cost')}</div>
         ${farmOddsHtml(farmOdds(farmSnap(a), farmSnap(b), L.farmAim), farmSnap(a), farmSnap(b), L.farmAim)}
@@ -9810,7 +9824,7 @@ function hubFarm(L){
       const c = farmCost(a, z), keep = (farmRareTable(farmSnap(a), farmSnap(z), 'keep').find(r => r[0] === k) || [0, 0])[1];
       return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Step 1: copy it. ${esc(pname(a))} × ${esc(pname(z))} on Keep a trait, ${keep}% the baby gets ${esc(RARE[k].name)}. When it hatches, this turns into step 2.</span></span><button class="btn sm" data-act="farm-quick" data-id="${a.id},${z.id},keep" ${L.coins >= c && !full ? '' : 'disabled'}>Copy · ${c}</button></div>`; }).join('');
     const apexHtml = apexRows ? `<details class="panel"><summary><b>🔁 Make an Apex</b> <span class="dim cond">· one tap per step, it breeds right away</span></summary>${apexRows}</details>` : '';
-    const bestHtml = best.length ? `<div class="panel"><h3>Best pairs on your roster</h3><p class="dim cond" style="margin:0 0 4px">The rarest mutation each pair can make, with your current goal's odds.</p>${best.map(o => `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b>${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`).join('')}</div>` : '';
+    const bestHtml = best.length ? `<div class="panel"><h3>Best pairs on your roster</h3><p class="dim cond" style="margin:0 0 4px">The rarest mutation each pair can make, with its odds on the goal Pick will choose for it.</p>${best.map(o => `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b>${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`).join('')}</div>` : '';
     main = `<div class="panel"><h3>The pair</h3>${pair}</div>${bestHtml}${apexHtml}<div class="panel"><h3>Your roster</h3>${rows}</div>`;
   }
   const log = (L.farmLog || []).filter(e => L.players[e.id]);
@@ -11826,8 +11840,10 @@ if(typeof document !== 'undefined'){
       case 'tree-jump': { const n = TREE.N[id]; if(!n) break; UI.treeList = false; UI.treeSel = id; const V = UI.treeView; if(V){ V.x = n.x; V.y = n.y; V.z = Math.max(V.z, 0.8); } renderHub(); break; }   // center the tree on it
       case 'tree-undo': { const A = L.players[L.avatar], U0 = A && A.treeUndo; if(!U0 || A.tree.length <= U0.len) break; const back = A.tree.splice(U0.len);
         A.treePts = (+A.treePts || 0) + back.length; if(U0.goals) A.treeGoals = U0.goals; A.treeUndo = null;   /* goals reached by what you undid come back too */ A._tfx = null; memoClear(); UI.msg = `Undid ${back.length} node${back.length > 1 ? 's' : ''}: ${back.length} point${back.length > 1 ? 's' : ''} back.`; saveLeague(); renderHub(); break; }
-      case 'farm-pair': { UI.farmSel = String(id).split(',').map(Number); renderHub(); break; }   // v265: a suggested pair
-      case 'farm-pick': { const n = +id, cur = UI.farmSel || []; UI.farmSel = cur.includes(n) ? cur.filter(x => x !== n) : cur.length < 2 ? cur.concat(n) : cur; renderHub(); break; }
+      case 'farm-pair': { UI.farmSel = String(id).split(',').map(Number); { const [a, b] = UI.farmSel.map(x => L.players[x]); if(farmOk(a) && farmOk(b)) L.farmAim = suggestAim(a, b).aim; } renderHub(); break; }   // v278: the best goal for it   // v265: a suggested pair
+      case 'farm-pick': { const n = +id, cur = UI.farmSel || []; UI.farmSel = cur.includes(n) ? cur.filter(x => x !== n) : cur.length < 2 ? cur.concat(n) : cur;
+        if(UI.farmSel.length === 2 && !cur.includes(n)){ const [a, b] = UI.farmSel.map(x => L.players[x]); L.farmAim = suggestAim(a, b).aim; }   // v278: switch to the best goal for the new pair
+        renderHub(); break; }
       case 'farm-clear': UI.farmSel = []; renderHub(); break;
       case 'farm-aim': L.farmAim = aimOf(id); saveLeague(); renderHub(); break;   // v259: the breeding goal, remembered for the next pair too
       case 'farm-quick': { const [x, y, aim] = String(id).split(','); UI.farmSel = [+x, +y]; L.farmAim = aimOf(aim); }   // v267 Apex helper: pick both, set the goal, then breed right away (falls through)
