@@ -391,9 +391,11 @@ body.coaching #modal{padding-bottom:16px}body.coaching #modal .storycard{margin-
 .trow.on{border-color:var(--gold);background:rgba(255,207,74,.12)}.trow img{width:34px;height:37px;flex:none}.trow .tmain{flex:1;min-width:0;line-height:1.25}.trow .tovr{font:800 20px var(--cond);min-width:30px;text-align:right}
 .trow .tick{width:22px;height:22px;flex:none;border-radius:6px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--ink)}.trow.on .tick{background:var(--gold);border-color:var(--gold)}
 .dealbar{position:fixed;left:0;right:0;bottom:var(--navh,0px);z-index:49;display:flex;flex-direction:column;gap:4px;padding:8px max(12px,env(safe-area-inset-left,0px));background:rgba(21,26,59,.97);border-top:2px solid var(--gold);box-shadow:0 -6px 20px rgba(0,0,0,.4);font:500 13px var(--cond)}
+.dealbtns .btn{white-space:nowrap;padding-left:6px;padding-right:6px;min-width:0}@media (max-width:360px){ .dealbar .dealbtns .btn{font-size:12px;letter-spacing:0;padding-left:3px;padding-right:3px} }.dealwhy>summary{list-style:none;cursor:pointer}.dealwhy>summary::-webkit-details-marker{display:none}.dealwhy>div{font-size:12px;max-height:30vh;overflow:auto}
 .dealrow{display:flex;justify-content:space-between;gap:10px}.dealrow > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dealmsg{font-weight:700}.dealbtns{display:flex;gap:6px}.dealbtns .btn{flex:1}
 #toast{position:fixed;left:12px;right:12px;bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:120;padding:12px 14px;border-radius:12px;background:#1d2552;border:1px solid var(--gold);color:var(--text);font:600 15px var(--cond);box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;pointer-events:none}
 #toast.on{opacity:1;transform:none}
+body.dealing #toast{bottom:auto;top:calc(12px + env(safe-area-inset-top,0px))}   /* v285: while the trade bar is up, messages show at the top so they don't cover its buttons */
 .offer{display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}.offer.steal{border-color:var(--good);box-shadow:0 0 14px rgba(79,220,138,.25)}.offergrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
 .moneypage table{width:100%}.moneypage td:last-child{white-space:normal!important}
 .moneytwo{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}.moneytwo > div{display:flex;flex-direction:column;gap:4px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
@@ -7250,6 +7252,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
     put('#view .tabs, #view .subtabs', xTabs); put('#view .tablewrap, #view .bktree, #view .dticker', xWide);
     document.querySelectorAll('#view .tabs, #view .subtabs').forEach(strip => { const on = strip.querySelector('.on'); if(!on) return;   // keep the tab you are on in sight
       const r = on.getBoundingClientRect(), sr = strip.getBoundingClientRect(); if(r.left < sr.left) strip.scrollLeft -= sr.left - r.left + 24; else if(r.right > sr.right) strip.scrollLeft += r.right - sr.right + 24; }); }
+  document.body.classList.toggle('dealing', !!document.querySelector('.dealbar'));   // v285
   if(UI.toast){ toast(UI.toast); UI.toast = null; }
   UI.msg = '';
   hubModals(L);
@@ -7502,7 +7505,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 284;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 285;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9365,11 +9368,11 @@ function dealBar(L){
   const list = (ids, pks) => ids.map(nm).concat(pks.map(pkTag)).join(', ') || '—';
   const c = tradeCheck(L, T), col = { yes:'var(--good)', no:'var(--gold)', cap:'var(--bad)' }[c.state] || 'var(--dim)';
   return `<div class="dealbar"><div class="dealrow"><span><span class="dim">Get</span> <b>${list(T.theirs, T.theirsPk)}</b></span><span><span class="dim">Give</span> <b>${list(T.mine, T.minePk)}</b></span></div>
-    <div class="dealmsg" style="color:${col}">${esc(c.text)}${c.cu ? ` <span class="dim">Your salaries after: ${fmtM(c.cu.after)}.</span>` : ''}</div>
+    <div class="dealmsg" style="color:${col}">${esc(c.text)}${c.cu ? ` <span class="dim">Payroll after: ${fmtM(c.cu.after)}</span>` : ''}</div>
     ${c.state === 'yes' || c.state === 'no' ? (() => { const e = dealEdge(L, T.mine, T.theirs, T.minePk, T.theirsPk);   // same rating the offer cards use, so you can judge your own deals
-      return `<div class="dealmsg">For you: <b style="color:${{ steal:'var(--good)', good:'var(--good)', even:'var(--gold)', bad:'var(--bad)' }[e.verdict]}">${{ steal:'🔥 a steal', good:'good', even:'about even', bad:'favors them' }[e.verdict]}</b> <span class="dim">(score ${e.score > 0 ? '+' : ''}${e.score} · ${esc(e.why.filter(w => !w.includes('total salary')).join(' · '))})</span></div>`; })() : ''}
+      return `<details class="dealwhy"><summary class="dealmsg">For you: <b style="color:${{ steal:'var(--good)', good:'var(--good)', even:'var(--gold)', bad:'var(--bad)' }[e.verdict]}">${{ steal:'🔥 a steal', good:'good', even:'about even', bad:'favors them' }[e.verdict]}</b> <span class="dim">(${e.score > 0 ? '+' : ''}${e.score}) · why ▸</span></summary><div class="dim">${esc(e.why.filter(w => !w.includes('total salary')).join(' · '))}</div></details>`; })() : ''}   <!-- v285: reasons folded so the bar stays small -->
     <div class="dealbtns"><button class="btn sm hot" data-act="propose" ${c.state === 'yes' || c.state === 'no' ? '' : 'disabled'}>Propose</button>${c.state === 'no' ? (L.coins >= c.cost ? `<button class="btn sm cool" data-act="bribe">💰 Bribe ${c.cost.toLocaleString()}</button>`
-      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal">${UI.dealMode === 'mine' ? '⭐ Find the best deal for me' : '⚡ Find the cheapest deal'}</button><button class="btn sm" data-act="deal-mode" data-id="${UI.dealMode === 'mine' ? 'cheap' : 'mine'}">${UI.dealMode === 'mine' ? 'Switch to cheapest' : 'Switch to best for me'}</button>` : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
+      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal" data-mode="cheap" title="Auto deal: the cheapest deal they accept">⚡ Cheap</button><button class="btn sm cool" data-act="auto-deal" data-mode="mine" title="Auto deal: the deal they accept that is best for you">⭐ Best</button>` : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
 }
 function hubTrade(L){
   memoClear(); MEMO.on = true;   // ratings and rosters may have changed since the last screen; cache for this render
@@ -11947,6 +11950,7 @@ if(typeof document !== 'undefined'){
       case 'find-pick': { const pk = L.picks.find(k => k.id === id); if(!pk) break; UI.trade = { team:pk.owner, mine:[], theirs:[], minePk:[], theirsPk:[pk.id] }; UI.tradeMode = 'build';
         UI.msg = `${L.teams[pk.owner].abbr}'s pick is in the deal. Now tap who you give (or add your own picks), and watch the deal bar.`; renderHub(); view().scrollTop = 0; break; }
       case 'auto-deal': {   // v268: fill in the trade with a deal their team accepts (you still tap Propose)
+        if(el.dataset.mode) UI.dealMode = el.dataset.mode === 'mine' ? 'mine' : 'cheap';   // v285: the deal bar's two buttons each carry their kind
         let T = UI.trade; if(id){ const pid = +id, t = L.teams.find(x => x.roster.includes(pid)); if(!t) break; T = UI.trade = { team:t.id, mine:[], theirs:[pid], minePk:[], theirsPk:[] }; UI.tradeMode = 'build'; }
         if(!T || T.team == null || !(T.theirs.length + T.theirsPk.length)){ UI.toast = 'Pick who you want first.'; renderHub(); break; }
         if(!T.theirs.length){ UI.toast = 'Add at least one of their players: players must match one for one.'; renderHub(); break; }
