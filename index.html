@@ -1034,6 +1034,9 @@ function storyBonus(p){
 function ratings(p){
   const S = SPECIES[p.sp], f = p.avatar ? 0.80 + p.lvl*0.02 : p.nemesis ? 0.84 + Math.min(p.lvl, 60)*0.012 : 0.80 + p.lvl*0.008, T = trainOf(p).stats, aura = auraTier(p)*2 + (isEternal(p) ? 4 : 0) + (p.gift || 0) - declineOf(p), o = {};   // gift: natural talent from the draft class
   for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0) + (p.dev || 0), p.dev != null && !p.nemesis ? 5 : 20,   /* dev: the rookie-year catch-up (v212), see rookieGrow */ p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
+  /* v263: team keystones from your Legend's skill tree, for everyone else on your roster (added after the 99 cap) */
+  if(!p.avatar && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.avatar != null && LEAGUE.players && LEAGUE.teams && LEAGUE.teams[LEAGUE.user] && LEAGUE.teams[LEAGUE.user].roster.includes(p.id)){
+    const A = LEAGUE.players[LEAGUE.avatar], tm = A ? treeEffects(A).team : null; if(tm) for(const k in tm) o[k] += tm[k]; }
   /* v261: Kaine on your team is at least half as strong as you: each of his ratings is at least half of your Legend's */
   if(p.nemesis && typeof LEAGUE !== 'undefined' && LEAGUE && kaineAlly(LEAGUE) && LEAGUE.avatar != null && LEAGUE.players && LEAGUE.players[LEAGUE.avatar] && LEAGUE.teams[LEAGUE.user].roster.includes(p.id)){
     const A = ratings(LEAGUE.players[LEAGUE.avatar]); for(const k of STATS) o[k] = Math.max(o[k], Math.round(A[k]*0.5)); }
@@ -1072,6 +1075,12 @@ const LANE_STATS = { posterizer:['dnk','spd'], slithery:['spd','sta'], finisher:
   dimer:['spd','sht'], needle:['spd','stl'], speed:['spd','sta'], ankle:['spd','dnk'],
   clamps:['pdf','stl'], interceptor:['stl','pdf'], anchor:['blk','idf'], pickpocket:['stl','spd'] };
 const STAT_NAME = { spd:'Speed', sht:'Shooting', dnk:'Dunking', blk:'Blocking', stl:'Stealing', pdf:'Perimeter D', idf:'Inside D', sta:'Stamina' };
+/* v263: TEAM KEYSTONES on the outer rings. They do nothing for you: they raise the ratings of every other creature on
+   your roster (they can take them past 99). 8 on the Ascendant ring (ring 45) and 8 on the Mythic ring (ring 55),
+   each between two lanes and linked to both lanes' cross nodes. The two stats come from the two lanes it sits between. */
+const TEAM_KEY_NAMES = { fin:[['Rim Crew', 'Lob City'], ['Showtime', 'Bully Ball']], sht:[['Splash Family', 'Green Light'], ['Seven Seconds', 'Shooters Everywhere']],
+  ply:[['Extra Pass', 'Pace and Space'], ['Point God', 'Unselfish']], def:[['Lockdown Unit', 'Wall of Hands'], ['Grit and Grind', 'No Easy Buckets']] };
+const TEAM_KEYS = {};   // filled in below, after BADGES and LANE_STATS exist (key -> { g, name, team, ring, li })
 const KEYSTONES = {
   unstoppable:{ g:'fin', name:'Unstoppable', desc:'Your dunks can never be blocked.' },
   heatcheck:  { g:'sht', name:'Heat Check', desc:'Score 3 baskets in a row and the spotlight hits you for 12 s: unlimited turbo, +10% on every shot, every basket counts +1. Every three in a row also adds +5% to your next shot (up to +25%), and every third straight three makes your next shot a Hyper Shot.' },
@@ -1113,6 +1122,18 @@ const ASC_RINGS = 10, ASC_CROSS = [40, 45];
    mastery at the end of each lane. Sized so the whole tree (1,363 nodes) can be finished in about 13 seasons. */
 const MYTH_RINGS = 12, MYTH_CROSS = [50, 55], TREE_OUTER = TREE_RINGS + ASC_RINGS + MYTH_RINGS;
 const statName = st => Object.entries(st).map(([k, v]) => `${v > 0 ? '+' : ''}${v} ${STAT_NAME[k]}`).join(', ');
+{ const lanes = Object.keys(BADGES), groups = ['fin', 'sht', 'ply', 'def'];
+  // per group of 4 lanes: gaps 0 and 2 get an Ascendant-ring keystone, gaps 1 and 3 a Mythic-ring one
+  // the two ratings each one raises, by name (Ascendant ring: +4 to both; Mythic ring: +6 to both and +2 to everything else)
+  const PICK = { 'Rim Crew':['dnk','spd'], 'Lob City':['dnk','blk'], 'Splash Family':['sht','sta'], 'Green Light':['sht','spd'], 'Extra Pass':['spd','sta'], 'Pace and Space':['spd','sht'], 'Lockdown Unit':['pdf','stl'], 'Wall of Hands':['blk','idf'],
+    'Showtime':['spd','dnk'], 'Bully Ball':['dnk','idf'], 'Seven Seconds':['spd','sht'], 'Shooters Everywhere':['sht','sta'], 'Point God':['spd','stl'], 'Unselfish':['sht','pdf'], 'Grit and Grind':['pdf','idf'], 'No Easy Buckets':['blk','idf'] };
+  groups.forEach((g, gi) => [[0, 45, 0], [2, 45, 1], [1, 55, 0], [3, 55, 1]].forEach(([w, ring, which]) => {
+    const li = gi*4 + w, big = ring === 55, name = TEAM_KEY_NAMES[g][big ? 1 : 0][which], [a, b] = PICK[name];
+    const team = big ? Object.assign(Object.fromEntries(STATS.map(k => [k, 2])), { [a]:6, [b]:6 }) : { [a]:4, [b]:4 }, k = 'team_' + name.toLowerCase().replace(/[^a-z]+/g, '_');
+    const txt = (big ? [a, b].map(st => `+6 ${STAT_NAME[st]}`).concat(['+2 to everything else']) : [a, b].map(st => `+4 ${STAT_NAME[st]}`)).join(', ');
+    TEAM_KEYS[k] = { g, name, team, ring, li, desc:`Team keystone: every teammate (not you) gets ${txt}. It can take them past 99.` }; }));
+  Object.assign(KEYSTONES, TEAM_KEYS);   // so the tree screen can show their name and description
+}
 function buildTree(){
   const N = {}, E = [], link = (a, b) => { E.push([a, b]); N[a].adj.push(b); N[b].adj.push(a); };
   const sp = Math.PI*2/16, laneAng = li => -Math.PI/2 + (li + 0.5)*sp;
@@ -1155,7 +1176,7 @@ function buildTree(){
     link(id2, `${bk}-${TREE_RINGS}`); link(id2, `${nb}-${TREE_RINGS}`); });
   // keystones: one in the middle of each group's rim, one on each border between groups
   const groups = ['fin', 'sht', 'ply', 'def'];
-  Object.entries(KEYSTONES).forEach(([k, K]) => {
+  Object.entries(KEYSTONES).forEach(([k, K]) => { if(K.team) return;   // team keystones are placed with the outer rings below
     let a, anchor, R = ringR(22.6 + 1.8);
     const mn = K.mastery && Object.values(N).find(n => n.type === 'mastery' && n.name === K.mastery);
     if(mn){ a = Math.atan2(mn.y, mn.x); R = hyp(mn.x, mn.y) + (ringR(3) - ringR(1)); anchor = [mn.id]; }   // one step past its mastery, linked only to it
@@ -1193,6 +1214,10 @@ function buildTree(){
     }
   });
   lanes.forEach((bk, li) => { const nb = lanes[(li + 1) % 16]; MYTH_CROSS.forEach(r => link(`${bk}-${r}`, `${nb}-${r}`)); });   // cross links around the Mythic ring
+  // v263: team keystones, between two lanes just outside their cross nodes (ring 45 or 55)
+  Object.entries(TEAM_KEYS).forEach(([k, K]) => { const a = laneAng(K.li) + sp/2, R = ringR(K.ring + 3.2), nb = lanes[(K.li + 1) % 16];
+    N['key-' + k] = { id:'key-' + k, x:Math.cos(a)*R, y:Math.sin(a)*R, type:'key', key:k, g:K.g, name:K.name, stats:null, adj:[] };
+    link('key-' + k, `${lanes[K.li]}-${K.ring}`); link('key-' + k, `${nb}-${K.ring}`); });
   return { N, E };
 }
 const TREE = buildTree();
@@ -1211,12 +1236,13 @@ function cleanTree(p){
 function treeEffects(p){
   const tr = p.tree || [], key = tr.length + '|' + tr[tr.length - 1] + '|' + tr[tr.length >> 1];   // cache key: size + last + middle node (any take, remove or reset changes it)
   if(p._tfx && p._tfx.key === key) return p._tfx;
-  const st = {}, badges = {}, keys = {};
+  const st = {}, badges = {}, keys = {}, team = {};   // team: what your team keystones give each teammate (v263)
   for(const id of treeOf(p)){ const n = TREE.N[id]; if(!n) continue;
+    if(n.key && TEAM_KEYS[n.key]) for(const k in TEAM_KEYS[n.key].team) team[k] = (team[k] || 0) + TEAM_KEYS[n.key].team[k];
     if(n.stats) for(const k in n.stats) st[k] = (st[k] || 0) + n.stats[k];
     if(n.badge) badges[n.badge] = Math.min(5, (badges[n.badge] || 0) + 1);   // each badge node you own upgrades that badge one tier
     if(n.key) keys[n.key] = true; }
-  Object.defineProperty(p, '_tfx', { value:{ key, st, badges, keys }, writable:true, configurable:true, enumerable:false });   // cached, never saved
+  Object.defineProperty(p, '_tfx', { value:{ key, st, badges, keys, team }, writable:true, configurable:true, enumerable:false });   // cached, never saved
   return p._tfx;
 }
 const hasKey = (e, k) => !!(e && e.keys && e.keys[k]);
@@ -7227,7 +7253,7 @@ function hubBadges(L){
   const fx = treeEffects(A), earned = Object.entries(fx.badges);
   return `<div class="panel treehead"><div style="flex:1;min-width:220px"><h3>${esc(pname(A))}'s skill tree</h3>
       <div class="cond"><b class="gold" style="font-size:20px">${A.treePts}</b> skill point${A.treePts === 1 ? '' : 's'} to spend · ${A.tree.length - 1}/${Object.keys(TREE.N).length - 1} nodes taken</div>
-      <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses. Past the rim, the Ascendant ring gives +2 nodes and an Ascendant mastery at the end of every lane, and past that the Mythic ring gives +3 nodes and a Mythic mastery.</div></div>
+      <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses. Past the rim, the Ascendant ring gives +2 nodes and an Ascendant mastery at the end of every lane, and past that the Mythic ring gives +3 nodes and a Mythic mastery. The 16 team keystones on those two rings boost every teammate instead of you.</div></div>
     <div class="row" style="gap:6px;align-self:flex-start"><button class="btn sm" data-tree="in">＋</button><button class="btn sm" data-tree="out">－</button><button class="btn sm" data-tree="fit">Fit</button>
       <select id="tree-focus" aria-label="Auto-fill focus">${[['all', 'Balanced'], ['fin', 'Finishing'], ['sht', 'Shooting'], ['ply', 'Playmaking'], ['def', 'Defense']].map(([k, n]) => `<option value="${k}" ${(UI.treeFocus || 'all') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
       <button class="btn sm hot" data-act="tree-auto" ${A.treePts >= 1 ? '' : 'disabled'}>Auto-fill (${Math.floor(A.treePts)})</button><button class="btn sm cool" data-act="tree-buy" data-id="1" ${L.coins >= 220 ? '' : 'disabled'}>Buy 5 pts · 220 coins</button><button class="btn sm cool" data-act="tree-buy" data-id="max" ${L.coins >= 220 ? '' : 'disabled'}>Buy max (${Math.floor(L.coins/220)*5} pts)</button><button class="btn sm" data-act="tree-reset" ${A.tree.length > 1 ? '' : 'disabled'}>Reset tree · 200 coins</button></div></div>
@@ -7268,7 +7294,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 262;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 263;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
