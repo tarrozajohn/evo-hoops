@@ -392,6 +392,8 @@ body.coaching #modal{padding-bottom:16px}body.coaching #modal .storycard{margin-
 .trow .tick{width:22px;height:22px;flex:none;border-radius:6px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--ink)}.trow.on .tick{background:var(--gold);border-color:var(--gold)}
 .dealbar{position:fixed;left:0;right:0;bottom:var(--navh,0px);z-index:49;display:flex;flex-direction:column;gap:4px;padding:8px max(12px,env(safe-area-inset-left,0px));background:rgba(21,26,59,.97);border-top:2px solid var(--gold);box-shadow:0 -6px 20px rgba(0,0,0,.4);font:500 13px var(--cond)}
 .dealbtns .btn{white-space:nowrap;padding-left:6px;padding-right:6px;min-width:0}@media (max-width:360px){ .dealbar .dealbtns .btn{font-size:12px;letter-spacing:0;padding-left:3px;padding-right:3px} }.dealwhy>summary{list-style:none;cursor:pointer}.dealwhy>summary::-webkit-details-marker{display:none}.dealwhy>div{font-size:12px;max-height:30vh;overflow:auto}
+.dealbar{zoom:var(--uizm,1)}.dealtop{display:flex;gap:8px;align-items:flex-start}.dealsum{flex:1;min-width:0;line-height:1.25}.dealx{flex:none;background:none;border:1px solid var(--line);color:var(--dim);border-radius:6px;font:600 12px var(--cond);padding:1px 7px;cursor:pointer}
+.dealbar .dealmsg{line-height:1.25}.dealwhyb{font-size:12px;max-height:22vh;overflow:auto}.dealbar .dealbtns .btn{min-height:34px;padding-top:4px;padding-bottom:4px}.dealbar.min{gap:2px}
 .dealrow{display:flex;justify-content:space-between;gap:10px}.dealrow > span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dealmsg{font-weight:700}.dealbtns{display:flex;gap:6px}.dealbtns .btn{flex:1}
 #toast{position:fixed;left:12px;right:12px;bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:120;padding:12px 14px;border-radius:12px;background:#1d2552;border:1px solid var(--gold);color:var(--text);font:600 15px var(--cond);box-shadow:0 8px 24px rgba(0,0,0,.5);opacity:0;transform:translateY(10px);transition:opacity .2s,transform .2s;pointer-events:none}
 #toast.on{opacity:1;transform:none}
@@ -7505,7 +7507,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 285;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 286;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9361,18 +9363,26 @@ function tradeCheck(L, T){
   return { state:'no', r, cu, cost:c, text:`${O.abbr} says no${gap <= 4 ? ' (close!)' : gap <= 12 ? ' (not far off)' : ' (way off)'}. Bribe price ${c.toLocaleString()} = ${how}.${L.coins >= c ? '' : ` You have ${L.coins.toLocaleString()}.`}` };
 }
 // the bar pinned above the bottom bar
+/* v286 the trade bar, compact: one line for Get/Give (wraps, never cut), one status line, one row of 4 short buttons.
+   The reasons, payroll and the full message sit behind "why". ▾ shrinks the bar to its first line. */
 function dealBar(L){
   if(L.phase === 'playoffs' || UI.tradeMode !== 'build') return '';
   const T = UI.trade; if(T.team == null) return '';
-  const nm = id => esc(pname(L.players[id])), pkTag = id => { const pk = L.picks.find(k => k.id === id); return pk ? `<span class="pkchip">🎟 S${pk.year} R${pk.round} #${pickInfo(L, pk).overall}</span>` : ''; };
+  const O = L.teams[T.team], nm = id => esc(pname(L.players[id])), pkTag = id => { const pk = L.picks.find(k => k.id === id); return pk ? `<span class="pkchip">🎟 S${pk.year} R${pk.round} #${pickInfo(L, pk).overall}</span>` : ''; };
   const list = (ids, pks) => ids.map(nm).concat(pks.map(pkTag)).join(', ') || '—';
   const c = tradeCheck(L, T), col = { yes:'var(--good)', no:'var(--gold)', cap:'var(--bad)' }[c.state] || 'var(--dim)';
-  return `<div class="dealbar"><div class="dealrow"><span><span class="dim">Get</span> <b>${list(T.theirs, T.theirsPk)}</b></span><span><span class="dim">Give</span> <b>${list(T.mine, T.minePk)}</b></span></div>
-    <div class="dealmsg" style="color:${col}">${esc(c.text)}${c.cu ? ` <span class="dim">Payroll after: ${fmtM(c.cu.after)}</span>` : ''}</div>
-    ${c.state === 'yes' || c.state === 'no' ? (() => { const e = dealEdge(L, T.mine, T.theirs, T.minePk, T.theirsPk);   // same rating the offer cards use, so you can judge your own deals
-      return `<details class="dealwhy"><summary class="dealmsg">For you: <b style="color:${{ steal:'var(--good)', good:'var(--good)', even:'var(--gold)', bad:'var(--bad)' }[e.verdict]}">${{ steal:'🔥 a steal', good:'good', even:'about even', bad:'favors them' }[e.verdict]}</b> <span class="dim">(${e.score > 0 ? '+' : ''}${e.score}) · why ▸</span></summary><div class="dim">${esc(e.why.filter(w => !w.includes('total salary')).join(' · '))}</div></details>`; })() : ''}   <!-- v285: reasons folded so the bar stays small -->
-    <div class="dealbtns"><button class="btn sm hot" data-act="propose" ${c.state === 'yes' || c.state === 'no' ? '' : 'disabled'}>Propose</button>${c.state === 'no' ? (L.coins >= c.cost ? `<button class="btn sm cool" data-act="bribe">💰 Bribe ${c.cost.toLocaleString()}</button>`
-      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal" data-mode="cheap" title="Auto deal: the cheapest deal they accept">⚡ Cheap</button><button class="btn sm cool" data-act="auto-deal" data-mode="mine" title="Auto deal: the deal they accept that is best for you">⭐ Best</button>` : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
+  const e = c.state === 'yes' || c.state === 'no' ? dealEdge(L, T.mine, T.theirs, T.minePk, T.theirsPk) : null;   // same rating the offer cards use
+  const verdict = e ? `For you: <b style="color:${{ steal:'var(--good)', good:'var(--good)', even:'var(--gold)', bad:'var(--bad)' }[e.verdict]}">${{ steal:'🔥 a steal', good:'good', even:'about even', bad:'favors them' }[e.verdict]}</b> (${e.score > 0 ? '+' : ''}${e.score})` : '';
+  const status = c.state === 'yes' ? `✅ ${O.abbr} says yes` : c.state === 'no' ? `❌ ${O.abbr} says no${-c.r.score <= 4 ? ' (close)' : ''}` : esc(c.text);
+  const top = `<div class="dealtop"><span class="dealsum"><span class="dim">Get</span> <b>${list(T.theirs, T.theirsPk)}</b> <span class="dim">· Give</span> <b>${list(T.mine, T.minePk)}</b></span><button class="dealx" data-act="deal-min" aria-label="${UI.dealMin ? 'Show the trade bar' : 'Shrink the trade bar'}">${UI.dealMin ? '▴' : '▾'}</button></div>`;
+  if(UI.dealMin) return `<div class="dealbar min">${top}<div class="dealmsg" style="color:${col}">${status}</div></div>`;
+  const why = UI.dealWhy ? `<div class="dealwhyb dim">${esc(c.text)}${c.cu ? ` Payroll after: ${fmtM(c.cu.after)}.` : ''}${e ? '<br>' + esc(e.why.filter(w => !w.includes('total salary')).join(' · ')) : ''}</div>` : '';
+  const main = c.state === 'yes' ? `<button class="btn sm hot" data-act="propose">Propose</button>`
+    : c.state === 'no' ? (L.coins >= c.cost ? `<button class="btn sm hot" data-act="bribe" title="Bribe: pay coins and they say yes">💰 ${c.cost.toLocaleString()}</button>` : `<button class="btn sm" disabled title="Bribe price: you need ${(c.cost - L.coins).toLocaleString()} more coins">💰 ${c.cost.toLocaleString()}</button>`)
+    : `<button class="btn sm" disabled>Propose</button>`;
+  return `<div class="dealbar">${top}
+    <div class="dealmsg"><span style="color:${col}">${status}</span>${verdict ? ' · ' + verdict : ''} <button class="dealx" data-act="deal-why">${UI.dealWhy ? 'less' : 'why'}</button></div>${why}
+    <div class="dealbtns">${main}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal" data-mode="cheap" title="Auto deal: the cheapest deal they accept">⚡ Cheap</button><button class="btn sm cool" data-act="auto-deal" data-mode="mine" title="Auto deal: the deal they accept that is best for you">⭐ Best</button>` : ''}<button class="btn sm" data-act="trade-clear" aria-label="Clear the trade" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>✕</button></div></div>`;
 }
 function hubTrade(L){
   memoClear(); MEMO.on = true;   // ratings and rosters may have changed since the last screen; cache for this render
@@ -11894,6 +11904,8 @@ if(typeof document !== 'undefined'){
         if(UI.farmSel.length === 2 && !cur.includes(n)){ const [a, b] = UI.farmSel.map(x => L.players[x]); L.farmAim = suggestAim(a, b).aim; UI.farmLike = likeFor(a, b); }   // v278: switch to the best goal for the new pair
         renderHub(); break; }
       case 'farm-clear': UI.farmSel = []; renderHub(); break;
+      case 'deal-min': UI.dealMin = !UI.dealMin; renderHub(); break;   // v286
+      case 'deal-why': UI.dealWhy = !UI.dealWhy; renderHub(); break;
       case 'deal-mode': UI.dealMode = id === 'mine' ? 'mine' : 'cheap'; renderHub(); break;   // v284
       case 'farm-like': UI.farmLike = id === '' ? null : +id; renderHub(); break;   // v284
       case 'farm-aim': L.farmAim = aimOf(id); saveLeague(); renderHub(); break;   // v259: the breeding goal, remembered for the next pair too
