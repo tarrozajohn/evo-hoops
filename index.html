@@ -194,6 +194,8 @@ select{background:var(--panel2);color:var(--text);border:1px solid var(--line);b
 .ultitle{background:linear-gradient(90deg,#ff6a3d,#ffd23a,#4cc66a,#3a9bff,#ff7ad9);-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes ultshift{to{background-position:200% 0}}
 
+.fold{margin:10px 0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02)}.fold>summary{padding:10px 12px;cursor:pointer;list-style:none}.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:'▸ ';color:var(--gold)}.fold[open]>summary::before{content:'▾ '}.foldbody{padding:0 10px 10px;display:flex;flex-direction:column;gap:10px}
 .warnbox{margin:6px 0;padding:7px 10px;border-radius:8px;background:rgba(255,120,60,.12);border:1px solid rgba(255,140,60,.55);font-size:14px}
 .cmptab{width:100%;border-collapse:collapse;font-size:14px}.cmptab td,.cmptab th{padding:3px 6px;border-top:1px solid rgba(255,255,255,.07);text-align:left}.cmptab th{font-family:var(--cond)}
 .recap{border-color:var(--gold)}
@@ -300,10 +302,10 @@ select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
 .endspace{height:32px;flex:none}
 .bnav,.phoneonly{display:none}.subtabs{display:flex;flex-wrap:wrap;margin-top:10px}   /* v207: the second row of tabs shows on computers too */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;justify-content:space-around;gap:2px;padding:6px max(8px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px));background:rgba(11,14,34,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.bnavitem{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 2px;font:600 12px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
+.bnavitem{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 0;font:600 11px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
 .bnavitem .bi{font-size:20px;line-height:1}.bnavitem.on{color:var(--text)}.bnavitem.on .bi{filter:drop-shadow(0 0 6px rgba(255,107,44,.7))}
-.bnavitem .tabbadge{position:absolute;top:0;right:18%}
-.bnavsim{flex:none;width:72px;height:56px;margin-top:-18px;border-radius:18px;border:2px solid #ffb07a;background:var(--hot);color:#1a0b02;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 18px rgba(255,107,44,.45)}
+.bnavitem .tabbadge{position:absolute;top:0;right:6%}.subtab .tabbadge{margin-left:4px}
+.bnavsim{flex:none;width:64px;height:56px;margin-top:-18px;border-radius:18px;border:2px solid #ffb07a;background:var(--hot);color:#1a0b02;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 18px rgba(255,107,44,.45)}
 .bnavsim:disabled{opacity:.5}
 .rivalbar .rv-more + .chips{display:none}
 .subtabs{gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
@@ -7027,12 +7029,24 @@ const TABS = [['play', 'Play'], ['roster', 'Roster'], ['bonds', 'Bonds'], ['upgr
    League (Standings, Leaders, Legacy, Types). Each group remembers the last page you opened in it; tapping the group
    you're already in jumps back to the top. The middle button does the next thing: sim the next game, decide a
    pending storyline, sim the next playoff day, or open the offseason. */
-const NAV_GROUPS = [
+const NAV_GROUPS = [   /* v268: Office split in two (Office + Build), your own player gets a Legend group, Auto moved to the menu */
   { id:'play', label:'Play', icon:'🏀', tabs:['play'] },
-  { id:'team', label:'Team', icon:'👥', tabs:['roster', 'bonds', 'train', 'badges', 'auto'] },
-  { id:'office', label:'Office', icon:'💼', tabs:['money', 'trade', 'fa', 'scout', 'arena', 'shop', 'upgrades', 'farm'] },
+  { id:'team', label:'Team', icon:'👥', tabs:['roster', 'train'] },
+  { id:'legend', label:'Legend', icon:'⭐', tabs:['badges', 'bonds'] },
+  { id:'office', label:'Office', icon:'💼', tabs:['money', 'trade', 'fa', 'scout'] },
+  { id:'build', label:'Build', icon:'🛠️', tabs:['farm', 'shop', 'upgrades', 'arena'] },
   { id:'league', label:'League', icon:'🏆', tabs:['standings', 'leaders', 'legacy', 'types'] },
 ];
+/* v268: a number on a tab when something there is waiting for you */
+function tabCount(L, k){ if(!L) return 0;
+  if(k === 'badges'){ const A = L.avatar != null ? L.players[L.avatar] : null; return A && !L.avatarRetired ? Math.floor(A.treePts || 0) : 0; }
+  if(k === 'farm') return L.eggs ? L.eggs.filter(e => eggLeft(L, e) <= 1).length : 0;   // eggs hatching after your next game
+  if(k === 'trade') return offersWaiting(L) || 0;
+  if(k === 'fa') return (L.fa || []).filter(id => L.players[id] && L.players[id].reserved === L.user).length;   // reserved for you
+  if(k === 'play') return todoList(L).length;
+  return 0; }
+const groupCount = (L, g) => g.tabs.reduce((t, k) => t + tabCount(L, k), 0);
+const countBadge = n => n ? `<span class="tabbadge">${n > 99 ? '99+' : n}</span>` : '';
 const groupOf = tab => NAV_GROUPS.find(g => g.tabs.includes(tab)) || NAV_GROUPS[0];
 const tabName = k => (TABS.find(t => t[0] === k) || [k, k])[1];
 // what the big middle button does right now
@@ -7046,12 +7060,12 @@ function navAction(L){
 }
 function bottomNav(L){
   const cur = groupOf(UI.tab), a = navAction(L), todo = todoList(L).length;
-  const item = g => `<button class="bnavitem ${cur.id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}"><span class="bi">${g.icon}</span><span>${g.label}</span>${g.id === 'play' && todo ? `<span class="tabbadge">${todo}</span>` : ''}${g.id === 'office' && offersWaiting(L) ? `<span class="tabbadge" style="background:var(--good)">${offersWaiting(L)}</span>` : ''}</button>`;
-  return `<nav class="bnav">${item(NAV_GROUPS[0])}${item(NAV_GROUPS[1])}<button class="bnavsim" data-act="${a.act}" ${a.id ? `data-id="${a.id}"` : ''} ${a.off ? 'disabled' : ''}>${a.label}</button>${item(NAV_GROUPS[2])}${item(NAV_GROUPS[3])}</nav>`;
+  const item = g => `<button class="bnavitem ${cur.id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}"><span class="bi">${g.icon}</span><span>${g.label}</span>${countBadge(groupCount(L, g))}</button>`;
+  return `<nav class="bnav">${item(NAV_GROUPS[0])}${item(NAV_GROUPS[1])}${item(NAV_GROUPS[2])}<button class="bnavsim" data-act="${a.act}" ${a.id ? `data-id="${a.id}"` : ''} ${a.off ? 'disabled' : ''}>${a.label}</button>${item(NAV_GROUPS[3])}${item(NAV_GROUPS[4])}${item(NAV_GROUPS[5])}</nav>`;
 }
 function subTabs(){
   const g = groupOf(UI.tab); if(g.tabs.length < 2) return '';
-  return `<div class="subtabs">${g.tabs.map(k => `<button class="subtab ${UI.tab === k ? 'on' : ''}" data-act="tab" data-id="${k}">${tabName(k)}${k === 'trade' && LEAGUE && offersWaiting(LEAGUE) ? ` 📨${offersWaiting(LEAGUE)}` : ''}</button>`).join('')}</div>`;
+  return `<div class="subtabs">${g.tabs.map(k => `<button class="subtab ${UI.tab === k ? 'on' : ''}" data-act="tab" data-id="${k}">${tabName(k)}${k !== 'play' ? countBadge(tabCount(LEAGUE, k)) : ''}</button>`).join('')}</div>`;
 }
 // Drawing a screen asks for the same ratings hundreds of times; remember them while one screen is being drawn.
 /* ---------- v266 TAP TOOLTIPS ----------
@@ -7163,11 +7177,11 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
         ${L.teamFx && L.teamFx.games > 0 ? `<span class="formchip ${L.teamFx.mod > 0 ? 'hot' : 'cold'}" title="From your last storyline choice: every rating in games">${L.teamFx.mod > 0 ? '🔥' : '🧊'} ${L.teamFx.label} ${L.teamFx.mod > 0 ? '+' + L.teamFx.mod : '−' + (-L.teamFx.mod)} · ${L.teamFx.games}g</span>` : ''}
         ${L.streak ? `<span class="deskonly">${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}</span>` : ''}</div></div></div>
       <button class="coins" data-act="tab" data-id="money" title="Coins: tap for the Money page"><span class="coin"></span><span class="num">${L.coins}</span></button>
-      <div class="row deskonly"><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
+      <div class="row deskonly"><button class="btn sm" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
       <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰</button>
     </div>
-    ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
-    <div class="tabs">${NAV_GROUPS.map(g => { const c = g.id === 'play' ? todoList(L).length : 0, o = g.id === 'office' ? offersWaiting(L) : 0; return `<button class="tab ${groupOf(UI.tab).id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}">${g.icon} ${g.label}${c ? ` <span class="tabbadge">${c}</span>` : ''}${o ? ` <span class="tabbadge" style="background:var(--good)">${o}</span>` : ''}</button>`; }).join('')}</div>
+    ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
+    <div class="tabs">${NAV_GROUPS.map(g => `<button class="tab ${groupOf(UI.tab).id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}">${g.icon} ${g.label} ${countBadge(groupCount(L, g))}</button>`).join('')}</div>
     ${subTabs()}
     ${rivalBar(L)}${fiveOn(L) && !L.five.joined && L.five.tid !== L.rival ? fiveBar(L) : ''}
     ${UI.saveFail ? '<div class="msg" style="border-color:var(--bad);color:#ffb0bd">⚠ Your browser refused to save (Private Browsing or no storage space). Make a backup code in Settings so you don\'t lose this franchise.</div>' : ''}
@@ -7409,7 +7423,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 267;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 268;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8915,6 +8929,12 @@ function matchupPoster(L, g){
   const sm = g.playoff ? seriesMine(L, g.s) : null;   /* playoffs: series score in the middle instead of VS */
   return `${sm ? `<div class="mseries"><span>SERIES</span><b>${L.teams[L.user].abbr} ${sm[0]} – ${sm[1]} ${L.teams[opp].abbr}</b><span>FIRST TO ${Math.ceil(g.s.bestOf/2)}</span></div>` : ''}<div class="matchup">${side(L.user, false)}<div class="mvs">VS</div>${side(opp, true)}</div>`;
 }
+/* v268: folding cards on the Play tab. key: which card; open0: open the first time. The open/closed state is saved in
+   your settings, so it stays the way you left it. Empty cards are left out. */
+function fold(key, title, sub, open0, inner){ if(!inner || !inner.replace(/<!--[\s\S]*?-->/g, '').trim()) return '';
+  const F = SET.folds || {}, open = F[key] == null ? open0 : F[key];
+  return `<details class="fold" ${open ? 'open' : ''} ontoggle="foldSet('${key}', this.open)"><summary><b>${title}</b> <span class="dim cond">${sub}</span></summary><div class="foldbody">${inner}</div></details>`; }
+function foldSet(k, v){ SET.folds = SET.folds || {}; if(SET.folds[k] === v) return; SET.folds[k] = v; saveSettings(); }
 function hubPlay(L){ return seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
 function hubPlay0(L){
   const U = L.teams[L.user];
@@ -8937,11 +8957,11 @@ function hubPlay0(L){
           return `<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year: the grind.</b> You${fr && fr.dev != null ? ' and ' + esc(pname(fr)) : ''} started at ${ROOKIE_OVR} overall, far behind everyone. You are at <b>OVR ${ovr(me)}</b>${fr && fr.dev != null ? ` (${esc(pname(fr))} ${ovr(fr)})` : ''} and gain after every game${L.phase === 'season' ? `: ${left} game${left === 1 ? '' : 's'} left to catch the league's best (OVR ${Math.round(topOvr(L))})` : ''}. Until then the team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up.${(() => { const rr = L.phase === 'season' ? royRace(L) : []; return rr.length ? `<div style="margin-top:6px">🏅 <b>Rookie of the Year race:</b> ${rr.map((r, i) => `${i + 1}. ${r.me ? '<b>You</b>' : esc(r.who)} ${r.pts} pts`).join(' · ')}</div>` : ''; })()}</div>`; })() : ''}
         ${!rookieYear(L) && L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you ${qtip('double')}: ${lv >= 2 ? 'SHT −40, DNK −32' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
         <div class="dim cond" style="margin:2px 0">How to play this game ${qtip('modes')} · Sim to next featured game ${qtip('featured')}</div><div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simfeat" ${UI.busy || L.event || featuredGame(L, g) ? 'disabled' : ''} title="Sims ordinary games and stops before a rivalry game, a 3-game skid, or a game that matters for the playoffs">⏭ Sim to next featured game</button><button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
-        ${scoutLine(L, g)}
+        ${fold('prep', '🎯 Game prep', 'Scouting, what is at stake, playbooks and bonus goals', true, `${scoutLine(L, g)}
         ${stakesPanel(L, g)}
         ${planPanel(L)}
         ${goalsPanel(L)}
-        ${(() => { const R = classReport(L, L.season); return R && R.known && L.phase === 'season' ? `<div class="cond">This year's draft class ${qtip('draft')}: ${gradeChip(R.grade)} <span class="dim">${R.conf}. See the Scouting tab.</span></div>` : ''; })()}
+        ${(() => { const R = classReport(L, L.season); return R && R.known && L.phase === 'season' ? `<div class="cond">This year's draft class ${qtip('draft')}: ${gradeChip(R.grade)} <span class="dim">${R.conf}. See the Scouting tab.</span></div>` : ''; })()}`)}
         <!-- game buttons moved up, under the matchup poster -->
         ${UI.busy ? `<div class="dim">${UI.busy}</div>` : ''}
       </div>`;
@@ -8955,7 +8975,8 @@ function hubPlay0(L){
   const recent = L.log.filter(x => x.a === L.user || x.b === L.user).slice(-6).reverse();
   const recentHtml = `<div class="panel"><h3>Recent results</h3>${recent.length ? `<table style="margin-top:6px"><tbody>${recent.map(x => { const me = x.a === L.user, us = me ? x.sa : x.sb, them = me ? x.sb : x.sa, opp = L.teams[me ? x.b : x.a]; return `<tr><td>${x.playoff ? 'Playoff ' : ''}vs ${opp.abbr}</td><td style="color:${us > them ? 'var(--good)' : 'var(--bad)'}">${us > them ? 'W' : 'L'} ${us}-${them}</td></tr>`; }).join('')}</tbody></table>` : '<p class="dim">No games yet.</p>'}</div>`;
   const titles = L.champs.filter(c => c.tid === L.user).length;
-  return (L.phase === 'offseason' ? offHero(L) + offseasonSteps(L) + awardsPanel(L) : '') + eventPanel(L) + main + (L.playoffs && (L.phase === 'playoffs' || L.phase === 'offseason') ? bracketTree(L) : '') + eraBar(L) + storyPanel(L) + echoPanel(L, false) + storylinePanel(L, false) + todoPanel(L) + newsPanel(L) + `<div class="split">${recentHtml}${bracket}${titles ? `<div class="panel"><h3>Trophy case</h3><div class="big" style="color:var(--hot)">${titles}×</div><div class="dim cond">${L.champs.filter(c => c.tid === L.user).map(c => 'Season ' + c.season).join(' · ')}</div></div>` : ''}</div>`;
+  return (L.phase === 'offseason' ? offHero(L) + offseasonSteps(L) + awardsPanel(L) : '') + eventPanel(L) + main + (L.playoffs && (L.phase === 'playoffs' || L.phase === 'offseason') ? bracketTree(L) : '') + todoPanel(L) + fold('story', '📖 Story', 'Your chapter, your rival and what people are saying', true, eraBar(L) + storyPanel(L) + echoPanel(L, false) + storylinePanel(L, false))
+    + fold('news', '📰 News and results', 'League news, your recent games and trophies', false, newsPanel(L) + `<div class="split">${recentHtml}${bracket}${titles ? `<div class="panel"><h3>Trophy case</h3><div class="big" style="color:var(--hot)">${titles}×</div><div class="dim cond">${L.champs.filter(c => c.tid === L.user).map(c => 'Season ' + c.season).join(' · ')}</div></div>` : ''}</div>`);
 }
 /* "What should I trade for?" For each position, the game tries real players from other teams who play that spot
    (natural position), about as good as your weakest starter up to 12 OVR better (the kind you can actually trade for).
@@ -9145,7 +9166,7 @@ function tradeFinder(L){
   if(F.what === 'gen'){
     // on rosters (everyone can see these once they're drafted)
     const on = L.teams.flatMap(t => t.roster.map(id => ({ p:L.players[id], t }))).filter(x => x.p && x.p.generational).sort((a, b) => ovr(b.p) - ovr(a.p));
-    const rows = on.map(({ p, t }) => `<div class="frow"><img src="${portrait(p, t.color, displayTier(p))}" alt="" style="width:34px;height:37px"><span class="tmain"><b>👑 ${pname(p)}</b> <span class="dim">${posLabel(p)} · yr ${(p.age || 0) + 1}</span><br><span class="dim"><b style="color:${t.color}">${t.abbr}</b>${t.user ? ' (yours)' : ''} · ${p.contract ? (p.contract.legend ? (p.contract.friend ? 'friends-for-life deal' : 'Legend deal') : fmtM(p.contract.sal) + ' · ' + p.contract.yrs + 'y') : ''}${L.friend === p.id ? ' · ♥ your best friend' : ''}</span></span><span class="tovr">${ovr(p)}</span>${t.user ? '<span class="good cond">Yours</span>' : `<button class="btn sm cool" data-act="find-player" data-id="${p.id}">Trade</button>`}</div>`).join('');
+    const rows = on.map(({ p, t }) => `<div class="frow"><img src="${portrait(p, t.color, displayTier(p))}" alt="" style="width:34px;height:37px"><span class="tmain"><b>👑 ${pname(p)}</b> <span class="dim">${posLabel(p)} · yr ${(p.age || 0) + 1}</span><br><span class="dim"><b style="color:${t.color}">${t.abbr}</b>${t.user ? ' (yours)' : ''} · ${p.contract ? (p.contract.legend ? (p.contract.friend ? 'friends-for-life deal' : 'Legend deal') : fmtM(p.contract.sal) + ' · ' + p.contract.yrs + 'y') : ''}${L.friend === p.id ? ' · ♥ your best friend' : ''}</span></span><span class="tovr">${ovr(p)}</span>${t.user ? '<span class="good cond">Yours</span>' : `<button class="btn sm cool" data-act="auto-deal" data-id="${p.id}" data-tip="Finds a deal their team says yes to and fills it in. You still tap Propose.">⚡ Auto deal</button><button class="btn sm" data-act="find-player" data-id="${p.id}">Trade</button>`}</div>`).join('');
     // upcoming drafts: what your scouts know, and the pick that would land them
     const yrs = Object.keys(L.classes || {}).map(Number).filter(y => !(L.rookieDone >= y)).sort((a, b) => a - b).slice(0, 2);
     const future = yrs.map(y => { const C = L.classes[y], line = genReport(L, y), gen = C.pool.find(id => L.players[id] && L.players[id].generational), known = gen != null && genIntel(L, L.players[gen]) === 'known';
@@ -9178,9 +9199,27 @@ function tradeFinder(L){
     const sel = (k, opts) => `<select data-find="${k}">${opts.map(([v, n]) => `<option value="${v}" ${F[k] === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
     body = `<div class="panel" style="display:flex;flex-direction:column;gap:6px"><div class="row" style="gap:6px">${sel('pos', [['all', 'Any position'], ...POS_NAMES.map(x => [x, x])])}${sel('tag', [['all', 'Everyone'], ['gen', '👑 Generational'], ['pot', '💎 High potential'], ['rare', '★ Rare'], ['cheap', '$8M or less'], ['need', '🎯 Fills my needs']])}${sel('sort', [['ovr', 'Best OVR'], ['pot', 'Most Potential'], ['young', 'Youngest'], ['cheap', 'Cheapest']])}</div>
       <div class="dim cond">${ps.length} match${ps.length === 1 ? '' : 'es'}${ps.length > 40 ? ', showing the top 40' : ''}.</div></div>
-      <div class="panel tlist">${shown.map(({ p, t }) => `<div class="frow"><img src="${portrait(p, t.color, displayTier(p))}" alt="" style="width:34px;height:37px"><span class="tmain"><b>${pname(p)}</b> <span class="dim">${posLabel(p)} · yr ${(p.age || 0) + 1}</span><br><span class="dim"><b style="color:${t.color}">${t.abbr}</b> · ${p.contract ? (p.contract.legend ? 'Legend deal' : fmtM(p.contract.sal) + ' · ' + p.contract.yrs + 'y') : ''}</span> ${talentTags(L, p, cut)} ${needChips(L, p)}</span><span class="tovr">${ovr(p)}</span><button class="btn sm cool" data-act="find-player" data-id="${p.id}">Trade</button></div>`).join('') || '<div class="dim">Nobody matches. Try another filter.</div>'}</div>`;
+      <div class="panel tlist">${shown.map(({ p, t }) => `<div class="frow"><img src="${portrait(p, t.color, displayTier(p))}" alt="" style="width:34px;height:37px"><span class="tmain"><b>${pname(p)}</b> <span class="dim">${posLabel(p)} · yr ${(p.age || 0) + 1}</span><br><span class="dim"><b style="color:${t.color}">${t.abbr}</b> · ${p.contract ? (p.contract.legend ? 'Legend deal' : fmtM(p.contract.sal) + ' · ' + p.contract.yrs + 'y') : ''}</span> ${talentTags(L, p, cut)} ${needChips(L, p)}</span><span class="tovr">${ovr(p)}</span><button class="btn sm cool" data-act="auto-deal" data-id="${p.id}" data-tip="Finds a deal their team says yes to and fills it in. You still tap Propose.">⚡ Auto deal</button><button class="btn sm" data-act="find-player" data-id="${p.id}">Trade</button></div>`).join('') || '<div class="dim">Nobody matches. Try another filter.</div>'}</div>`;
   }
   return `<div class="row" style="gap:6px">${tabs}</div>${body}`;
+}
+/* v268 AUTO DEAL. You pick who you want (their players and picks); this finds what to give so their team says yes.
+   It tries every set of your players the same size as theirs (players must match), each with none, one or two of your
+   draft picks, skips anything the salary cap blocks, and asks their team (evaluateTrade) about each one. Of the deals
+   they accept it picks the best one for you (dealEdge). If none works it returns the closest one, so you can see the
+   bribe price. Your Legend, your best friend and anyone else locked can't be offered. */
+function autoDeal(L, tid, theirs, theirsPk){
+  theirsPk = theirsPk || []; const U = L.teams[L.user];
+  const pool = U.roster.filter(id => !locked(L, id)), picks = L.picks.filter(k => k.owner === L.user).map(k => k.id), n = theirs.length;
+  const sets = []; const pickN = (arr, k, start, cur) => { if(cur.length === k){ sets.push(cur.slice()); return; } for(let i = start; i < arr.length; i++){ cur.push(arr[i]); pickN(arr, k, i + 1, cur); cur.pop(); } };
+  pickN(pool, n, 0, []);
+  const pkSets = [[]].concat(picks.map(x => [x])).concat(picks.flatMap((x, i) => picks.slice(i + 1).map(y => [x, y])));
+  let best = null, close = null;
+  for(const mine of sets){ if(!tradeCapCheck(L, L.user, mine, theirs).ok || !tradeCapCheck(L, tid, theirs, mine).ok) continue;
+    for(const minePk of pkSets){ const r = evaluateTrade(L, tid, mine, theirs, minePk, theirsPk);
+      if(r.ok){ const e = dealEdge(L, mine, theirs, minePk, theirsPk).score - minePk.length*0.5; if(!best || e > best.edge) best = { mine, minePk, edge:e }; }
+      else if(!close || r.score > close.score) close = { mine, minePk, score:r.score }; } }
+  return { best, close };
 }
 function tradeCheck(L, T){
   const U = L.teams[L.user], O = L.teams[T.team];
@@ -9213,7 +9252,7 @@ function dealBar(L){
     ${c.state === 'yes' || c.state === 'no' ? (() => { const e = dealEdge(L, T.mine, T.theirs, T.minePk, T.theirsPk);   // same rating the offer cards use, so you can judge your own deals
       return `<div class="dealmsg">For you: <b style="color:${{ steal:'var(--good)', good:'var(--good)', even:'var(--gold)', bad:'var(--bad)' }[e.verdict]}">${{ steal:'🔥 a steal', good:'good', even:'about even', bad:'favors them' }[e.verdict]}</b> <span class="dim">(score ${e.score > 0 ? '+' : ''}${e.score} · ${esc(e.why.filter(w => !w.includes('total salary')).join(' · '))})</span></div>`; })() : ''}
     <div class="dealbtns"><button class="btn sm hot" data-act="propose" ${c.state === 'yes' || c.state === 'no' ? '' : 'disabled'}>Propose</button>${c.state === 'no' ? (L.coins >= c.cost ? `<button class="btn sm cool" data-act="bribe">💰 Bribe ${c.cost.toLocaleString()}</button>`
-      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
+      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal">⚡ Find a deal they accept</button>` : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
 }
 function hubTrade(L){
   memoClear(); MEMO.on = true;   // ratings and rosters may have changed since the last screen; cache for this render
@@ -11734,6 +11773,15 @@ if(typeof document !== 'undefined'){
       case 'find-set': { const [k, v] = id.split(':'); UI.find[k] = v; renderHub(); break; }
       case 'find-pick': { const pk = L.picks.find(k => k.id === id); if(!pk) break; UI.trade = { team:pk.owner, mine:[], theirs:[], minePk:[], theirsPk:[pk.id] }; UI.tradeMode = 'build';
         UI.msg = `${L.teams[pk.owner].abbr}'s pick is in the deal. Now tap who you give (or add your own picks), and watch the deal bar.`; renderHub(); view().scrollTop = 0; break; }
+      case 'auto-deal': {   // v268: fill in the trade with a deal their team accepts (you still tap Propose)
+        let T = UI.trade; if(id){ const pid = +id, t = L.teams.find(x => x.roster.includes(pid)); if(!t) break; T = UI.trade = { team:t.id, mine:[], theirs:[pid], minePk:[], theirsPk:[] }; UI.tradeMode = 'build'; }
+        if(!T || T.team == null || !(T.theirs.length + T.theirsPk.length)){ UI.toast = 'Pick who you want first.'; renderHub(); break; }
+        if(!T.theirs.length){ UI.toast = 'Add at least one of their players: players must match one for one.'; renderHub(); break; }
+        const R = autoDeal(L, T.team, T.theirs, T.theirsPk), O = L.teams[T.team];
+        if(R.best){ T.mine = R.best.mine; T.minePk = R.best.minePk; UI.msg = `⚡ Found a deal ${O.abbr} accepts. Check it in the bar below and tap Propose.`; UI.toast = 'Deal found.'; }
+        else if(R.close){ T.mine = R.close.mine; T.minePk = R.close.minePk; UI.msg = `No deal ${O.abbr} would accept as is. This is the closest one: the bar below shows the bribe price to close it.`; UI.toast = 'No straight deal. Closest one loaded.'; }
+        else { UI.msg = `Nothing works: the salary cap blocks every combination for this player.`; UI.toast = UI.msg; }
+        renderHub(); break; }
       case 'find-player': { const pid = +id, t = L.teams.find(x => x.roster.includes(pid)); if(!t) break; UI.trade = { team:t.id, mine:[], theirs:[pid], minePk:[], theirsPk:[] }; UI.tradeMode = 'build';
         UI.msg = `${pname(L.players[pid])} is in the deal. Now tap who you give, and watch the deal bar.`; renderHub(); view().scrollTop = 0; break; }
       case 'trade-mode': UI.tradeMode = id; renderHub(); view().scrollTop = 0; break;
