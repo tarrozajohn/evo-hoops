@@ -5827,6 +5827,16 @@ function hubMoney(L){
   // who you pay, biggest first, and what's already promised for next season
   const deals = U.roster.map(id => L.players[id]).filter(p => p.contract).sort((x, y) => capHit(y) - capHit(x));
   const nextYr = r1(deals.filter(p => !p.contract.legend && p.contract.yrs > 1).reduce((t, p) => t + p.contract.sal, 0));
+  return coinsPanels(L) + payrollPanel(L);
+}
+/* v272: the Money tab is gone. Its parts moved:
+   - coinsPanels: what you earn and spend in coins. Tap the coin counter at the top of any screen to open it there.
+   - payrollPanel: salaries, the cap and next season's commitments. On the Roster tab and in Free Agents and Trade, as a
+     folding card. */
+function coinsPanels(L){
+  const U = L.teams[L.user], A = arenaOf(L), pay = payroll(L, L.user), hist = L.coinHist || [];
+  const season = A.hist.filter(h => h.s === L.season), avgGate = season.length ? Math.round(season.reduce((t, h) => t + h.coins, 0)/season.length) : 0;
+  const row = (a, b, cls) => `<tr><td>${a}</td><td class="${cls || 'gold'}" style="text-align:right;white-space:nowrap">${b}</td></tr>`;
   return `<div class="moneypage" style="display:contents"><div class="panel moneyintro"><h3>Two kinds of money</h3>
       <div class="moneytwo"><div><span class="coins static"><span class="coin"></span><span class="num">${L.coins}</span></span><b>Coins</b><span class="dim cond">Your spending money. Earned every game, spent in the Shop, on Upgrades, staff and promotions.</span></div>
       <div><span class="paychip" style="font-size:16px">${fmtM(pay)}</span><b>Salaries ($M)</b><span class="dim cond">Contracts, counted against the salary cap. They limit who you can sign or trade for. They don't cost coins (except luxury tax).</span></div></div></div>
@@ -5843,12 +5853,18 @@ function hubMoney(L){
     <div class="panel"><h3>Coins: where they go</h3><table style="margin-top:6px"><tbody>
       ${row('Upgrades (facilities, arena, staff, no-limit training)', 'see Upgrades', 'dim')}${row('Bribes to close trades', L.bribed ? `${L.bribed.toLocaleString()} so far` : 'Trade tab', 'dim')}${row('Cutting contracts to $1M', 'table below', 'dim')}${row('Shop items and team style', 'see Shop', 'dim')}${row('Home game promotions', '−40 to −60', 'dim')}
       ${row('Luxury tax (only above the tax line)', pay > TAX_LINE ? `about −${Math.round((pay - TAX_LINE)*TAX_RATE)} next season` : 'none right now', pay > TAX_LINE ? 'bad' : 'dim')}
-    </tbody></table>${(L.autoLog || []).length ? `<div class="dim cond" style="margin-top:6px">Recent auto-buys: ${L.autoLog.slice(0, 4).join(' · ')}</div>` : ''}</div>
-    <div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>Salaries: your payroll</h3>${capBar(L, L.user)}
+    </tbody></table>${(L.autoLog || []).length ? `<div class="dim cond" style="margin-top:6px">Recent auto-buys: ${L.autoLog.slice(0, 4).join(' · ')}</div>` : ''}</div></div>`;
+}
+function payrollPanel(L, foldKey){
+  const U = L.teams[L.user], deals = U.roster.map(id => L.players[id]).filter(p => p.contract).sort((x, y) => capHit(y) - capHit(x));
+  const nextYr = r1(deals.filter(p => !p.contract.legend && p.contract.yrs > 1).reduce((t, p) => t + p.contract.sal, 0));
+  const inner = `<div style="display:flex;flex-direction:column;gap:8px">
       <table><thead><tr><th>Player</th><th style="text-align:right">Per year</th><th style="text-align:right">Years left</th><th></th></tr></thead><tbody>
       ${deals.map(p => `<tr><td>${esc(pname(p))} <span class="dim cond">OVR ${ovr(p)}</span></td><td style="text-align:right">${p.contract.legend ? '<span class="dim">free</span>' : fmtM(p.contract.sal)}</td><td style="text-align:right">${p.contract.legend ? '—' : p.contract.yrs <= 1 ? '<b style="color:var(--gold)">last year</b>' : p.contract.yrs}</td><td style="text-align:right">${!p.contract.legend && p.contract.sal > MIN_SAL ? `<button class="btn sm" data-act="restructure" data-id="${p.id}" ${L.coins >= restructCost(p) ? '' : 'disabled'} title="Pay coins to cut this contract to the ${fmtM(MIN_SAL)} minimum">Cut to $1M · ${restructCost(p).toLocaleString()}</button>` : ''}</td></tr>`).join('')}
       </tbody></table>
-      <div class="cond">Already promised for next season: <b>${fmtM(nextYr)}</b> (${fmtM(Math.max(0, CAP - nextYr))} of room under the cap before re-signing anyone).</div></div></div>`;
+      <div class="cond">Already promised for next season: <b>${fmtM(nextYr)}</b> (${fmtM(Math.max(0, CAP - nextYr))} of room under the cap before re-signing anyone).</div></div>`;
+  if(!foldKey) return `<div class="panel"><h3>Salaries: your payroll</h3>${inner}</div>`;
+  return fold(foldKey, '💵 Payroll and contracts', `${fmtM(payroll(L, L.user))} this season · ${fmtM(nextYr)} already promised for next`, false, inner);
 }
 // The offseason contract desk: expiring deals, what each creature wants, and your call.
 function resignPanel(L){
@@ -6815,7 +6831,7 @@ function renderHelp(back){
   showView(`<div class="wrap">
     <div class="row" style="justify-content:space-between"><h2>How to play</h2><button class="btn" data-act="${back}">Back</button></div>
     <div class="split">
-      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has six groups: Play, Team (Roster, Train), Legend (Skill tree, Bonds), Office (Money, Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena) and League. ⚙️ Auto, How to play and Settings are in the ☰ menu at the top right. Tap anything underlined or a yellow ? to see what it means.</p></div>
+      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has six groups: Play, Team (Roster, Train), Legend (Skill tree, Bonds), Office (Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena) and League. ⚙️ Auto, How to play and Settings are in the ☰ menu at the top right. Tap the coin counter for what you earn and spend; your payroll is a folding card on Roster, Trade and Free Agents. Tap anything underlined or a yellow ? to see what it means.</p></div>
       <div class="panel"><h3>How games work</h3><p class="dim">You are the GM and coach. Every game is simulated: your creatures play it out on their own, using their ratings, playstyles, badges, keystones and your game plan. Want to coach one yourself? Tap 📺 Watch on the Play tab to see it on the court and make calls any time (pace, shots, playbook, defense, double or hunt a player, subs, timeouts, working the refs), or 🎙 Quick coach to get a stop every half quarter instead. You decide who is on the roster, who starts and where, how they train, what they buy, who you trade for and draft, and how the team plays.</p>
         <h3 style="margin-top:12px">A 20-year career</h3><p class="dim">Your career runs 20 seasons: Rookie years, Rising, Prime, Veteran, Twilight and a Farewell season. Milestone scenes mark years 2, 5, 10, 15 and the end. From year 15 your body slows down (−2 per year in games), and Kaine ages with you. Every season goes on your timeline (Legacy tab). After the last one: a retirement ceremony, your career summary and legacy score, your number in the rafters and the Hall of Fame. Then retire and stay on as GM, or play one more season.</p>
         <h3 style="margin-top:12px">Playing time builds stars</h3><p class="dim">Each creature has a role from how much it actually plays: Starter, Rotation, Bench or Buried. Starters grow 25% faster from games, buried creatures 40% slower. Young starters can break out (+1 Potential); young creatures buried on the bench can stall (−1). Free agents check where they would play: prospects refuse to be buried, and anyone young asks more to sit.</p>
@@ -7036,7 +7052,7 @@ const NAV_GROUPS = [   /* v268: Office split in two (Office + Build), your own p
   { id:'play', label:'Play', icon:'🏀', tabs:['play'] },
   { id:'team', label:'Team', icon:'👥', tabs:['roster', 'train'] },
   { id:'legend', label:'Legend', icon:'⭐', tabs:['badges', 'bonds'] },
-  { id:'office', label:'Office', icon:'💼', tabs:['money', 'trade', 'fa', 'scout'] },
+  { id:'office', label:'Office', icon:'💼', tabs:['trade', 'fa', 'scout'] },   /* v272: Money folded into Roster, Trade, Free Agents and the coin counter */
   { id:'build', label:'Build', icon:'🛠️', tabs:['farm', 'shop', 'upgrades', 'arena'] },
   { id:'league', label:'League', icon:'🏆', tabs:['standings', 'leaders', 'legacy', 'types'] },
 ];
@@ -7169,7 +7185,8 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   checkAchievements(L, null);
   if(L.achNew && L.achNew.length){ const list = L.achNew.map(id => ACH.find(a => a.id === id)).filter(Boolean); UI.msg = (UI.msg ? UI.msg + ' ' : '') + `🏆 Achievement${list.length > 1 ? 's' : ''} unlocked: ${list.map(a => `${a.name} (+${a.coins})`).join(', ')}.`; L.achNew = []; }
   const phaseTxt = L.phase === 'season' ? `Regular season · Round ${Math.min(L.round + 1, L.schedule.length)} of ${L.schedule.length}` : L.phase === 'playoffs' ? `Playoffs · ${roundName(L)}` : 'Offseason';
-  const body = { bonds:hubBonds, money:hubMoney, legacy:hubLegacy, upgrades:hubUpgrades, auto:hubAuto, arena:hubArena, badges:hubBadges, scout:hubScout, play:hubPlay, roster:hubRoster, train:hubTrain, shop:hubShop, farm:hubFarm, standings:hubStandings, leaders:hubLeaders, trade:hubTrade, fa:hubFA, types:() => `<div class="panel">${typeList()}</div><div class="panel"><h3>Full chart</h3><p class="dim" style="margin:4px 0 10px">Row attacks column. ✓ = row has the edge, ✗ = column has the edge.</p>${typeChart()}</div>` }[UI.tab](L);
+  const coinCard = UI.coinInfo ? `<div class="panel coincard"><div class="row" style="justify-content:space-between"><h3 style="margin:0">🪙 Coins and salaries</h3><button class="btn sm" data-act="coins-info">Close</button></div></div>${coinsPanels(L)}` : '';   // v272: the old Money page's coin part
+  const body = coinCard + { bonds:hubBonds, money:hubMoney, legacy:hubLegacy, upgrades:hubUpgrades, auto:hubAuto, arena:hubArena, badges:hubBadges, scout:hubScout, play:hubPlay, roster:hubRoster, train:hubTrain, shop:hubShop, farm:hubFarm, standings:hubStandings, leaders:hubLeaders, trade:hubTrade, fa:hubFA, types:() => `<div class="panel">${typeList()}</div><div class="panel"><h3>Full chart</h3><p class="dim" style="margin:4px 0 10px">Row attacks column. ✓ = row has the edge, ✗ = column has the edge.</p>${typeChart()}</div>` }[UI.tab](L);
   showView(`<div class="wrap">
     <div class="hubhead${UI.tab === 'play' ? '' : ' compact'}" data-rec="${(() => { const S = userSeries(L); return S ? seriesMine(L, S).join('-') : `${U.w}-${U.l}`; })()}">
       <div class="teamtag"><span class="swatch" style="background:${U.color}"></span><div><h2>${cosOn(L, 'emblem') ? cosOn(L, 'emblem') + ' ' : ''}${esc(U.name)}${(() => { const n = L.champs.filter(c => c.tid === L.user).length; return n ? `<span class="stars" title="${n} title${n > 1 ? 's' : ''}">${n <= 5 ? '★'.repeat(n) : '★×' + n}</span>` : ''; })()}</h2>${L.avatar != null ? `<div class="dim cond gmline">GM${L.avatarRetired ? ' (retired star)' : ' and franchise star'}: <b>${esc(L_NAME() || 'You')}</b></div>` : ''}${cosOf(L).arena ? `<div class="dim cond">🏟️ ${esc(cosOf(L).arena)}</div>` : ''}<div class="dim cond phoneonly phoneblock">S${L.season}${L.avatar != null && !L.avatarRetired ? ` · Yr ${careerYear(L)}/${careerLen(L)}` : ''} · ${L.phase === 'season' ? `R${Math.min(L.round + 1, L.schedule.length)}/${L.schedule.length}` : L.phase === 'playoffs' ? roundName(L) : 'Offseason'} · <b>${(() => { const S = userSeries(L); if(!S) return `${U.w}-${U.l}`; const [m, o] = seriesMine(L, S); return `Series ${m}-${o}`; })()}</b>${L.streak ? ` · ${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}` : ''}</div><div class="dim cond deskonly">Season ${L.season}${L.avatar != null && !L.avatarRetired ? ` (year ${careerYear(L)} of ${careerLen(L)}: ${eraOf(L)})` : ''} · ${phaseTxt} · ${U.w}-${U.l} · Team OVR ${teamOVR(L, L.user)}</div>
@@ -7179,7 +7196,7 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
         <span title="Owner patience: wins raise it, losses and broken promises drop it. At zero the owner cuts a facility level.">Owner <span class="mini"><i style="width:${L.owner ?? 60}%;background:${(L.owner ?? 60) >= 50 ? 'var(--good)' : (L.owner ?? 60) >= 25 ? 'var(--gold)' : 'var(--bad)'}"></i></span> <b>${(L.owner ?? 60) >= 70 ? 'Thrilled' : (L.owner ?? 60) >= 45 ? 'Content' : (L.owner ?? 60) >= 25 ? 'Impatient' : 'Furious'}</b></span>
         ${L.teamFx && L.teamFx.games > 0 ? `<span class="formchip ${L.teamFx.mod > 0 ? 'hot' : 'cold'}" title="From your last storyline choice: every rating in games">${L.teamFx.mod > 0 ? '🔥' : '🧊'} ${L.teamFx.label} ${L.teamFx.mod > 0 ? '+' + L.teamFx.mod : '−' + (-L.teamFx.mod)} · ${L.teamFx.games}g</span>` : ''}
         ${L.streak ? `<span class="deskonly">${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}</span>` : ''}</div></div></div>
-      <button class="coins" data-act="tab" data-id="money" title="Coins: tap for the Money page"><span class="coin"></span><span class="num">${L.coins}</span></button>
+      <button class="coins" data-act="coins-info" title="Coins: tap for what you earn and spend"><span class="coin"></span><span class="num">${L.coins}</span></button>
       <div class="row deskonly"><button class="btn sm" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn sm" data-act="navtip-show">🧭 Where things are</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
       <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰${SET.autoTip && SET.navTip ? '' : '<span class="tabbadge">!</span>'}</button>
     </div>
@@ -7426,7 +7443,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 271;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 272;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8949,13 +8966,13 @@ function navTipPanel(){ if(SET.navTip) return '';
   return `<div class="panel navtip"><div class="row" style="justify-content:space-between;gap:8px"><h3 style="margin:0">🧭 Where everything is now</h3><button class="btn sm hot" data-act="navtip-ok">Got it</button></div>
     <div class="dim cond" style="margin:4px 0 6px">The tabs were regrouped in the bottom bar. A number on a group means something there is waiting for you.</div>
     ${row(G('play'), 'Your next game', 'Game prep, Story and News fold open and closed. They stay how you leave them.')}
-    ${row(G('team'), 'Roster, Train', 'Compare two creatures is at the top of Roster.')}
+    ${row(G('team'), 'Roster, Train', 'Compare two creatures and your payroll are on Roster.')}
     ${row(G('legend'), 'Skill tree, Bonds', 'Your own player. New: set a goal on the skill tree.')}
-    ${row(G('office'), 'Money, Trade, Free Agents, Scouting', 'New: ⚡ Auto deal in the trade finder, and search and filters in Free Agents.')}
+    ${row(G('office'), 'Trade, Free Agents, Scouting', 'New: ⚡ Auto deal in the trade finder, and search and filters in Free Agents. Your payroll is a folding card here and on Roster.')}
     ${row(G('build'), 'Farm, Shop, Upgrades, Arena', 'Moved here from Office. New on the Farm: Best pairs and Make an Apex.')}
     ${row(G('league'), 'Standings, Leaders, Legacy, Types')}
     <div class="frow"><span class="tmain"><b>☰ Menu</b> <span class="dim cond">(top right) ⚙️ Auto, How to play, Settings</span><br><span class="dim cond" style="font-size:13px">Auto used to be a tab under Team.</span></span><button class="btn sm" data-act="tab" data-id="auto">Auto</button></div>
-    <div class="dim cond" style="margin-top:4px">Tap anything underlined or a yellow ? to see what it means. To see this card again: ☰ menu, Where things are.</div></div>`; }
+    <div class="dim cond" style="margin-top:4px">The Money tab is gone: tap the coin counter at the top for coins, and see Payroll on Roster, Trade or Free Agents for salaries. Tap anything underlined or a yellow ? to see what it means. To see this card again: ☰ menu, Where things are.</div></div>`; }
 function autoTipPanel(){ if(SET.autoTip || !SET.navTip) return '';
   return `<div class="panel autotip"><div class="row" style="gap:8px;justify-content:space-between;flex-wrap:wrap"><span style="flex:1;min-width:200px">⚙️ <b>Auto</b> runs the chores for you: lineups, training, your skill tree, the farm, re-signing and more. It's in the <b>☰ menu</b> at the top right.</span>
     <span class="row" style="gap:6px"><button class="btn sm hot" data-act="tab" data-id="auto">Open Auto</button><button class="btn sm" data-act="autotip-ok">Got it</button></span></div></div>`; }
@@ -9094,7 +9111,7 @@ function hubRoster(L){
   const waiting = (L.fa || []).filter(id => L.players[id] && L.players[id].reserved === L.user);
   const waitBox = waiting.length ? `<div class="panel" style="border-color:var(--gold)"><h3 style="margin:0 0 4px">⏳ Reserved for you in Free Agents</h3><div class="dim cond" style="margin-bottom:6px">Only you can sign them, for the minimum. They're not on your roster until you sign them, and the reservation ends at the next offseason.</div>
     ${waiting.map(id => { const p = L.players[id]; return `<div class="frow"><span class="tmain"><b>${esc(pname(p))}</b> <span class="dim">${ovr(p)} OVR · ${posLabel(p)}</span> ${talentTags(L, p, starCut(L))}</span><button class="btn sm hot" data-act="sign-reserved" data-id="${id}">Sign</button></div>`; }).join('')}</div>` : '';
-  return autoTipPanel() + waitBox + friendBox + mk + kidsBox + comparePanel(L) + needsBox(L) + capBar(L, L.user) + `<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:200px">${howto(`The top five start at PG, SG, SF, PF and C. Each creature has two natural positions; every step out of position costs 2 on every rating. Playstyle decides where it sets up, what it shoots and how it defends. Starters earn full game XP; the bench earns practice XP.`, 'How lineups work')}</div><label class="autotog"><input type="checkbox" data-auto="lineup" ${autoOf(L).lineup ? 'checked' : ''}>Auto</label><button class="btn sm cool" data-act="autolineup">Auto lineup</button></div>
+  return autoTipPanel() + waitBox + friendBox + mk + kidsBox + comparePanel(L) + needsBox(L) + capBar(L, L.user) + payrollPanel(L, 'pay-roster') + `<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:200px">${howto(`The top five start at PG, SG, SF, PF and C. Each creature has two natural positions; every step out of position costs 2 on every rating. Playstyle decides where it sets up, what it shoots and how it defends. Starters earn full game XP; the bench earns practice XP.`, 'How lineups work')}</div><label class="autotog"><input type="checkbox" data-auto="lineup" ${autoOf(L).lineup ? 'checked' : ''}>Auto</label><button class="btn sm cool" data-act="autolineup">Auto lineup</button></div>
   <div class="grid">${U.roster.map((id, i) => { const p = L.players[id], S = SPECIES[p.sp];
     return playerCard(L, id, { team:U, stats:true, cls: i < STARTERS ? 'starter' : '', actions: `<div class="row" style="gap:6px;margin-top:4px">
       <span class="chip" style="background:${i < STARTERS ? 'var(--hot)' : 'var(--line)'};color:${i < STARTERS ? '#1a0b02' : 'var(--text)'}">${i < STARTERS ? 'Starter · ' + POS_NAMES[i] : 'Bench'}</span>
@@ -9290,7 +9307,7 @@ function hubTradeBody(L){
   const U = L.teams[L.user], O = L.teams[T.team], needs = teamNeeds(L, T.team), nOff = offersWaiting(L);
   if(!UI.tradeMode) UI.tradeMode = nOff ? 'offers' : 'build';
   const modes = `<div class="modetabs three"><button class="${UI.tradeMode === 'offers' ? 'on' : ''}" data-act="trade-mode" data-id="offers">📨 Offers${nOff ? ` (${nOff})` : ''}</button><button class="${UI.tradeMode === 'find' ? 'on' : ''}" data-act="trade-mode" data-id="find">🔎 Find</button><button class="${UI.tradeMode === 'build' ? 'on' : ''}" data-act="trade-mode" data-id="build">🛠 Build</button></div>`;
-  if(UI.tradeMode === 'find') return modes + tradeFinder(L);
+  if(UI.tradeMode === 'find') return modes + payrollPanel(L, 'pay-trade') + tradeFinder(L);   // v272: your payroll, folded
   if(UI.tradeMode === 'offers') return modes + offerPanel(L) + `<div class="cond dim">Want someone else? Switch to <b>Build a trade</b>.</div>`;
   const starters = new Set(O.roster.slice(0, STARTERS)), cut = starCut(L);
   // "Best first" (the default) = highest OVR first, the number you see on each row; ties go to the better long-term value.
@@ -9381,7 +9398,7 @@ function hubFA(L){
     return `<div class="fawrap"><div class="fastat ${S.k}"><b>${S.label}</b><span>${esc(S.why)}</span></div>` + playerCard(L, id, { cls:'fa-' + S.k, actions:`
       <span class="rolechip" style="border-color:${ROLES[a.role].c};color:${ROLES[a.role].c}" title="Where it would rank on your roster">Role with you: ${a.role}</span><span class="paychip">Wants ${fmtM(a.sal)} a year for ${a.yrs} yr${a.yrs > 1 ? 's' : ''}</span>
       ${S.k === 'yes' || S.k === 'mine' ? `<button class="btn sm ${S.k === 'mine' ? 'hot' : 'cool'}" data-act="sign" data-id="${id}">${S.k === 'mine' ? 'Sign ' + esc(pname(p)) : 'Sign'}</button>` : ''}` }) + '</div>'; };
-  return `${capBar(L, L.user)}${finder}
+  return `${capBar(L, L.user)}${payrollPanel(L, 'pay-fa')}${finder}
   <div class="panel" style="display:flex;flex-direction:column;gap:8px"><div class="cond"><b>${fa.length}</b> free agents. <b style="color:var(--good)">${count('yes') + count('mine')}</b> would sign with you today.</div>
     <div class="row" style="gap:6px">${chip('all', `All ${fa.length}`)}${count('mine') ? chip('mine', `⭐ Yours ${count('mine')}`) : ''}${chip('yes', `✅ Will sign ${count('yes')}`)}${count('cap') ? chip('cap', `💰 Can't afford ${count('cap')}`) : ''}${count('no') ? chip('no', `🚫 Won't sign ${count('no')}`) : ''}</div></div>
   ${howto('Signing one means releasing one of yours. Under the cap you can pay what they ask; over it, only creatures asking $2.5M or less will sign, for the minimum. Prospects won\'t sign if they would be buried on your bench, and a creature you wronged may refuse you.', 'How signing works')}
@@ -11724,10 +11741,12 @@ if(typeof document !== 'undefined'){
         }
         saveLeague(); renderDraft(); break;
       }
+      case 'coins-info': UI.coinInfo = !UI.coinInfo; renderHub(); if(UI.coinInfo) view().scrollTop = 0; break;   // v272
       case 'navtip-ok': SET.navTip = true; SET.autoTip = true; saveSettings(); renderHub(); break;   // v271
       case 'navtip-show': SET.navTip = false; saveSettings(); UI.sheet = false; UI.tab = 'play'; renderHub(); view().scrollTop = 0; break;
       case 'autotip-ok': SET.autoTip = true; saveSettings(); renderHub(); break;   // v270
-      case 'tab': if(id === 'auto' && !SET.autoTip){ SET.autoTip = true; saveSettings(); } UI.tab = id; UI.faPick = null; UI.use = null; UI.sheet = false; if(groupOf(id).tabs.includes(id)) (UI.lastIn = UI.lastIn || {})[groupOf(id).id] = id; renderHub(); break;   // v269: not for Auto, which sits in the menu
+      case 'tab': if(id === 'money'){ UI.coinInfo = true; renderHub(); view().scrollTop = 0; break; }   // v272: no Money tab any more
+        if(id === 'auto' && !SET.autoTip){ SET.autoTip = true; saveSettings(); } UI.tab = id; UI.faPick = null; UI.use = null; UI.sheet = false; if(groupOf(id).tabs.includes(id)) (UI.lastIn = UI.lastIn || {})[groupOf(id).id] = id; renderHub(); break;   // v269: not for Auto, which sits in the menu
       case 'navgrp': { const g = NAV_GROUPS.find(x => x.id === id); UI.sheet = false;
         if(g.tabs.includes(UI.tab)){ view().scrollTo({ top:0, behavior:'smooth' }); break; }   // v269: already on one of its tabs (Auto is on none, so Play now leaves it)
         UI.tab = (UI.lastIn && g.tabs.includes(UI.lastIn[id]) && UI.lastIn[id]) || g.tabs[0]; UI.faPick = null; UI.use = null; renderHub(); view().scrollTop = 0; break; }
