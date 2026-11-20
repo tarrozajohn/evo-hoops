@@ -1132,6 +1132,10 @@ const statName = st => Object.entries(st).map(([k, v]) => `${v > 0 ? '+' : ''}${
     const team = big ? Object.assign(Object.fromEntries(STATS.map(k => [k, 2])), { [a]:6, [b]:6 }) : { [a]:4, [b]:4 }, k = 'team_' + name.toLowerCase().replace(/[^a-z]+/g, '_');
     const txt = (big ? [a, b].map(st => `+6 ${STAT_NAME[st]}`).concat(['+2 to everything else']) : [a, b].map(st => `+4 ${STAT_NAME[st]}`)).join(', ');
     TEAM_KEYS[k] = { g, name, team, ring, li, desc:`Team keystone: every teammate (not you) gets ${txt}. It can take them past 99.` }; }));
+  /* v264: Untouchable. Nobody on the other team can steal from, strip, intercept, block or shove the ball loose from
+     anyone on your team, you included. Past the end of two Mythic masteries, linked to both (see buildTree). */
+  TEAM_KEYS.team_untouchable = { g:'ply', name:'Untouchable', team:{}, ring:TREE_RINGS + 10 + 12, li:-1,
+    desc:'Team keystone, the last node of the tree: it opens once you own every other node. The other team can never steal the ball from, strip, intercept a pass from, block, or shove the ball loose from anyone on your team, you included.' };
   Object.assign(KEYSTONES, TEAM_KEYS);   // so the tree screen can show their name and description
 }
 function buildTree(){
@@ -1215,7 +1219,10 @@ function buildTree(){
   });
   lanes.forEach((bk, li) => { const nb = lanes[(li + 1) % 16]; MYTH_CROSS.forEach(r => link(`${bk}-${r}`, `${nb}-${r}`)); });   // cross links around the Mythic ring
   // v263: team keystones, between two lanes just outside their cross nodes (ring 45 or 55)
-  Object.entries(TEAM_KEYS).forEach(([k, K]) => { const a = laneAng(K.li) + sp/2, R = ringR(K.ring + 3.2), nb = lanes[(K.li + 1) % 16];
+  Object.entries(TEAM_KEYS).forEach(([k, K]) => { if(K.li < 0){   // Untouchable: past the two Mythic masteries at the top (lanes 15 and 0)
+      const a = -Math.PI/2, R = ringR(TREE_OUTER + 4.5); N['key-' + k] = { id:'key-' + k, x:Math.cos(a)*R, y:Math.sin(a)*R, type:'key', key:k, g:K.g, name:K.name, stats:null, adj:[] };
+      link('key-' + k, `${lanes[15]}-${TREE_OUTER}`); link('key-' + k, `${lanes[0]}-${TREE_OUTER}`); return; }
+    const a = laneAng(K.li) + sp/2, R = ringR(K.ring + 3.2), nb = lanes[(K.li + 1) % 16];
     N['key-' + k] = { id:'key-' + k, x:Math.cos(a)*R, y:Math.sin(a)*R, type:'key', key:k, g:K.g, name:K.name, stats:null, adj:[] };
     link('key-' + k, `${lanes[K.li]}-${K.ring}`); link('key-' + k, `${nb}-${K.ring}`); });
   return { N, E };
@@ -1322,6 +1329,7 @@ const keyCount = p => treeOf(p).filter(id => TREE.N[id] && TREE.N[id].type === '
 // e.g. a keystone when all 4 keystone slots are full). Breadth-first search outward from everything you own.
 function treePath(p, id){
   const own = new Set(treeOf(p)); if(own.has(id)) return [];
+  if(treeLocked(p, id)) return null;   // v264
   const full = keyCount(p) >= keySlots(), par = {}, q = [...own], seen = new Set(own);
   for(let i = 0; i < q.length; i++){ const cur = q[i]; if(!TREE.N[cur]) continue;   // unknown (old) node: skip it
     for(const a of TREE.N[cur].adj){ if(seen.has(a) || (full && TREE.N[a].type === 'key' && a !== id)) continue;
@@ -1330,7 +1338,9 @@ function treePath(p, id){
 }
 // the set of nodes you own, rebuilt only when your tree changes
 function ownSet(p){ const tr = treeOf(p), k = tr.length + '|' + tr[tr.length - 1] + '|' + tr[tr.length >> 1]; if(!p._own || p._ownK !== k){ Object.defineProperty(p, '_own', { value:new Set(tr), writable:true, enumerable:false, configurable:true }); Object.defineProperty(p, '_ownK', { value:k, writable:true, enumerable:false, configurable:true }); } return p._own; }
-function canTake(p, id){ const own = ownSet(p), n = TREE.N[id]; return n && !own.has(id) && n.adj.some(a => own.has(a)) && !(n.type === 'key' && keyCount(p) >= keySlots()); }
+// v264: Untouchable is the last node of the tree: it opens only once you own every other node
+const treeLocked = (p, id) => id === 'key-team_untouchable' && Object.keys(TREE.N).some(k => k !== id && !ownSet(p).has(k));
+function canTake(p, id){ const own = ownSet(p), n = TREE.N[id]; return n && !treeLocked(p, id) && !own.has(id) && n.adj.some(a => own.has(a)) && !(n.type === 'key' && keyCount(p) >= keySlots()); }
 // Training points (TP) are earned per category and spent in that category.
 // Each level costs more: 2, 3, 5, 6, then 8 TP (24 to max one attribute, 360 to max everything).
 const TRAIN_COST = [2, 3, 5, 6, 8];
@@ -1923,13 +1933,16 @@ function autoSubs(G, side){
 // An "ent" is a creature on the floor during a game.
 // ratings for a creature playing a given slot: out-of-position penalty applied
 function posRatings(p, slot){ const R = ratings(p), pen = slot < STARTERS ? posPenalty(p, slot) : 0; if(pen) for(const k in R) R[k] = Math.max(25, R[k] - pen); return R; }
+// v264: does this creature play for the team whose Legend owns the Untouchable keystone?
+const untouchable = p => { const L = typeof LEAGUE !== 'undefined' ? LEAGUE : null; if(!L || L.avatar == null || !L.players || !L.players[L.avatar] || !L.teams || !L.teams[L.user]) return false;
+  return !!treeEffects(L.players[L.avatar]).keys.team_untouchable && L.teams[L.user].roster.includes(p.id); };
 function makeEnt(p, team, slot){
   const S = SPECIES[p.sp];
   // body differences from league average: feet of height, feet of wingspan, hundreds of pounds,
   // and standing reach (mostly height, partly arm length)
   const B = physicals(p), dh = (B.h - BODY_REF.h)/12, dws = (B.ws - BODY_REF.ws)/12, dwt = (B.wt - BODY_REF.wt)/100;
   const T = trainOf(p);
-  return { p, id:p.id, team, slot, sp:p.sp, badges: p.avatar ? treeEffects(p).badges : p.nemesis ? nemesisBadges(p) : null, keys: p.avatar ? treeEffects(p).keys : storyKeys(p), gear:p.gear || null, aura: displayTier(p), ult: !!p.ultimate, avatar: !!p.avatar, nemesis: !!p.nemesis, legendary: isLegendary(p), legendGain:0, legT:0, dh, dws, dwt,
+  return { p, id:p.id, team, slot, sp:p.sp, badges: p.avatar ? treeEffects(p).badges : p.nemesis ? nemesisBadges(p) : null, safe: untouchable(p), keys: p.avatar ? treeEffects(p).keys : storyKeys(p), gear:p.gear || null, aura: displayTier(p), ult: !!p.ultimate, avatar: !!p.avatar, nemesis: !!p.nemesis, legendary: isLegendary(p), legendGain:0, legT:0, dh, dws, dwt,
     reach: dh*0.9 + dws*0.45 + T.phys.vert*0.25,                 // Vertical adds 3 inches of reach per level
     cw: dwt + T.phys.str*0.25,                                    // "contact weight": Strength counts like extra pounds
     vert: T.phys.vert, endu: T.phys.end, iq: T.mind.iq, clutch: T.mind.clutch, focus: T.mind.focus,
@@ -2380,7 +2393,7 @@ function updateDunk(G, e, dt){
       // a defender who beat the dunker to the spot (standing between him and the rim) has a much better shot at the block
       const inFront = hyp(o.x - D.tx, o.y - D.ty) < hyp(e.x - D.tx, e.y - D.ty);
       const c = (rareHas(e.rare, 'juggernaut') ? 0.5 : 1)*(0.1 + (inFront ? 0.12 : 0) + (o.gear === 'pads' ? 0.06 : 0) + (o.r.idf - 60)*0.003 + (o.reach - e.reach)*0.06 - (e.cw - o.cw)*0.05 + o.r.blk*0.0022 + entEdge(o, e)*0.05 - (e.fire ? 0.1 : 0) + cpuBonus(G, o)*0.04) + (rareHas(o.rare, 'wall') ? 0.06 : 0);
-      if(!hasKey(e, 'unstoppable') && !(e.hyper > 0) && rand() < (c + 0.03*bdg(o, 'anchor') + (hasKey(o, 'guardian') ? 0.25 : 0))*(e.gear === 'springs' ? 0.8 : 1)*(1 - 0.1*bdg(e, 'posterizer'))){ /* Unstoppable: never blocked */ e.dunk = null; e.vz = 0; looseFromBlock(G, o, e); return; }   // Anchor vs Posterizer
+      if(!hasKey(e, 'unstoppable') && !e.safe && !(e.hyper > 0) && rand() < (c + 0.03*bdg(o, 'anchor') + (hasKey(o, 'guardian') ? 0.25 : 0))*(e.gear === 'springs' ? 0.8 : 1)*(1 - 0.1*bdg(e, 'posterizer'))){ /* Unstoppable: never blocked */ e.dunk = null; e.vz = 0; looseFromBlock(G, o, e); return; }   // Anchor vs Posterizer
     }
   }
   if(!D.done && u >= 0.85){
@@ -2464,7 +2477,7 @@ function updateBall(G, dt){
       if(hyp(o.x - b.x, o.y - b.y) < 1.5 + o.dws*0.35 + (rareHas(o.rare, 'ballhawk') ? 0.5 : 0) && b.z < o.z + 8 + o.reach){
         b.tried.add(o);
         const c = ((rareHas(b.passer.rare, 'maestro') ? 0.6 : 1)*(0.1 + (rareHas(o.rare, 'ballhawk') ? 0.08 : 0))) + (o.gear === 'gloves' ? 0.05 : 0) + o.dws*0.03 + o.iq*0.01 - b.passer.iq*0.012 + o.r.stl*0.0025 + entEdge(o, b.passer)*0.05 + cpuBonus(G, o)*0.05;
-        if(!hasKey(b.passer, 'laser') && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(crownSafe(b.passer) ? 0.35 : 1)){   /* v230: the Five's passes are picked off about a third as often (Colossus alone was losing 13 a game). v233: Vex too, once he is their sixth man */ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
+        if(!hasKey(b.passer, 'laser') && !b.passer.safe && rand() < (c + 0.03*bdg(o, 'interceptor') + (hasKey(o, 'thiefking') ? 0.08 : 0))*(1 - 0.15*bdg(b.passer, 'needle'))*(crownSafe(b.passer) ? 0.35 : 1)){   /* v230: the Five's passes are picked off about a third as often (Colossus alone was losing 13 a game). v233: Vex too, once he is their sixth man */ G.stats[o.id].stl++; G.stats[b.passer.id].to++; ultGain(G, o.team, 9 + (hasKey(o, 'thiefking') ? 10 : 0)); if(hasKey(o, 'thiefking')){ o.speedT = 3; if(rand() < 0.4) o.hyper = 5; } fxText(G, 'PICKED OFF!', '#ff5470', o.x, o.y, 9); G.sfx('steal'); giveBall(G, o); return; }
       }
     }
     if(u >= 1){
@@ -2484,7 +2497,7 @@ function updateBall(G, dt){
     const hgt = b.peak - Math.max(b.from.z, b.to.z);
     b.z = lerp(b.from.z, b.to.z, u) + 4*hgt*u*(1 - u);       // parabola from hand to rim
     const sh = b.shot.shooter;
-    if(u < 0.45 && !b.shot.hyper && !hasKey(sh, 'unblockable')){   // blocks only count on the way up (Hyper Shots and the Unblockable keystone can't be blocked)
+    if(u < 0.45 && !b.shot.hyper && !hasKey(sh, 'unblockable') && !sh.safe){   // blocks only count on the way up (Hyper Shots and the Unblockable keystone can't be blocked)
       for(const o of G.ents){
         if(o.team === sh.team || b.tried.has(o) || o.z < 1.2) continue;
         if(hyp(o.x - b.x, o.y - b.y) < 2.6 + o.dws*0.4 && b.z < o.z + 9.5 + o.reach && b.z > o.z + 4){
@@ -2574,7 +2587,7 @@ function doPass(G, e, m, oop){
 }
 function trySteal(G, e, h){
   e.cd = 0.55; e.swipe = 0.3;
-  if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles')) return;   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
+  if(h.shooting || h.dunk || h.vanishT > 0 || (hasKey(h, 'meteor') && h.avatar) || hasKey(h, 'handles') || h.safe) return;   // v264: Untouchable   // can't strip what you can't see; Meteor Slam and Ball on a String ball security
   const c = clamp(0.1 - (1 - (e.fat || 1))*0.3 + (rareHas(e.rare, 'ballhawk') ? 0.08 : 0) + (e.gear === 'gloves' ? 0.06 : 0) + e.dws*0.03 + e.iq*0.01 - h.iq*0.012 + (e.r.stl - h.r.spd*0.6)*0.004 + entEdge(e, h)*0.05 + cpuBonus(G, e)*0.05 - (h.fire ? 0.05 : 0), 0.03, 0.3);
   if(rand() < (c + 0.02*bdg(e, 'clamps') + 0.025*bdg(e, 'pickpocket') + (e.ironT > 0 ? 0.15 : 0))*(hasKey(e, 'thiefking') ? 1.5 : 1)*(1 - 0.12*bdg(h, 'slithery'))){ G.stats[e.id].stl++; G.stats[h.id].to++; ultGain(G, e.team, 9 + (hasKey(e, 'thiefking') ? 10 : 0)); if(hasKey(e, 'thiefking')){ e.speedT = 3; if(rand() < 0.4) e.hyper = 5; } fxText(G, e.ult ? 'ULTIMATE STEAL!' : entEdge(e, h) > 0 ? 'ELEMENT EDGE STEAL!' : 'STEAL!', '#ff5470', e.x, e.y, 9); G.sfx('steal'); giveBall(G, e); }
 }
@@ -2592,7 +2605,7 @@ function shove(G, e, o){
   G.stats[o.id].hits = (G.stats[o.id].hits || 0) + 1;
   o.stun = 0.9*force; o.vx = (o.x - e.x)/L*12*force; o.vy = (o.y - e.y)/L*12*force; o.shooting = null;
   const b = G.ball;
-  if(b.state === 'held' && b.holder === o){
+  if(b.state === 'held' && b.holder === o && !o.safe){   // v264: Untouchable keeps the ball through a shove
     G.stats[o.id].to++;
     Object.assign(b, { state:'loose', holder:null, vx:o.vx*0.6, vy:o.vy*0.6, vz:4, reboundable:false });
   }
@@ -2881,14 +2894,14 @@ function activateUlt(G, e){
     case 'Lightning': e.speedT = 5; break;
     case 'Ice': opp.slice().sort((a, b) => dist(a, e) - dist(b, e)).slice(0, 3).forEach(o => { o.rootT = 3; o.frozen = 3; }); break;
     case 'Earth': near(13).forEach(o => { o.stun = 1.6; o.shooting = null; }); break;
-    case 'Wind': { const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && dist(b.holder, e) < 20 && !hasKey(b.holder, 'handles')){ G.stats[e.id].stl++; G.stats[b.holder.id].to++; giveBall(G, e); } else opp.forEach(o => o.slowT = 2.5); break; }
+    case 'Wind': { const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && dist(b.holder, e) < 20 && !hasKey(b.holder, 'handles') && !b.holder.safe){ G.stats[e.id].stl++; G.stats[b.holder.id].to++; giveBall(G, e); } else opp.forEach(o => o.slowT = 2.5); break; }
     case 'Shadow': e.vanishT = 4.5; break;
     case 'Metal': G.ents.filter(o => o.team === e.team).forEach(o => o.ironT = 6); break;
     case 'Light': opp.forEach(o => o.blindT = 3.5); break;
     case 'Legend': opp.forEach(o => { o.stun = 2; o.shooting = null; knock(o, 8); }); e.hyper = 7; e.judgment = true; break;
   }
   // a stunned ball handler coughs it up
-  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0){ const h = b.holder;   /* v231: this works on everyone again, the Five Crowns included */ G.stats[h.id].to++; Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
+  const b = G.ball; if(b.state === 'held' && b.holder.team !== e.team && b.holder.stun > 0 && !b.holder.safe){ const h = b.holder;   /* v231: this works on everyone again, the Five Crowns included */ G.stats[h.id].to++; Object.assign(b, { state:'loose', holder:null, vx:h.vx*0.5, vy:h.vy*0.5, vz:4, reboundable:false }); }
   return true;
 }
 // timers for the effects, ticked every frame for every creature
@@ -7253,7 +7266,7 @@ function hubBadges(L){
   const fx = treeEffects(A), earned = Object.entries(fx.badges);
   return `<div class="panel treehead"><div style="flex:1;min-width:220px"><h3>${esc(pname(A))}'s skill tree</h3>
       <div class="cond"><b class="gold" style="font-size:20px">${A.treePts}</b> skill point${A.treePts === 1 ? '' : 's'} to spend · ${A.tree.length - 1}/${Object.keys(TREE.N).length - 1} nodes taken</div>
-      <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses. Past the rim, the Ascendant ring gives +2 nodes and an Ascendant mastery at the end of every lane, and past that the Mythic ring gives +3 nodes and a Mythic mastery. The 16 team keystones on those two rings boost every teammate instead of you.</div></div>
+      <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses. Past the rim, the Ascendant ring gives +2 nodes and an Ascendant mastery at the end of every lane, and past that the Mythic ring gives +3 nodes and a Mythic mastery. The 16 team keystones on those two rings boost every teammate instead of you, and Untouchable at the very top keeps the other team from stealing, intercepting or blocking against your team.</div></div>
     <div class="row" style="gap:6px;align-self:flex-start"><button class="btn sm" data-tree="in">＋</button><button class="btn sm" data-tree="out">－</button><button class="btn sm" data-tree="fit">Fit</button>
       <select id="tree-focus" aria-label="Auto-fill focus">${[['all', 'Balanced'], ['fin', 'Finishing'], ['sht', 'Shooting'], ['ply', 'Playmaking'], ['def', 'Defense']].map(([k, n]) => `<option value="${k}" ${(UI.treeFocus || 'all') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
       <button class="btn sm hot" data-act="tree-auto" ${A.treePts >= 1 ? '' : 'disabled'}>Auto-fill (${Math.floor(A.treePts)})</button><button class="btn sm cool" data-act="tree-buy" data-id="1" ${L.coins >= 220 ? '' : 'disabled'}>Buy 5 pts · 220 coins</button><button class="btn sm cool" data-act="tree-buy" data-id="max" ${L.coins >= 220 ? '' : 'disabled'}>Buy max (${Math.floor(L.coins/220)*5} pts)</button><button class="btn sm" data-act="tree-reset" ${A.tree.length > 1 ? '' : 'disabled'}>Reset tree · 200 coins</button></div></div>
@@ -7294,7 +7307,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 263;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 264;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
