@@ -304,10 +304,10 @@ select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
 .endspace{height:32px;flex:none}
 .bnav,.phoneonly{display:none}.subtabs{display:flex;flex-wrap:wrap;margin-top:10px}   /* v207: the second row of tabs shows on computers too */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;justify-content:space-around;gap:2px;padding:6px max(8px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px));background:rgba(11,14,34,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.bnavitem{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 0;font:600 10px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
+.bnavitem{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 0;font:600 11px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
 .bnavitem .bi{font-size:20px;line-height:1}.bnavitem.on{color:var(--text)}.bnavitem.on .bi{filter:drop-shadow(0 0 6px rgba(255,107,44,.7))}
 .bnavitem .tabbadge{position:absolute;top:0;right:6%}.subtab .tabbadge{margin-left:4px}
-.bnavsim{flex:none;width:58px;height:56px;margin-top:-18px;border-radius:18px;border:2px solid #ffb07a;background:var(--hot);color:#1a0b02;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 18px rgba(255,107,44,.45)}
+.bnavsim{flex:none;width:64px;height:56px;margin-top:-18px;border-radius:18px;border:2px solid #ffb07a;background:var(--hot);color:#1a0b02;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 18px rgba(255,107,44,.45)}
 .bnavsim:disabled{opacity:.5}
 .rivalbar .rv-more + .chips{display:none}
 .subtabs{gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
@@ -469,7 +469,7 @@ html.skin tr.me td:first-child{ box-shadow:inset 4px 0 0 var(--team) }
 /* bottom bar: a scorer's table, with Sim as an actual basketball */
 html.skin .bnav{ background:rgba(0,0,0,.96); border-top:2px solid rgba(255,107,44,.55) }
 html.skin .bnavitem[aria-current="page"], html.skin .bnavitem.on{ color:var(--acc) }
-html.skin .bnavsim{ width:60px; height:60px; margin-top:-22px; border-radius:50%; border:2px solid #2a1206; color:#fff;
+html.skin .bnavsim{ width:64px; height:64px; margin-top:-24px; border-radius:50%; border:2px solid #2a1206; color:#fff;
   font:400 15px var(--display); text-shadow:0 2px 0 #5a1d04; letter-spacing:0;
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 66 66'%3E%3Cg fill='none' stroke='%232a1206' stroke-width='2' stroke-opacity='.55'%3E%3Cpath d='M33 0V66M0 33H66'/%3E%3Cpath d='M11 6C22 18 22 48 11 60M55 6C44 18 44 48 55 60'/%3E%3C/g%3E%3C/svg%3E") center/100% 100%,
@@ -6831,7 +6831,7 @@ function renderHelp(back){
   showView(`<div class="wrap">
     <div class="row" style="justify-content:space-between"><h2>How to play</h2><button class="btn" data-act="${back}">Back</button></div>
     <div class="split">
-      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has seven buttons: Play, Team (Roster, Train), Legend (Skill tree, Bonds), Office (Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena), League and ⚙️ Auto. How to play and Settings are in the ☰ menu at the top right. Tap the coin counter for what you earn and spend; your payroll is a folding card on Roster, Trade and Free Agents. Tap anything underlined or a yellow ? to see what it means.</p></div>
+      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has six buttons: Play, Team (Roster, Train, Skill tree, Bonds), Office (Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena), League and ⚙️ Auto. How to play and Settings are in the ☰ menu at the top right. Tap the coin counter for what you earn and spend; your payroll is a folding card on Roster, Trade and Free Agents. Tap anything underlined or a yellow ? to see what it means.</p></div>
       <div class="panel"><h3>How games work</h3><p class="dim">You are the GM and coach. Every game is simulated: your creatures play it out on their own, using their ratings, playstyles, badges, keystones and your game plan. Want to coach one yourself? Tap 📺 Watch on the Play tab to see it on the court and make calls any time (pace, shots, playbook, defense, double or hunt a player, subs, timeouts, working the refs), or 🎙 Quick coach to get a stop every half quarter instead. You decide who is on the roster, who starts and where, how they train, what they buy, who you trade for and draft, and how the team plays.</p>
         <h3 style="margin-top:12px">A 20-year career</h3><p class="dim">Your career runs 20 seasons: Rookie years, Rising, Prime, Veteran, Twilight and a Farewell season. Milestone scenes mark years 2, 5, 10, 15 and the end. From year 15 your body slows down (−2 per year in games), and Kaine ages with you. Every season goes on your timeline (Legacy tab). After the last one: a retirement ceremony, your career summary and legacy score, your number in the rafters and the Hall of Fame. Then retire and stay on as GM, or play one more season.</p>
         <h3 style="margin-top:12px">Playing time builds stars</h3><p class="dim">Each creature has a role from how much it actually plays: Starter, Rotation, Bench or Buried. Starters grow 25% faster from games, buried creatures 40% slower. Young starters can break out (+1 Potential); young creatures buried on the bench can stall (−1). Free agents check where they would play: prospects refuse to be buried, and anyone young asks more to sit.</p>
@@ -7050,8 +7050,7 @@ const TABS = [['play', 'Play'], ['roster', 'Roster'], ['bonds', 'Bonds'], ['upgr
    pending storyline, sim the next playoff day, or open the offseason. */
 const NAV_GROUPS = [   /* v268: Office split in two (Office + Build), your own player gets a Legend group, Auto moved to the menu */
   { id:'play', label:'Play', icon:'🏀', tabs:['play'] },
-  { id:'team', label:'Team', icon:'👥', tabs:['roster', 'train'] },
-  { id:'legend', label:'Legend', icon:'⭐', tabs:['badges', 'bonds'] },
+  { id:'team', label:'Team', icon:'👥', tabs:['roster', 'train', 'badges', 'bonds'] },   // v274: Skill tree and Bonds (the old Legend group) joined Team
   { id:'office', label:'Office', icon:'💼', tabs:['trade', 'fa', 'scout'] },   /* v272: Money folded into Roster, Trade, Free Agents and the coin counter */
   { id:'build', label:'Build', icon:'🛠️', tabs:['farm', 'shop', 'upgrades', 'arena'] },
   { id:'league', label:'League', icon:'🏆', tabs:['standings', 'leaders', 'legacy', 'types'] },
@@ -7081,7 +7080,7 @@ function navAction(L){
 function bottomNav(L){
   const cur = groupOf(UI.tab), a = navAction(L), todo = todoList(L).length;
   const item = g => `<button class="bnavitem ${cur.id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}"><span class="bi">${g.icon}</span><span>${g.label}</span>${countBadge(groupCount(L, g))}</button>`;
-  return `<nav class="bnav">${item(NAV_GROUPS[0])}${item(NAV_GROUPS[1])}${item(NAV_GROUPS[2])}<button class="bnavsim" data-act="${a.act}" ${a.id ? `data-id="${a.id}"` : ''} ${a.off ? 'disabled' : ''}>${a.label}</button>${item(NAV_GROUPS[3])}${item(NAV_GROUPS[4])}${item(NAV_GROUPS[5])}${item(NAV_GROUPS[6])}</nav>`;
+  return `<nav class="bnav">${item(NAV_GROUPS[0])}${item(NAV_GROUPS[1])}${item(NAV_GROUPS[2])}<button class="bnavsim" data-act="${a.act}" ${a.id ? `data-id="${a.id}"` : ''} ${a.off ? 'disabled' : ''}>${a.label}</button>${item(NAV_GROUPS[3])}${item(NAV_GROUPS[4])}${item(NAV_GROUPS[5])}</nav>`;   /* v274: six buttons, three on each side of SIM */
 }
 function subTabs(){
   const g = groupOf(UI.tab); if(g.tabs.length < 2) return '';
@@ -7444,7 +7443,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 273;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 274;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8967,8 +8966,7 @@ function navTipPanel(){ if(SET.navTip) return '';
   return `<div class="panel navtip"><div class="row" style="justify-content:space-between;gap:8px"><h3 style="margin:0">🧭 Where everything is now</h3><button class="btn sm hot" data-act="navtip-ok">Got it</button></div>
     <div class="dim cond" style="margin:4px 0 6px">The tabs were regrouped in the bottom bar. A number on a group means something there is waiting for you.</div>
     ${row(G('play'), 'Your next game', 'Game prep, Story and News fold open and closed. They stay how you leave them.')}
-    ${row(G('team'), 'Roster, Train', 'Compare two creatures and your payroll are on Roster.')}
-    ${row(G('legend'), 'Skill tree, Bonds', 'Your own player. New: set a goal on the skill tree.')}
+    ${row(G('team'), 'Roster, Train, Skill tree, Bonds', 'Compare two creatures and your payroll are on Roster. New: set a goal on the skill tree.')}
     ${row(G('office'), 'Trade, Free Agents, Scouting', 'New: ⚡ Auto deal in the trade finder, and search and filters in Free Agents. Your payroll is a folding card here and on Roster.')}
     ${row(G('build'), 'Farm, Shop, Upgrades, Arena', 'Moved here from Office. New on the Farm: Best pairs and Make an Apex.')}
     ${row(G('league'), 'Standings, Leaders, Legacy, Types')}
