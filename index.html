@@ -3162,7 +3162,7 @@ function drawMouth(ctx, kind, mx, my, hr, c1, dark, open, stage){
 // Arms by body plan. a: 0 hangs down, PI/2 forward, PI straight up.
 function drawLimb(ctx, kind, x, y, a, fill, dark, thick, claws, o){
   thick = thick || 1;
-  if(!kind || kind === 'paw') return drawArm(ctx, x, y, a, fill, dark, thick, claws);
+  if(!kind || kind === 'paw') return drawArm(ctx, x, y, a, fill, dark, thick, claws, o && o.band);
   ctx.save(); ctx.translate(x, y); ctx.rotate(-a);
   ctx.fillStyle = fill; ctx.strokeStyle = dark; ctx.lineWidth = 0.02;
   const fs = () => { ctx.fill(); ctx.stroke(); };
@@ -3404,45 +3404,64 @@ function drawCreature(ctx, sp, px, py, hpx, o){
   if(K.legs === 'none'){   // floaters: a soft glow instead of legs
     ctx.fillStyle = hexA(P && P.belly ? P.belly : '#ffffff', 0.35); ctx.beginPath(); ctx.ellipse(0, -0.05 + Math.sin(t*3)*0.015, rx*0.7, 0.04, 0, 0, Math.PI*2); ctx.fill();
   } else if(K.leg > 0){
-    ctx.strokeStyle = shade(c1, -0.25); ctx.lineWidth = 0.098*K.body*thickL;
-    for(const [fx, fy] of feet){ ctx.beginPath(); ctx.moveTo(fx*0.7, by + ry*0.7); ctx.lineTo(fx, fy - 0.02); ctx.stroke(); }
-    if(o.jersey){ const lw = ctx.lineWidth; ctx.lineCap = 'butt'; ctx.strokeStyle = shade(o.jersey, -0.3); ctx.lineWidth = lw*1.4;   // v206: shorts legs over the top half of each leg
-      for(const [fx, fy] of feet){ const x0 = fx*0.7, y0 = by + ry*0.7, x1 = x0 + (fx - x0)*0.5, y1 = y0 + (fy - 0.02 - y0)*0.5; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); }
-      ctx.lineCap = 'round'; }
+    /* v290: each leg is a thigh and a shin with a knee that bends a little forward; in a game, a sock above the shoe */
+    if(!o.air){ ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(0, -0.005, rx*1.05 + 0.06, 0.035, 0, 0, Math.PI*2); ctx.fill(); }   // shadow on the floor
+    ctx.strokeStyle = dark; ctx.lineWidth = 0.02;
+    const lw = 0.05*K.body*thickL;
+    feet.forEach(([fx, fy], i) => { const x0 = fx*0.7, y0 = by + ry*0.7, x2 = fx - 0.01, y2 = fy - 0.04, kx = (x0 + x2)/2 + 0.025, ky = (y0 + y2)/2, col = i ? shade(c1, -0.12) : shade(c1, -0.22);
+      taperLimb(ctx, x0, y0, kx, ky, lw, lw*0.8, col); taperLimb(ctx, kx, ky, x2, y2, lw*0.8, lw*0.62, shade(col, -0.04));
+      if(o.jersey){ ctx.fillStyle = '#f1f4fa'; ctx.beginPath(); ctx.roundRect(x2 - lw*0.75, y2 - 0.045, lw*1.5, 0.05, 0.01); ctx.fill(); ctx.stroke(); ctx.fillStyle = o.jersey; ctx.fillRect(x2 - lw*0.72, y2 - 0.035, lw*1.44, 0.011); } });   // sock with a team stripe
     ctx.strokeStyle = dark; ctx.lineWidth = 0.022;
   }
   if(K.legs !== 'none'){
     const fw = 0.1*Math.max(1, K.body*0.95)*(thickL > 1 ? 1.25 : 1), fh = 0.045*(thickL > 1 ? 1.2 : 1);
     for(const [fx, fy] of feet){
-      ctx.fillStyle = o.jersey ? '#f1f4fa' : shade(c1, -0.3); ctx.beginPath(); ctx.ellipse(fx, fy, fw*(o.jersey ? 1.08 : 1), fh*(o.jersey ? 1.15 : 1), o.air ? 0.4 : 0, 0, Math.PI*2); fillStroke();
-      if(o.jersey){   // sneakers: white upper, team-colour sole and stripe
-        ctx.save(); ctx.beginPath(); ctx.ellipse(fx, fy, fw*1.08, fh*1.15, o.air ? 0.4 : 0, 0, Math.PI*2); ctx.clip();
-        ctx.fillStyle = o.jersey; ctx.fillRect(fx - fw*1.3, fy + fh*0.35, fw*2.6, fh); ctx.fillRect(fx - fw*0.1, fy - fh*1.2, fw*0.28, fh*1.7); ctx.restore(); }
+      if(!o.jersey){ ctx.fillStyle = shade(c1, -0.3); ctx.beginPath(); ctx.ellipse(fx, fy, fw, fh, o.air ? 0.4 : 0, 0, Math.PI*2); fillStroke(); continue; }
+      /* v290 high-top sneaker, toe pointing forward (+x): a white upper with an ankle collar, a team-color sole and swoosh, laces */
+      ctx.save(); ctx.translate(fx, fy); if(o.air) ctx.rotate(0.4);
+      const L = fw*1.25, H = fh*1.9;
+      ctx.fillStyle = '#f4f6fb'; ctx.beginPath(); ctx.moveTo(-L*0.62, fh*0.55); ctx.lineTo(-L*0.66, -H*0.95); ctx.quadraticCurveTo(-L*0.3, -H*1.15, -L*0.02, -H*0.85);
+      ctx.quadraticCurveTo(L*0.35, -H*0.45, L*0.82, -H*0.15); ctx.quadraticCurveTo(L*1.05, fh*0.1, L*0.9, fh*0.55); ctx.closePath(); fillStroke();
+      ctx.fillStyle = o.jersey; ctx.beginPath(); ctx.roundRect(-L*0.68, fh*0.2, L*1.62, fh*0.6, fh*0.25); fillStroke();   // sole
+      ctx.beginPath(); ctx.moveTo(-L*0.45, -H*0.25); ctx.quadraticCurveTo(L*0.1, -H*0.05, L*0.55, -H*0.45); ctx.lineTo(L*0.5, -H*0.25); ctx.quadraticCurveTo(L*0.05, H*0.05, -L*0.45, -H*0.08); ctx.closePath(); ctx.fill();   // swoosh
+      ctx.strokeStyle = shade(o.jersey, -0.35); ctx.lineWidth = 0.008; ctx.beginPath(); for(let k = 0; k < 3; k++){ const lx = -L*0.12 + k*L*0.17, ly = -H*0.72 + k*H*0.16; ctx.moveTo(lx - L*0.05, ly); ctx.lineTo(lx + L*0.07, ly + H*0.06); } ctx.stroke();   // laces
+      ctx.strokeStyle = dark; ctx.lineWidth = 0.022; ctx.restore();
     }
     if(K.claws && !o.jersey) for(const [fx, fy] of feet) toes(ctx, fx + 0.08, fy + 0.01, 0.03);
   }
   // 3. back arm (behind the body)
-  drawLimb(ctx, K.arms, -rx*0.7, by - ry*0.35, armB, shade(c1, -0.15), dark, K.body, K.claws, { t, wing: P && P.wing, wingK: S.heroForm ? 1.2 : 1 });
+  drawLimb(ctx, K.arms, -rx*0.7, by - ry*0.35, armB, shade(c1, -0.15), dark, K.body, K.claws, { t, wing: P && P.wing, wingK: S.heroForm ? 1.2 : 1, band:o.jersey && shade(o.jersey, -0.15) });
   // 4. body, markings, jersey
   ctx.fillStyle = litFill(ctx, c1, 0, by, Math.max(rx, ry));
   bodyPath(ctx, K, by, rx, ry); fillStroke();
   ctx.save(); bodyPath(ctx, K, by, rx, ry); ctx.clip();
   if(!o.jersey){ ctx.fillStyle = P && P.belly ? P.belly : shade(c1, 0.35); ctx.beginPath(); ctx.ellipse(rx*0.15, by + ry*0.15, rx*0.55, ry*0.6, 0, 0, Math.PI*2); ctx.fill(); }  // belly patch
   if(K.pattern) drawPattern(ctx, K.pattern, g);
-  if(o.jersey){
-    const jy = by - ry*0.4, jh = ry*1.25, jg = ctx.createLinearGradient(-rx, 0, rx, 0); jg.addColorStop(0, shade(o.jersey, 0.2)); jg.addColorStop(0.55, o.jersey); jg.addColorStop(1, shade(o.jersey, -0.32));
-    ctx.fillStyle = jg; ctx.fillRect(-1, jy, 2, jh);
-    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillRect(-1, jy, 2, 0.03);                       // collar trim
-    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-rx*0.93, jy, rx*0.13, jh);             // side stripe
-    ctx.fillStyle = shade(o.jersey, -0.3); ctx.fillRect(-1, by + ry*0.62, 2, ry);                // shorts
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fillRect(-1, by + ry*0.6, 2, 0.045);                   // waistband
-    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-rx*0.93, by + ry*0.62, rx*0.13, ry);  // the stripe carries down the shorts
+  if(o.jersey){   /* v290: a tank top that the body wears: shoulders and neck show, with trim around the neck and armholes */
+    const nx = rx*0.12, top = by - ry*1.1, ah = by - ry*0.3, bot = by + ry*0.75;
+    const tank = () => { ctx.beginPath(); ctx.moveTo(-rx*0.42, top); ctx.quadraticCurveTo(-rx*0.6, ah - ry*0.12, -rx*1.2, ah); ctx.lineTo(-rx*1.2, bot); ctx.lineTo(rx*1.2, bot); ctx.lineTo(rx*1.2, ah);
+      ctx.quadraticCurveTo(rx*0.6, ah - ry*0.12, rx*0.52, top); ctx.lineTo(nx + rx*0.32, top); ctx.quadraticCurveTo(nx, by - ry*0.35, nx - rx*0.3, top); ctx.closePath(); };
+    const jg = ctx.createLinearGradient(-rx, 0, rx, 0); jg.addColorStop(0, shade(o.jersey, 0.22)); jg.addColorStop(0.55, o.jersey); jg.addColorStop(1, shade(o.jersey, -0.32));
+    ctx.fillStyle = jg; tank(); ctx.fill();
+    ctx.save(); tank(); ctx.clip(); ctx.fillStyle = shade(o.jersey, -0.38); ctx.fillRect(-rx*1.2, by - ry*2, rx*0.36, ry*4);   // darker side panel
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillRect(-rx*0.86, by - ry*2, rx*0.06, ry*4); ctx.restore();                   // piping
+    ctx.strokeStyle = 'rgba(255,255,255,.92)'; ctx.lineWidth = 0.022;   // trim: neck and both armholes
+    ctx.beginPath(); ctx.moveTo(nx + rx*0.32, top); ctx.quadraticCurveTo(nx, by - ry*0.35, nx - rx*0.3, top);
+    ctx.moveTo(-rx*0.42, top); ctx.quadraticCurveTo(-rx*0.6, ah - ry*0.12, -rx*1.2, ah); ctx.moveTo(rx*0.52, top); ctx.quadraticCurveTo(rx*0.6, ah - ry*0.12, rx*1.2, ah); ctx.stroke();
+    ctx.strokeStyle = dark; ctx.lineWidth = 0.028;
   }
   // v206 cel shading: a hard-edged shadow down the far side and underneath, and one sharp highlight
   ctx.fillStyle = 'rgba(8,10,40,.28)'; ctx.beginPath(); ctx.rect(-2, by - ry*2, 4, ry*4); ctx.ellipse(-rx*0.3, by - ry*0.28, rx*1.1, ry*1.14, 0, 0, Math.PI*2); ctx.fill('evenodd');
   ctx.fillStyle = 'rgba(255,255,255,.34)'; ctx.beginPath(); ctx.ellipse(-rx*0.5, by - ry*0.45, rx*0.1, ry*0.38, 0.45, 0, Math.PI*2); ctx.fill();
   ctx.restore();
   bodyPath(ctx, K, by, rx, ry); ctx.stroke();
+  if(o.jersey && K.leg > 0 && K.legs !== 'none'){   /* v290 shorts: a waistband across the body, two leg openings over the thighs, a side stripe and hem trim */
+    const W = rx*0.98, wy = by + ry*0.5, h = ry*0.5 + 0.075, sc = shade(o.jersey, -0.28);
+    const shorts = () => { ctx.beginPath(); ctx.moveTo(-W, wy); ctx.quadraticCurveTo(0, wy + ry*0.06, W, wy); ctx.lineTo(W*1.04, wy + h); ctx.lineTo(0.035, wy + h); ctx.lineTo(0.005, wy + h*0.55); ctx.lineTo(-0.025, wy + h); ctx.lineTo(-W*1.04, wy + h); ctx.closePath(); };
+    const sg = ctx.createLinearGradient(-W, 0, W, 0); sg.addColorStop(0, shade(sc, 0.15)); sg.addColorStop(1, shade(sc, -0.2)); ctx.fillStyle = sg; shorts(); ctx.fill(); ctx.stroke();
+    ctx.save(); shorts(); ctx.clip(); ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(-W*1.1, wy - 0.01, W*2.2, 0.04);   // waistband
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-W*0.88, wy, W*0.08, h); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(-W*1.1, wy + h - 0.016, W*2.2, 0.016); ctx.restore();   // side stripe, hem trim
+  }
   if(K.orn) drawOrnament(ctx, K.orn, 'body', g);
   if((S.stage === 3 || S.legend) && !S.heroForm){   // shoulder plates on final forms
     ctx.fillStyle = litFill(ctx, c2, 0, by - ry*0.8, rx*1.1);
@@ -3492,7 +3511,7 @@ function drawCreature(ctx, sp, px, py, hpx, o){
   if(K.halo){ ctx.save(); ctx.strokeStyle = '#ffe27a'; ctx.lineWidth = 0.035; ctx.shadowColor = '#ffd23a'; ctx.shadowBlur = 0.2; ctx.beginPath(); ctx.ellipse(hx - hr*0.1, hy - hr*1.75 + Math.sin(t*3)*0.015, hr*0.75, hr*0.2, -0.1, 0, Math.PI*2); ctx.stroke(); ctx.restore(); }
   if(o.look && o.look.acc) drawAcc(ctx, o.look.acc, K, hx, hy, hr, ex, ey, dark, c2);   // this creature's own accessory
   // 7. front arm, then anything that floats in front
-  drawLimb(ctx, K.arms, rx*0.7, by - ry*0.35, armF, c1, dark, K.body, K.claws, { t, wing: P && P.wing, wingK: S.heroForm ? 1.2 : 1 });
+  drawLimb(ctx, K.arms, rx*0.7, by - ry*0.35, armF, c1, dark, K.body, K.claws, { t, wing: P && P.wing, wingK: S.heroForm ? 1.2 : 1, band:o.jersey });
   if(K.orn) drawOrnament(ctx, K.orn, 'front', g);
   ctx.restore();
   // jersey number (drawn unflipped so it reads correctly; hidden mid-spin)
@@ -3941,12 +3960,22 @@ function heroArmor(ctx, g){
 }
 
 // One arm. a is the arm angle: 0 hangs down, PI/2 points forward, PI points straight up.
-function drawArm(ctx, x, y, a, fill, dark, thick, claws){
+/* v290: a real arm instead of a mitten: a tapered upper arm, a bent elbow, a forearm, a rounded hand, and (in a game)
+   a wristband in the team color. Same reach as before (about 0.22 units at thick 1). */
+function drawArm(ctx, x, y, a, fill, dark, thick, claws, band){
   thick = thick || 1;
   ctx.save(); ctx.translate(x, y); ctx.rotate(-a);
-  ctx.fillStyle = fill; ctx.strokeStyle = dark; ctx.lineWidth = 0.022;
-  ctx.beginPath(); ctx.ellipse(0, 0.1*thick, 0.058*thick, 0.115*thick, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-  if(claws) toes(ctx, 0, 0.21*thick, 0.028);
+  ctx.strokeStyle = dark; ctx.lineWidth = 0.02;
+  const w1 = 0.05*thick, w2 = 0.04*thick, ex = 0.012*thick, ey = 0.11*thick, hx = 0.035*thick, hy = 0.2*thick;   // shoulder (0,0), elbow, wrist
+  taperLimb(ctx, 0, 0, ex, ey, w1, w1*0.82, fill);
+  taperLimb(ctx, ex, ey, hx, hy, w1*0.82, w2, shade(fill, -0.04));
+  ctx.fillStyle = 'rgba(8,10,40,.22)'; ctx.beginPath(); ctx.ellipse(ex - w1*0.35, ey + 0.035*thick, w1*0.35, 0.06*thick, 0.15, 0, Math.PI*2); ctx.fill();   // shade on the back of the arm
+  if(band){ const bx = ex + (hx - ex)*0.72, byy = ey + (hy - ey)*0.72, ang = Math.atan2(hy - ey, hx - ex);
+    ctx.save(); ctx.translate(bx, byy); ctx.rotate(ang); ctx.fillStyle = band; ctx.beginPath(); ctx.roundRect(-0.022*thick, -w2*1.12, 0.044*thick, w2*2.24, 0.012); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(-0.004*thick, -w2*1.05, 0.008*thick, w2*2.1); ctx.restore(); }
+  ctx.fillStyle = shade(fill, 0.04); ctx.beginPath(); ctx.ellipse(hx + 0.004, hy + w2*0.55, w2*1.18, w2*1.28, 0.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();   // hand
+  ctx.strokeStyle = shade(fill, -0.35); ctx.lineWidth = 0.009; ctx.beginPath(); ctx.moveTo(hx - w2*0.4, hy + w2*1.05); ctx.lineTo(hx - w2*0.3, hy + w2*1.55); ctx.moveTo(hx + w2*0.15, hy + w2*1.15); ctx.lineTo(hx + w2*0.2, hy + w2*1.65); ctx.stroke();   // finger lines
+  if(claws) toes(ctx, hx, hy + w2*1.6, 0.024);
   ctx.restore();
 }
 // Three little white claws around (x, y).
@@ -7531,7 +7560,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 289;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 290;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
