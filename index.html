@@ -304,10 +304,10 @@ select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
 .endspace{height:32px;flex:none}
 .bnav,.phoneonly{display:none}.subtabs{display:flex;flex-wrap:wrap;margin-top:10px}   /* v207: the second row of tabs shows on computers too */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:50;align-items:center;justify-content:space-around;gap:2px;padding:6px max(8px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px));background:rgba(11,14,34,.96);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-.bnavitem{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 0;font:600 11px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
+.bnavitem{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:none;padding:6px 0;font:600 10px var(--cond);letter-spacing:.04em;text-transform:uppercase;color:var(--dim);min-height:48px}
 .bnavitem .bi{font-size:20px;line-height:1}.bnavitem.on{color:var(--text)}.bnavitem.on .bi{filter:drop-shadow(0 0 6px rgba(255,107,44,.7))}
 .bnavitem .tabbadge{position:absolute;top:0;right:6%}.subtab .tabbadge{margin-left:4px}
-.bnavsim{flex:none;width:64px;height:56px;margin-top:-18px;border-radius:18px;border:2px solid #ffb07a;background:var(--hot);color:#1a0b02;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 18px rgba(255,107,44,.45)}
+.bnavsim{flex:none;width:58px;height:56px;margin-top:-18px;border-radius:18px;border:2px solid #ffb07a;background:var(--hot);color:#1a0b02;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;box-shadow:0 6px 18px rgba(255,107,44,.45)}
 .bnavsim:disabled{opacity:.5}
 .rivalbar .rv-more + .chips{display:none}
 .subtabs{gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
@@ -469,7 +469,7 @@ html.skin tr.me td:first-child{ box-shadow:inset 4px 0 0 var(--team) }
 /* bottom bar: a scorer's table, with Sim as an actual basketball */
 html.skin .bnav{ background:rgba(0,0,0,.96); border-top:2px solid rgba(255,107,44,.55) }
 html.skin .bnavitem[aria-current="page"], html.skin .bnavitem.on{ color:var(--acc) }
-html.skin .bnavsim{ width:66px; height:66px; margin-top:-26px; border-radius:50%; border:2px solid #2a1206; color:#fff;
+html.skin .bnavsim{ width:60px; height:60px; margin-top:-22px; border-radius:50%; border:2px solid #2a1206; color:#fff;
   font:400 15px var(--display); text-shadow:0 2px 0 #5a1d04; letter-spacing:0;
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 66 66'%3E%3Cg fill='none' stroke='%232a1206' stroke-width='2' stroke-opacity='.55'%3E%3Cpath d='M33 0V66M0 33H66'/%3E%3Cpath d='M11 6C22 18 22 48 11 60M55 6C44 18 44 48 55 60'/%3E%3C/g%3E%3C/svg%3E") center/100% 100%,
@@ -6831,7 +6831,7 @@ function renderHelp(back){
   showView(`<div class="wrap">
     <div class="row" style="justify-content:space-between"><h2>How to play</h2><button class="btn" data-act="${back}">Back</button></div>
     <div class="split">
-      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has six groups: Play, Team (Roster, Train), Legend (Skill tree, Bonds), Office (Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena) and League. ⚙️ Auto, How to play and Settings are in the ☰ menu at the top right. Tap the coin counter for what you earn and spend; your payroll is a folding card on Roster, Trade and Free Agents. Tap anything underlined or a yellow ? to see what it means.</p></div>
+      <div class="panel"><h3>Where things are</h3><p class="dim">The bottom bar has seven buttons: Play, Team (Roster, Train), Legend (Skill tree, Bonds), Office (Trade, Free Agents, Scouting), Build (Farm, Shop, Upgrades, Arena), League and ⚙️ Auto. How to play and Settings are in the ☰ menu at the top right. Tap the coin counter for what you earn and spend; your payroll is a folding card on Roster, Trade and Free Agents. Tap anything underlined or a yellow ? to see what it means.</p></div>
       <div class="panel"><h3>How games work</h3><p class="dim">You are the GM and coach. Every game is simulated: your creatures play it out on their own, using their ratings, playstyles, badges, keystones and your game plan. Want to coach one yourself? Tap 📺 Watch on the Play tab to see it on the court and make calls any time (pace, shots, playbook, defense, double or hunt a player, subs, timeouts, working the refs), or 🎙 Quick coach to get a stop every half quarter instead. You decide who is on the roster, who starts and where, how they train, what they buy, who you trade for and draft, and how the team plays.</p>
         <h3 style="margin-top:12px">A 20-year career</h3><p class="dim">Your career runs 20 seasons: Rookie years, Rising, Prime, Veteran, Twilight and a Farewell season. Milestone scenes mark years 2, 5, 10, 15 and the end. From year 15 your body slows down (−2 per year in games), and Kaine ages with you. Every season goes on your timeline (Legacy tab). After the last one: a retirement ceremony, your career summary and legacy score, your number in the rafters and the Hall of Fame. Then retire and stay on as GM, or play one more season.</p>
         <h3 style="margin-top:12px">Playing time builds stars</h3><p class="dim">Each creature has a role from how much it actually plays: Starter, Rotation, Bench or Buried. Starters grow 25% faster from games, buried creatures 40% slower. Young starters can break out (+1 Potential); young creatures buried on the bench can stall (−1). Free agents check where they would play: prospects refuse to be buried, and anyone young asks more to sit.</p>
@@ -7055,6 +7055,7 @@ const NAV_GROUPS = [   /* v268: Office split in two (Office + Build), your own p
   { id:'office', label:'Office', icon:'💼', tabs:['trade', 'fa', 'scout'] },   /* v272: Money folded into Roster, Trade, Free Agents and the coin counter */
   { id:'build', label:'Build', icon:'🛠️', tabs:['farm', 'shop', 'upgrades', 'arena'] },
   { id:'league', label:'League', icon:'🏆', tabs:['standings', 'leaders', 'legacy', 'types'] },
+  { id:'auto', label:'Auto', icon:'⚙️', tabs:['auto'] },   // v273: back in the bottom bar, as its own button
 ];
 /* v268: a number on a tab when something there is waiting for you */
 function tabCount(L, k){ if(!L) return 0;
@@ -7080,7 +7081,7 @@ function navAction(L){
 function bottomNav(L){
   const cur = groupOf(UI.tab), a = navAction(L), todo = todoList(L).length;
   const item = g => `<button class="bnavitem ${cur.id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}"><span class="bi">${g.icon}</span><span>${g.label}</span>${countBadge(groupCount(L, g))}</button>`;
-  return `<nav class="bnav">${item(NAV_GROUPS[0])}${item(NAV_GROUPS[1])}${item(NAV_GROUPS[2])}<button class="bnavsim" data-act="${a.act}" ${a.id ? `data-id="${a.id}"` : ''} ${a.off ? 'disabled' : ''}>${a.label}</button>${item(NAV_GROUPS[3])}${item(NAV_GROUPS[4])}${item(NAV_GROUPS[5])}</nav>`;
+  return `<nav class="bnav">${item(NAV_GROUPS[0])}${item(NAV_GROUPS[1])}${item(NAV_GROUPS[2])}<button class="bnavsim" data-act="${a.act}" ${a.id ? `data-id="${a.id}"` : ''} ${a.off ? 'disabled' : ''}>${a.label}</button>${item(NAV_GROUPS[3])}${item(NAV_GROUPS[4])}${item(NAV_GROUPS[5])}${item(NAV_GROUPS[6])}</nav>`;
 }
 function subTabs(){
   const g = groupOf(UI.tab); if(g.tabs.length < 2) return '';
@@ -7197,10 +7198,10 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
         ${L.teamFx && L.teamFx.games > 0 ? `<span class="formchip ${L.teamFx.mod > 0 ? 'hot' : 'cold'}" title="From your last storyline choice: every rating in games">${L.teamFx.mod > 0 ? '🔥' : '🧊'} ${L.teamFx.label} ${L.teamFx.mod > 0 ? '+' + L.teamFx.mod : '−' + (-L.teamFx.mod)} · ${L.teamFx.games}g</span>` : ''}
         ${L.streak ? `<span class="deskonly">${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}</span>` : ''}</div></div></div>
       <button class="coins" data-act="coins-info" title="Coins: tap for what you earn and spend"><span class="coin"></span><span class="num">${L.coins}</span></button>
-      <div class="row deskonly"><button class="btn sm" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn sm" data-act="navtip-show">🧭 Where things are</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
-      <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰${SET.autoTip && SET.navTip ? '' : '<span class="tabbadge">!</span>'}</button>
+      <div class="row deskonly"><button class="btn sm" data-act="navtip-show">🧭 Where things are</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
+      <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰${SET.navTip ? '' : '<span class="tabbadge">!</span>'}</button>
     </div>
-    ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn" data-act="navtip-show">🧭 Where things are</button><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
+    ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="navtip-show">🧭 Where things are</button><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
     <div class="tabs">${NAV_GROUPS.map(g => `<button class="tab ${groupOf(UI.tab).id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}">${g.icon} ${g.label} ${countBadge(groupCount(L, g))}</button>`).join('')}</div>
     ${subTabs()}
     ${rivalBar(L)}${fiveOn(L) && !L.five.joined && L.five.tid !== L.rival ? fiveBar(L) : ''}
@@ -7443,7 +7444,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 272;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 273;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8971,9 +8972,10 @@ function navTipPanel(){ if(SET.navTip) return '';
     ${row(G('office'), 'Trade, Free Agents, Scouting', 'New: ⚡ Auto deal in the trade finder, and search and filters in Free Agents. Your payroll is a folding card here and on Roster.')}
     ${row(G('build'), 'Farm, Shop, Upgrades, Arena', 'Moved here from Office. New on the Farm: Best pairs and Make an Apex.')}
     ${row(G('league'), 'Standings, Leaders, Legacy, Types')}
-    <div class="frow"><span class="tmain"><b>☰ Menu</b> <span class="dim cond">(top right) ⚙️ Auto, How to play, Settings</span><br><span class="dim cond" style="font-size:13px">Auto used to be a tab under Team.</span></span><button class="btn sm" data-act="tab" data-id="auto">Auto</button></div>
+    ${row(G('auto'), 'Every chore on autopilot', 'Lineups, training, your skill tree, the farm, re-signing and more. It used to be a tab under Team.')}
+    <div class="frow"><span class="tmain"><b>☰ Menu</b> <span class="dim cond">(top right) How to play, Settings, this card</span></span></div>
     <div class="dim cond" style="margin-top:4px">The Money tab is gone: tap the coin counter at the top for coins, and see Payroll on Roster, Trade or Free Agents for salaries. Tap anything underlined or a yellow ? to see what it means. To see this card again: ☰ menu, Where things are.</div></div>`; }
-function autoTipPanel(){ if(SET.autoTip || !SET.navTip) return '';
+function autoTipPanel(){ return ''; /* v273: Auto is a bottom-bar button again, so this note is retired */ if(SET.autoTip || !SET.navTip) return '';
   return `<div class="panel autotip"><div class="row" style="gap:8px;justify-content:space-between;flex-wrap:wrap"><span style="flex:1;min-width:200px">⚙️ <b>Auto</b> runs the chores for you: lineups, training, your skill tree, the farm, re-signing and more. It's in the <b>☰ menu</b> at the top right.</span>
     <span class="row" style="gap:6px"><button class="btn sm hot" data-act="tab" data-id="auto">Open Auto</button><button class="btn sm" data-act="autotip-ok">Got it</button></span></div></div>`; }
 function hubPlay(L){ return navTipPanel() + autoTipPanel() + seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
@@ -11779,7 +11781,7 @@ if(typeof document !== 'undefined'){
       case 'prompt-skip': renderHub(); break;
       case 'prompt-off': SET.prompts = false; saveSettings(); UI.msg = 'Decision prompts are off. Tick "Prompt me for each decision" in the To do box to turn them back on.'; renderHub(); break;
       case 'prompt-auto': { const A = autoOf(L); A[id] = true; if(id === 'train') L.teams[L.user].roster.forEach(x => smartTrain(L.players[x], null)); if(id === 'practice') autoPractice(L); autoKits(L); autoLineup(L); autoHang(L);
-        UI.msg = 'Auto is on for that. You can turn it off in ⚙️ Auto (☰ menu, top right).'; saveLeague(); renderHub(); break; }
+        UI.msg = 'Auto is on for that. You can turn it off on the ⚙️ Auto button in the bottom bar.'; saveLeague(); renderHub(); break; }
       // injury prompts: pick the replacement, heal him, or let the coach set the five; then decide if he gets his spot back
       case 'inj-sub': { const [a, b] = String(id).split(':').map(Number), R = L.teams[L.user].roster, i = R.indexOf(a), j = R.indexOf(b); if(i < 0 || j < 0) break;
         [R[i], R[j]] = [R[j], R[i]]; UI.msg = `${pname(L.players[b])} starts at ${POS_NAMES[i]} while ${pname(L.players[a])} is out. You'll be asked when he's healthy.`; saveLeague(); renderHub(); break; }
