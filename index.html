@@ -194,6 +194,9 @@ select{background:var(--panel2);color:var(--text);border:1px solid var(--line);b
 .ultitle{background:linear-gradient(90deg,#ff6a3d,#ffd23a,#4cc66a,#3a9bff,#ff7ad9);-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes ultshift{to{background-position:200% 0}}
 
+.warnbox{margin:6px 0;padding:7px 10px;border-radius:8px;background:rgba(255,120,60,.12);border:1px solid rgba(255,140,60,.55);font-size:14px}
+.cmptab{width:100%;border-collapse:collapse;font-size:14px}.cmptab td,.cmptab th{padding:3px 6px;border-top:1px solid rgba(255,255,255,.07);text-align:left}.cmptab th{font-family:var(--cond)}
+.recap{border-color:var(--gold)}
 .tipbubble{position:fixed;z-index:9999;background:#141a33;color:#eef2ff;border:1px solid rgba(255,210,58,.6);border-radius:10px;padding:8px 11px;font-size:14px;line-height:1.4;box-shadow:0 8px 28px rgba(0,0,0,.55);pointer-events:none}
 .qtip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-style:normal;font-size:11px;font-weight:700;color:#141a33;background:#ffd23a;vertical-align:middle;cursor:help;margin-left:2px}
 .hastip{text-decoration:underline dotted rgba(255,255,255,.45);text-underline-offset:3px;cursor:help}
@@ -1315,10 +1318,13 @@ function treeNodeValue(n, focus){
 function autoFillTree(p, focus){
   let n = 0;
   while((p.treePts || 0) >= 1){
+    // v267: a goal node goes first. Take the next node on the way to it; drop the goal once you own it
+    if(p.treeGoal){ if(!TREE.N[p.treeGoal] || treeOf(p).includes(p.treeGoal)) p.treeGoal = null;
+      else { const path = treePath(p, p.treeGoal); if(path && path.length){ p.tree.push(path[0]); p.treePts--; n++; continue; } } }
     const own = new Set(treeOf(p)), dist = {}, par = {}, q = [];
     own.forEach(id => { dist[id] = 0; q.push(id); });
     const full = keyCount(p) >= keySlots();   // no keystone slots left: route around keystones
-    for(let i = 0; i < q.length; i++){ const id = q[i]; if(!TREE.N[id]) continue; for(const a of TREE.N[id].adj) if(dist[a] == null && !(full && TREE.N[a].type === 'key')){ dist[a] = dist[id] + 1; par[a] = id; q.push(a); } }
+    for(let i = 0; i < q.length; i++){ const id = q[i]; if(!TREE.N[id]) continue; for(const a of TREE.N[id].adj) if(dist[a] == null && !(full && TREE.N[a].type === 'key') && !treeLocked(p, a)){ dist[a] = dist[id] + 1; par[a] = id; q.push(a); } }   /* v267: Auto skips Untouchable until the rest is owned */
     let best = null, bs = -1;
     for(const id in dist){ if(own.has(id) || !dist[id]) continue; const sc = treeNodeValue(TREE.N[id], focus)/Math.pow(dist[id], 1.15); if(sc > bs){ bs = sc; best = id; } }
     if(!best) break;
@@ -5572,14 +5578,29 @@ function expandLeague(L){
   L.news.unshift({ s:L.season, r:0, t:`Expansion: the league grows to ${NT(L)} teams in two conferences.` });
   L.expanded = L.season;
 }
+/* v267 Season recap: a summary card on the Play tab when a new season starts. L.recap0 is a snapshot taken at the
+   start of each season, so the card can say what changed. */
+function seasonSnap(L){ const A = L.avatar != null ? L.players[L.avatar] : null; return { coins:L.coins || 0, pts:A ? (A.treePts || 0) + (A.tree || []).length : 0, lvl:A ? A.lvl : 0 }; }
+function makeRecap(L){
+  const U = L.teams[L.user], A = L.avatar != null ? L.players[L.avatar] : null, s0 = L.recap0 || null, now = seasonSnap(L);
+  const mine = ((L.awards || {})[L.season] || []).filter(x => x.tid === L.user).map(x => `${x.name}: ${x.who}`);
+  const hatched = (L.farmLog || []).filter(e => e.s === L.season && L.players[e.id]).map(e => pname(L.players[e.id]) + (L.players[e.id].rare ? ' (' + RARE[L.players[e.id].rare].name + ')' : ''));
+  const K = L.kaine, story = !K ? '' : K.ending === 'final' ? 'Final chapter: Kaine is back as the last boss.' : L.five && L.five.fin === 1 ? 'Final chapter: the Five Crowns and Kaine.' : L.five && !L.five.joined && L.five.beatS == null ? 'The Five Crowns chapter.' : K.vex != null && !K.vexDone ? 'The Vex chapter.' : K.ending === 'ally' ? 'Kaine is on your team.' : (K.ending === 'won' || (L.five && L.five.fin === 2)) ? 'Story complete.' : 'Kaine is your rival.';
+  return { s:L.season, rec:`${U.w}-${U.l}`, finish:finishOf(L), lvl:A ? A.lvl : null, lvl0:s0 ? s0.lvl : null, pts:s0 && A ? Math.round(now.pts - s0.pts) : null, coins:s0 ? Math.round(now.coins - s0.coins) : null, awards:mine, hatched, story }; }
+function seasonRecapPanel(L){ const R = L.recapShow; if(!R) return '';
+  const li = (k, v) => v == null || v === '' || (Array.isArray(v) && !v.length) ? '' : `<li><b>${k}:</b> ${Array.isArray(v) ? v.map(esc).join(', ') : esc(String(v))}</li>`;
+  return `<div class="panel recap"><div class="row" style="justify-content:space-between"><h3 style="margin:0">📋 Season ${R.s} recap</h3><button class="btn sm" data-act="recap-ok">Got it</button></div><ul style="margin:6px 0 0 18px;padding:0">
+    ${li('Record', R.rec + ' · ' + R.finish)}${li('Your Legend', R.lvl != null ? (R.lvl0 != null && R.lvl0 !== R.lvl ? `level ${R.lvl0} → ${R.lvl}` : `level ${R.lvl}`) : null)}${li('Skill points earned', R.pts)}
+    ${li('Coins', R.coins != null ? (R.coins >= 0 ? '+' : '') + R.coins + ' (after what you spent)' : null)}${li('Awards for your team', R.awards)}${li('Hatched on your farm', R.hatched)}${li('Story', R.story)}</ul></div>`; }
 function startNextSeason(L){
   memoClear();
+  try{ L.recapShow = makeRecap(L); }catch(e){ L.recapShow = null; }   // v267: before anything resets
   Object.values(L.players).forEach(q => { if(q && q.reserved != null) delete q.reserved; });   // an unsigned hatched egg becomes a normal free agent after a season
   { const A = L.avatar != null ? L.players[L.avatar] : null; if(A) A.treePts = (A.treePts || 0) + SEASON_TREE_BONUS; }   // v262: +35 skill points every new season
   farmHatch(L); syncBredYouth(L);   // the Breed farm's egg hatches now (with Eternal Youth if it made your roster)
   if(L.ending && ENDINGS[L.ending]){ L._endApply = L.ending; L.ending = null; }
   roleSeasonEnd(L);   // young creatures break out or stall based on how much they played
-  L.season++; L.phase = 'season'; L.round = 0; L.playoffs = null; if(NT(L) < LEAGUE_SIZE) expandLeague(L); L.schedule = makeSchedule(NT(L));
+  L.season++; L.phase = 'season'; L.round = 0; L.playoffs = null; L.recap0 = seasonSnap(L);   // v267: snapshot for next season's recap if(NT(L) < LEAGUE_SIZE) expandLeague(L); L.schedule = makeSchedule(NT(L));
   L.teams.forEach(T => { T.w = T.l = T.pf = T.pa = 0; });
   Object.values(L.players).forEach(p => { p.season = blankSeason(); p.ovrStart = ovr(p); });
   retirements(L);
@@ -6230,6 +6251,7 @@ function migrate(L){
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
   if(L.five && !L.five.joined && L.teams[L.five.tid]){ memoClear(); sortRosterByOvr(L, L.teams[L.five.tid]); L.teams[L.five.tid].star = L.five.ids[0]; }   // v233: Vex moves up to sixth on their roster
   if(!L.fix248){ L.fix248 = true; if(L.five && !L.five.joined && (L.five.edge || 0) >= 230) L.five.edge -= 25; if(L.kaine && L.kaine.final && L.kaine.ending === 'final' && (L.kaine.final.edge || 0) >= 196) L.kaine.final.edge -= 25; }   // v248: the short-lived +150 setting is dialled back to +125
+  if(!L.recap0) L.recap0 = seasonSnap(L);   // v267
   if(!L.fix261){ L.fix261 = true; if(L.five && !L.five.joined && L.five.fin !== 2){ const F = L.five; F.edge = Math.max(FIVE_FLOOR, (F.edge || 0) - (F.fin === 1 ? 175 : 175)); if(F.fin === 1 && F.finS == null) F.finS = L.season; }
     if(L.five) fiveAll(L).forEach(id => { const p = L.players[id]; if(p && p.crown && CROWN_KIT[p.crown]) p.rare = CROWN_KIT[p.crown].rare; }); }   // v261: the Five's Apex Mythic traits
   if(!L.fix260){ L.fix260 = true; Object.values(L.players).forEach(p => { if(p.rare) p.rare = fixRemovedRare(p.rare); }); (L.eggs || []).concat(L.farm ? [L.farm] : []).forEach(e => (e.snap || []).forEach(sn => { if(sn.rare) sn.rare = fixRemovedRare(sn.rare); })); }   // v260: removed v259 traits
@@ -7187,6 +7209,8 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
   }));
   if(UI.tab === 'badges') initTree();
   animateLivePortraits();
+  view().querySelectorAll('[data-ui]').forEach(el => el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', () => { const k = el.dataset.ui; UI[k] = el.value; renderHub();   // v267
+    if(el.tagName === 'INPUT'){ const n = view().querySelector(`[data-ui="${k}"]`); if(n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); } } }));
   view().querySelectorAll('select[data-find]').forEach(sel => sel.addEventListener('change', () => { UI.find[sel.dataset.find] = sel.value; renderHub(); }));
   if(UI.tab === 'trade'){ const dp = $('#tr-picks'); if(dp) dp.addEventListener('toggle', () => { UI.pkOpen = dp.open; });   // remember if you opened the picks list
     const s = $('#tr-team'); if(s) s.addEventListener('change', ev => { UI.trade = { team:+ev.target.value, mine:[], theirs:[], minePk:[], theirsPk:[] }; renderHub(); }); }
@@ -7343,6 +7367,7 @@ function hubBadges(L){
   const fx = treeEffects(A), earned = Object.entries(fx.badges);
   return `<div class="panel treehead"><div style="flex:1;min-width:220px"><h3>${esc(pname(A))}'s skill tree</h3>
       <div class="cond"><b class="gold" style="font-size:20px">${A.treePts}</b> skill point${A.treePts === 1 ? '' : 's'} to spend · ${A.tree.length - 1}/${Object.keys(TREE.N).length - 1} nodes taken</div>
+      ${A.treeGoal && TREE.N[A.treeGoal] && !A.tree.includes(A.treeGoal) ? (() => { const G = TREE.N[A.treeGoal], path = treePath(A, A.treeGoal); return `<div class="cond" style="margin:4px 0">🎯 Goal: <b>${esc(G.type === 'notable' ? BADGES[G.badge].name + ' ' + BADGE_TIERS[G.tier].name : G.name)}</b> · ${path ? path.length + ' point' + (path.length === 1 ? '' : 's') + ' away' : 'locked for now'}. Auto-fill and Auto spend toward it first. <button class="btn sm" data-act="tree-goal-clear">Clear</button></div>`; })() : '<div class="dim cond" style="margin:4px 0">🎯 Tap a node and Set as goal to make Auto work toward it.</div>'}
       <div class="dim" style="font-size:13px">Earn points: +3 per level, +2 per win and +1 per loss you play in, and Badge Tokens (Shop). Take nodes next to ones you own. Small nodes add ratings; ringed nodes are badges (Bronze → Silver → Gold → Hall of Fame → Legend going outward); ★ masteries sit at the end of side branches; the three bridge rings give +1 or +2 to everything; sixteen keystones give big bonuses. Past the rim, the Ascendant ring gives +2 nodes and an Ascendant mastery at the end of every lane, and past that the Mythic ring gives +3 nodes and a Mythic mastery. The 16 team keystones on those two rings boost every teammate instead of you, and Untouchable at the very top keeps the other team from stealing, intercepting or blocking against your team.</div></div>
     <div class="row" style="gap:6px;align-self:flex-start"><button class="btn sm" data-tree="in">＋</button><button class="btn sm" data-tree="out">－</button><button class="btn sm" data-tree="fit">Fit</button>
       <select id="tree-focus" aria-label="Auto-fill focus">${[['all', 'Balanced'], ['fin', 'Finishing'], ['sht', 'Shooting'], ['ply', 'Playmaking'], ['def', 'Defense']].map(([k, n]) => `<option value="${k}" ${(UI.treeFocus || 'all') === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
@@ -7384,7 +7409,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 266;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 267;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7455,6 +7480,8 @@ function initTree(){
     el.innerHTML = `<div style="flex:1;min-width:0">${body}</div>${own ? '<span class="good cond">Taken</span>' : `<button class="btn sm ${can ? 'hot' : ''}" id="tree-take" ${can ? '' : 'disabled'}>${
       !path ? 'All 4 keystone slots full' : can ? (path.length === 1 ? 'Take · 1 point' : `Take path · ${path.length} points`) : `Needs ${path.length} point${path.length > 1 ? 's' : ''} (you have ${pts0})`}</button>`}`;
     const b = $('#tree-take'); if(b) b.onclick = () => takePath(path);
+    if(!own){ const g = document.createElement('button'); g.className = 'btn sm' + (A.treeGoal === n.id ? ' hot' : ''); g.textContent = A.treeGoal === n.id ? '🎯 Goal (tap to clear)' : '🎯 Set as goal';
+      g.dataset.tip = 'A goal: Auto-fill and Auto spend your points on the path to this node first.'; g.onclick = () => { A.treeGoal = A.treeGoal === n.id ? null : n.id; saveLeague(); renderHub(); }; el.appendChild(g); }   // v267
   };
   // take every node on the way to the one you picked, nearest first (each step is connected to the one before it)
   const takePath = path => { try { takePath0(path); } catch(e){ toast('Skill tree error: ' + e.message + '. Tell Claude this exact message.'); console.error(e); } };
@@ -8888,7 +8915,8 @@ function matchupPoster(L, g){
   const sm = g.playoff ? seriesMine(L, g.s) : null;   /* playoffs: series score in the middle instead of VS */
   return `${sm ? `<div class="mseries"><span>SERIES</span><b>${L.teams[L.user].abbr} ${sm[0]} – ${sm[1]} ${L.teams[opp].abbr}</b><span>FIRST TO ${Math.ceil(g.s.bestOf/2)}</span></div>` : ''}<div class="matchup">${side(L.user, false)}<div class="mvs">VS</div>${side(opp, true)}</div>`;
 }
-function hubPlay(L){
+function hubPlay(L){ return seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
+function hubPlay0(L){
   const U = L.teams[L.user];
   let main = '';
   if(L.phase === 'offseason'){
@@ -8991,6 +9019,24 @@ function needsBox(L){
     ${N.roles.length ? `<div class="cond" style="margin-top:6px">Also missing from your starting five: ${N.roles.map(x => `<b>${x.label}</b> (−${x.cost} lineup)`).join(', ')}. A starter with that playstyle fixes it. <button class="btn sm" data-act="need-find" data-id="need">🔎 Players who fill my needs</button></div>` : '<div class="dim cond" style="margin-top:6px">Your starting five has rim protection, shooting and a shot creator.</div>'}
     <div class="dim cond" style="margin-top:4px">How it works: for each spot, the game tries up to 15 real players on other teams who play it, from your weakest starter's level (${Math.min(...N.rows.map(r => r.stOvr))} OVR) to 12 better, re-picks your best lineup with each, and shows the typical gain for your starting five (your lineup can reshuffle around him).</div></div>`;
 }
+/* v267 Compare: any two creatures on your roster side by side. Ratings are what they play with right now, so your team
+   keystones and Kaine's "half of you" are already included. */
+function comparePanel(L){
+  const U = L.teams[L.user], ids = U.roster; if(ids.length < 2) return '';
+  const a = L.players[ids.includes(+UI.cmpA) ? +UI.cmpA : ids[0]], b = L.players[ids.includes(+UI.cmpB) ? +UI.cmpB : ids[1]];
+  const sel = (k, cur) => `<select data-ui="${k}" aria-label="Creature to compare">${ids.map(id => `<option value="${id}" ${id === cur.id ? 'selected' : ''}>${esc(pname(L.players[id]))} (${ovr(L.players[id])})</option>`).join('')}</select>`;
+  const ra = ratings(a), rb = ratings(b), cell = (x, y) => `<b style="color:${x > y ? 'var(--good)' : x < y ? 'var(--bad)' : 'inherit'}">${x}</b>`;
+  const row = (label, x, y, tip, fmt) => `<tr><td class="hastip" data-tip="${esc(tip || label)}">${label}</td><td>${fmt ? fmt(x) : cell(x, y)}</td><td>${fmt ? fmt(y) : cell(y, x)}</td></tr>`;
+  const sal = p => p.contract ? `${fmtM(p.contract.sal)} · ${p.contract.yrs} yr` : '—';
+  return `<details class="panel" ${UI.cmpOpen ? 'open' : ''} ontoggle="UI.cmpOpen = this.open"><summary><b>⚖️ Compare two creatures</b></summary>
+    <div class="row" style="gap:6px;margin:6px 0">${sel('cmpA', a)} vs ${sel('cmpB', b)}</div>
+    <table class="cmptab"><tr><th></th><th>${esc(pname(a))}</th><th>${esc(pname(b))}</th></tr>
+    ${row('OVR', ovr(a), ovr(b), TIP_TERMS.ovr)}${STATS.map(k => row(STAT_NAME[k], ra[k], rb[k], STAT_TIP[k])).join('')}
+    ${row('Potential', trainOf(a).mind.pot || 0, trainOf(b).mind.pot || 0, TIP_TERMS.pot)}${row('Talent', (a.genes && a.genes.tal) || 0, (b.genes && b.genes.tal) || 0, TIP_TERMS.talent)}
+    ${row('Level', a.lvl || 0, b.lvl || 0)}${row('Position', posLabel(a), posLabel(b), TIP_TERMS.pos, x => x)}
+    ${row('Trait', a.rare, b.rare, 'Rare trait', x => x ? `${esc(RARE[x].name)} ${tierChip(x)}` : '—')}${row('Contract', sal(a), sal(b), 'Salary and years left', x => x)}
+    ${row('Seasons in league', (a.age || 0) + 1, (b.age || 0) + 1, 'Older creatures start declining after their prime, unless they have Eternal Youth.', x => x)}</table></details>`;
+}
 function hubRoster(L){
   const U = L.teams[L.user];
   const mk = L.avatar == null ? `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>Create yourself</h3><p class="dim" style="margin:0">Join your team as its locked star with the Legend style, maxed Potential and no rating cap. Your lowest-rated creature goes to free agency to make room.</p>
@@ -9003,7 +9049,7 @@ function hubRoster(L){
   const waiting = (L.fa || []).filter(id => L.players[id] && L.players[id].reserved === L.user);
   const waitBox = waiting.length ? `<div class="panel" style="border-color:var(--gold)"><h3 style="margin:0 0 4px">⏳ Reserved for you in Free Agents</h3><div class="dim cond" style="margin-bottom:6px">Only you can sign them, for the minimum. They're not on your roster until you sign them, and the reservation ends at the next offseason.</div>
     ${waiting.map(id => { const p = L.players[id]; return `<div class="frow"><span class="tmain"><b>${esc(pname(p))}</b> <span class="dim">${ovr(p)} OVR · ${posLabel(p)}</span> ${talentTags(L, p, starCut(L))}</span><button class="btn sm hot" data-act="sign-reserved" data-id="${id}">Sign</button></div>`; }).join('')}</div>` : '';
-  return waitBox + friendBox + mk + kidsBox + needsBox(L) + capBar(L, L.user) + `<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:200px">${howto(`The top five start at PG, SG, SF, PF and C. Each creature has two natural positions; every step out of position costs 2 on every rating. Playstyle decides where it sets up, what it shoots and how it defends. Starters earn full game XP; the bench earns practice XP.`, 'How lineups work')}</div><label class="autotog"><input type="checkbox" data-auto="lineup" ${autoOf(L).lineup ? 'checked' : ''}>Auto</label><button class="btn sm cool" data-act="autolineup">Auto lineup</button></div>
+  return waitBox + friendBox + mk + kidsBox + comparePanel(L) + needsBox(L) + capBar(L, L.user) + `<div class="row" style="justify-content:space-between;align-items:flex-start"><div style="flex:1;min-width:200px">${howto(`The top five start at PG, SG, SF, PF and C. Each creature has two natural positions; every step out of position costs 2 on every rating. Playstyle decides where it sets up, what it shoots and how it defends. Starters earn full game XP; the bench earns practice XP.`, 'How lineups work')}</div><label class="autotog"><input type="checkbox" data-auto="lineup" ${autoOf(L).lineup ? 'checked' : ''}>Auto</label><button class="btn sm cool" data-act="autolineup">Auto lineup</button></div>
   <div class="grid">${U.roster.map((id, i) => { const p = L.players[id], S = SPECIES[p.sp];
     return playerCard(L, id, { team:U, stats:true, cls: i < STARTERS ? 'starter' : '', actions: `<div class="row" style="gap:6px;margin-top:4px">
       <span class="chip" style="background:${i < STARTERS ? 'var(--hot)' : 'var(--line)'};color:${i < STARTERS ? '#1a0b02' : 'var(--text)'}">${i < STARTERS ? 'Starter · ' + POS_NAMES[i] : 'Bench'}</span>
@@ -9241,7 +9287,18 @@ function faStatus(L, pid){
 }
 function hubFA(L){
   const U = L.teams[L.user];
-  const fa = L.fa.slice().sort((a, b) => ovr(L.players[b]) - ovr(L.players[a]));
+  /* v267: search by name, filter by position and trait, and sort. These only narrow the list below. */
+  const q = (UI.faQ || '').trim().toLowerCase(), posF = UI.faPos || 'all', trF = UI.faTrait || 'all', srt = UI.faSort || 'ovr';
+  const keepP = p => (!q || pname(p).toLowerCase().includes(q)) && (posF === 'all' || posLabel(p).split('/').includes(posF))
+    && (trF === 'all' || (trF === 'any' && p.rare) || (trF === 'mythic' && (TIER_RANK[tierOf(p.rare)] || 0) >= 5) || (trF === 'bred' && p.bred) || (trF === 'none' && !p.rare));
+  const sortF = { ovr:p => -ovr(p), pot:p => -(trainOf(p).mind.pot || 0)*100 - ovr(p)/1000, tal:p => -((p.genes && p.genes.tal) || 0), cheap:p => faAsk(L, p).sal, young:p => (p.age || 0) }[srt] || (p => -ovr(p));
+  const fa = L.fa.filter(id => L.players[id] && keepP(L.players[id])).sort((a, b) => sortF(L.players[a]) - sortF(L.players[b]));
+  const opt = (k, v, cur) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${v}</option>`;
+  const finder = `<div class="panel row" style="gap:6px;flex-wrap:wrap"><input data-ui="faQ" value="${esc(UI.faQ || '')}" placeholder="Search by name" aria-label="Search free agents by name" style="flex:1;min-width:140px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit">
+    <select data-ui="faPos" aria-label="Position">${opt('all', 'Any position', posF)}${POS_NAMES.map(n => opt(n, n, posF)).join('')}</select>
+    <select data-ui="faTrait" aria-label="Trait">${opt('all', 'Any trait or none', trF)}${opt('any', 'Has a Rare trait', trF)}${opt('mythic', 'Mythic or better', trF)}${opt('bred', 'Hatched on your farm', trF)}${opt('none', 'No trait', trF)}</select>
+    <select data-ui="faSort" aria-label="Sort">${opt('ovr', 'Best OVR', srt)}${opt('pot', 'Most Potential', srt)}${opt('tal', 'Most talent', srt)}${opt('cheap', 'Cheapest', srt)}${opt('young', 'Youngest', srt)}</select>
+    ${q || posF !== 'all' || trF !== 'all' ? `<button class="btn sm" data-act="fa-clearf">Clear filters</button><span class="dim cond">${fa.length} of ${L.fa.length} shown</span>` : ''}</div>`;
   if(UI.faPick != null && (!L.players[UI.faPick] || !L.fa.includes(UI.faPick))) UI.faPick = null;   // that creature is gone (signed elsewhere, or a different save)
   if(UI.faPick != null){
     const p = L.players[UI.faPick];
@@ -9261,12 +9318,12 @@ function hubFA(L){
     return `<div class="fawrap"><div class="fastat ${S.k}"><b>${S.label}</b><span>${esc(S.why)}</span></div>` + playerCard(L, id, { cls:'fa-' + S.k, actions:`
       <span class="rolechip" style="border-color:${ROLES[a.role].c};color:${ROLES[a.role].c}" title="Where it would rank on your roster">Role with you: ${a.role}</span><span class="paychip">Wants ${fmtM(a.sal)} a year for ${a.yrs} yr${a.yrs > 1 ? 's' : ''}</span>
       ${S.k === 'yes' || S.k === 'mine' ? `<button class="btn sm ${S.k === 'mine' ? 'hot' : 'cool'}" data-act="sign" data-id="${id}">${S.k === 'mine' ? 'Sign ' + esc(pname(p)) : 'Sign'}</button>` : ''}` }) + '</div>'; };
-  return `${capBar(L, L.user)}
+  return `${capBar(L, L.user)}${finder}
   <div class="panel" style="display:flex;flex-direction:column;gap:8px"><div class="cond"><b>${fa.length}</b> free agents. <b style="color:var(--good)">${count('yes') + count('mine')}</b> would sign with you today.</div>
     <div class="row" style="gap:6px">${chip('all', `All ${fa.length}`)}${count('mine') ? chip('mine', `⭐ Yours ${count('mine')}`) : ''}${chip('yes', `✅ Will sign ${count('yes')}`)}${count('cap') ? chip('cap', `💰 Can't afford ${count('cap')}`) : ''}${count('no') ? chip('no', `🚫 Won't sign ${count('no')}`) : ''}</div></div>
   ${howto('Signing one means releasing one of yours. Under the cap you can pay what they ask; over it, only creatures asking $2.5M or less will sign, for the minimum. Prospects won\'t sign if they would be buried on your bench, and a creature you wronged may refuse you.', 'How signing works')}
   ${groups.filter(([k]) => (f === 'all' || f === k) && count(k)).map(([k, title, sub]) => `<h3 class="fahead ${k}">${title} <span class="dim cond">(${count(k)})</span></h3><div class="dim cond" style="margin:-4px 2px 2px">${sub}</div>
-    <div class="grid">${fa.filter(id => st[id].k === k).sort((x, y) => (L.players[y].bred ? 1 : 0) - (L.players[x].bred ? 1 : 0)).map(card).join('')}</div>`).join('')}`;   // hatchlings first
+    <div class="grid">${fa.filter(id => st[id].k === k).sort((x, y) => srt !== 'ovr' ? 0 : (L.players[y].bred ? 1 : 0) - (L.players[x].bred ? 1 : 0)).map(card).join('')}</div>`).join('')}`;   // hatchlings first (on the default sort)
 }
 
 // The two permanent shop upgrades, spelled out (the aura alone didn't make it clear which ones a creature has)
@@ -9584,11 +9641,17 @@ function hubFarm(L){
     main = `<div class="panel"><h3>The nest is full</h3><p class="dim" style="margin:0">All ${FARM_NEST} spots have an egg. You can breed again as soon as one hatches.</p></div>`;
   } else {
     const [a, b] = sel.map(id => L.players[id]);
+    /* v267: will there be room? Eggs that hatch first take the open spots. If not, the baby waits in Free Agents, and
+       signing it there means releasing someone: show the three you would most likely let go. */
+    const openSpots = ROSTER - U.roster.length - E.length;
+    const weakest = U.roster.map(id => L.players[id]).filter(p => !locked(L, p.id)).sort((x, y) => value(x) - value(y)).slice(0, 3);
+    const roomWarn = openSpots <= 0 ? `<div class="warnbox">⚠️ No roster spot for this hatchling (${U.roster.length}/${ROSTER}${E.length ? `, plus ${E.length} egg${E.length > 1 ? 's' : ''} already in the nest` : ''}). It will wait in Free Agents, reserved for you at the minimum. To sign it you release one creature. Your weakest: ${weakest.map(p => `<b>${esc(pname(p))}</b> (${ovr(p)} OVR, ${fmtM(p.contract ? p.contract.sal : 0)})`).join(', ')}.</div>` : `<div class="dim cond">Room on your roster: ${openSpots} spot${openSpots > 1 ? 's' : ''}, so it joins your team when it hatches.</div>`;
     const pair = a && b ? (() => { const cost = farmCost(a, b), short = cost - L.coins;
       return `<div class="farmpair"><img src="${portrait(a, U.color)}" alt=""><span class="x">×</span><img src="${portrait(b, U.color)}" alt=""></div>
         <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">${Object.entries(FARM_AIMS).map(([k, G]) => `<button class="btn sm ${aimOf(L.farmAim) === k ? 'hot' : ''}" data-act="farm-aim" data-id="${k}">${G.name}</button>`).join('')}</div>
         <div class="dim cond" style="margin-bottom:6px">Goal ${qtip('goal')}: ${FARM_AIMS[aimOf(L.farmAim)].desc} Breeding cost ${qtip('cost')}</div>
         ${farmOddsHtml(farmOdds(farmSnap(a), farmSnap(b), L.farmAim), farmSnap(a), farmSnap(b), L.farmAim)}
+        ${roomWarn}
         <div class="row" style="gap:8px"><button class="btn hot" data-act="farm-go" ${short > 0 ? 'disabled' : ''}>🥚 Breed${E.length ? ' another' : ''} · ${cost} coins</button><button class="btn sm" data-act="farm-clear">Clear</button>${short > 0 ? `<span class="dim cond">You need ${short} more coins.</span>` : ''}</div>`; })()
       : `<p class="dim" style="margin:0">${sel.length ? 'Pick one more parent.' : 'Pick two parents from the list.'} The odds for the hatchling show up here before you pay.</p>`;
     const one = sel.length === 1 ? L.players[sel[0]] : null, pool = U.roster.map(id => L.players[id]).filter(farmOk);
@@ -9599,8 +9662,19 @@ function hubFarm(L){
     const rows = order.map(p => { const on = sel.includes(p.id), S = SPECIES[p.sp];
       return `<div class="frow ${on ? 'sel' : ''}">${faceTile(p, U.color)}<span class="tmain"><b>${esc(pname(p))}</b> <span class="dim"><span data-tip="${esc(TIP_TERMS.ovr)}" class="hastip">${ovr(p)} OVR</span> · <span data-tip="${esc(TIP_TERMS.pos)}" class="hastip">${posLabel(p)}</span> · <span data-tip="${esc(TIP_TERMS.pot)}" class="hastip">Pot ${trainOf(p).mind.pot || 0}/${TRAIN_MAX}</span> · <span data-tip="${esc(TIP_TERMS.talent)}" class="hastip">Talent ${tal(p)}</span></span><br>${typeChips(S.types)} ${p.rare ? traitChip(p.rare) : ''} ${attChip(p)}${traitInfo(p.rare)}${makes(p)}</span><button class="btn sm ${on ? 'hot' : ''}" data-act="farm-pick" data-id="${p.id}" ${!on && sel.length >= 2 ? 'disabled' : ''}>${on ? '✓ Picked' : 'Pick'}</button></div>`; }).join('');
     const best = bestPairs(L, pool, L.farmAim, 5);
+    /* v267 Apex helper. For every trait on your roster that has an Apex: with two creatures that share it, one tap breeds
+       them on Go for a mutation; with one, one tap copies it onto your cheapest creature without a trait (Keep a trait). */
+    const apexKeyOf = k => BASE_RARE.includes(k) ? k + '+' + k : 'apex:' + k, traits = [...new Set(pool.map(p => p.rare).filter(k => k && !k.startsWith('apex:') && !(rareParts(k).length === 1 && !BASE_RARE.includes(k)) && RARE[apexKeyOf(k)]))];
+    const blanks = pool.filter(p => !p.rare).sort((x, y) => tradeValue(x) - tradeValue(y));
+    const apexRows = traits.sort((x, y) => (TIER_RANK[tierOf(y)] || 0) - (TIER_RANK[tierOf(x)] || 0)).map(k => { const own = pool.filter(p => p.rare === k), ak = apexKeyOf(k);
+      if(own.length >= 2){ const [a, b] = own, c = farmCost(a, b), pct = mutPctOf(a, b, 'mutate');
+        return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Ready: ${esc(pname(a))} × ${esc(pname(b))} on Go for a mutation, ${pct}%</span></span><button class="btn sm hot" data-act="farm-quick" data-id="${a.id},${b.id},mutate" ${L.coins >= c && !full ? '' : 'disabled'}>Breed · ${c}</button></div>`; }
+      const a = own[0], z = blanks[0]; if(!z) return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Step 1 needs a creature with no trait to copy it onto. You have none.</span></span></div>`;
+      const c = farmCost(a, z), keep = (farmRareTable(farmSnap(a), farmSnap(z), 'keep').find(r => r[0] === k) || [0, 0])[1];
+      return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Step 1: copy it. ${esc(pname(a))} × ${esc(pname(z))} on Keep a trait, ${keep}% the baby gets ${esc(RARE[k].name)}. When it hatches, this turns into step 2.</span></span><button class="btn sm" data-act="farm-quick" data-id="${a.id},${z.id},keep" ${L.coins >= c && !full ? '' : 'disabled'}>Copy · ${c}</button></div>`; }).join('');
+    const apexHtml = apexRows ? `<details class="panel"><summary><b>🔁 Make an Apex</b> <span class="dim cond">· one tap per step, it breeds right away</span></summary>${apexRows}</details>` : '';
     const bestHtml = best.length ? `<div class="panel"><h3>Best pairs on your roster</h3><p class="dim cond" style="margin:0 0 4px">The rarest mutation each pair can make, with your current goal's odds.</p>${best.map(o => `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b>${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`).join('')}</div>` : '';
-    main = `<div class="panel"><h3>The pair</h3>${pair}</div>${bestHtml}<div class="panel"><h3>Your roster</h3>${rows}</div>`;
+    main = `<div class="panel"><h3>The pair</h3>${pair}</div>${bestHtml}${apexHtml}<div class="panel"><h3>Your roster</h3>${rows}</div>`;
   }
   const log = (L.farmLog || []).filter(e => L.players[e.id]);
   const hist = log.length ? `<div class="panel"><h3>Hatched here</h3>${log.map(e => { const p = L.players[e.id]; return `<div class="frow">${faceTile(p, U.color)}<span class="tmain"><b>${esc(pname(p))}</b> <span class="dim">S${e.s} · ${ovr(p)} OVR · from ${esc(e.a)} × ${esc(e.b)}</span><br>${talentTags(L, p, starCut(L))}</span></div>`; }).join('')}</div>` : '';
@@ -11602,10 +11676,13 @@ if(typeof document !== 'undefined'){
       case 'simplayoffs': simPlayoffs(); break;
       case 'simday': simPlayoffDay(); break;
       // Breed farm: pick or unpick a parent, clear the pair, or pay for the egg
+      case 'recap-ok': L.recapShow = null; saveLeague(); renderHub(); break;   // v267
+      case 'tree-goal-clear': { const A = L.players[L.avatar]; if(A) A.treeGoal = null; saveLeague(); renderHub(); break; }   // v267
       case 'farm-pair': { UI.farmSel = String(id).split(',').map(Number); renderHub(); break; }   // v265: a suggested pair
       case 'farm-pick': { const n = +id, cur = UI.farmSel || []; UI.farmSel = cur.includes(n) ? cur.filter(x => x !== n) : cur.length < 2 ? cur.concat(n) : cur; renderHub(); break; }
       case 'farm-clear': UI.farmSel = []; renderHub(); break;
       case 'farm-aim': L.farmAim = aimOf(id); saveLeague(); renderHub(); break;   // v259: the breeding goal, remembered for the next pair too
+      case 'farm-quick': { const [x, y, aim] = String(id).split(','); UI.farmSel = [+x, +y]; L.farmAim = aimOf(aim); }   // v267 Apex helper: pick both, set the goal, then breed right away (falls through)
       case 'farm-go': {
         const [a, b] = (UI.farmSel || []).map(x => L.players[x]);
         if(!farmOk(a) || !farmOk(b) || farmEggs(L).length >= FARM_NEST) break;   // up to FARM_NEST eggs at once (v255)
@@ -11919,7 +11996,8 @@ if(typeof document !== 'undefined'){
       }
       case 'setstar': { const U = L.teams[L.user]; U.star = +id; UI.msg = `${pname(L.players[+id])} is your team star: +${STAR_BUFF} to every rating in games, and teammates will look for it more.`; saveLeague(); renderHub(); break; }
       case 'sign': UI.faPick = +id; renderHub(); break;
-      case 'fa-filter': UI.faFilter = id; renderHub(); break;   // Free Agents: show one group or all
+      case 'fa-filter': UI.faFilter = id; renderHub(); break;
+      case 'fa-clearf': UI.faQ = ''; UI.faPos = 'all'; UI.faTrait = 'all'; renderHub(); break;   // v267   // Free Agents: show one group or all
       case 'sign-reserved': UI.tab = 'fa'; UI.faPick = +id; renderHub(); window.scrollTo(0, 0); break;   // Roster reminder → Free Agents with him picked (choose who to release there)
       case 'fa-cancel': UI.faPick = null; renderHub(); break;
       case 'release': {
