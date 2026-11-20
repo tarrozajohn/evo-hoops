@@ -196,6 +196,7 @@ select{background:var(--panel2);color:var(--text);border:1px solid var(--line);b
 
 .fold{margin:10px 0;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.02)}.fold>summary{padding:10px 12px;cursor:pointer;list-style:none}.fold>summary::-webkit-details-marker{display:none}
 .fold>summary::before{content:'▸ ';color:var(--gold)}.fold[open]>summary::before{content:'▾ '}.foldbody{padding:0 10px 10px;display:flex;flex-direction:column;gap:10px}
+.navtip{border-color:#6fd3ff;background:rgba(111,211,255,.06)}
 .autotip{border-color:var(--gold);background:rgba(255,210,58,.07)}
 .warnbox{margin:6px 0;padding:7px 10px;border-radius:8px;background:rgba(255,120,60,.12);border:1px solid rgba(255,140,60,.55);font-size:14px}
 .cmptab{width:100%;border-collapse:collapse;font-size:14px}.cmptab td,.cmptab th{padding:3px 6px;border-top:1px solid rgba(255,255,255,.07);text-align:left}.cmptab th{font-family:var(--cond)}
@@ -7179,10 +7180,10 @@ function renderHub0(){ applyUiScale(); if(typeof LEAGUE !== 'undefined' && LEAGU
         ${L.teamFx && L.teamFx.games > 0 ? `<span class="formchip ${L.teamFx.mod > 0 ? 'hot' : 'cold'}" title="From your last storyline choice: every rating in games">${L.teamFx.mod > 0 ? '🔥' : '🧊'} ${L.teamFx.label} ${L.teamFx.mod > 0 ? '+' + L.teamFx.mod : '−' + (-L.teamFx.mod)} · ${L.teamFx.games}g</span>` : ''}
         ${L.streak ? `<span class="deskonly">${L.streak > 0 ? `W${L.streak}` : `L${-L.streak}`}</span>` : ''}</div></div></div>
       <button class="coins" data-act="tab" data-id="money" title="Coins: tap for the Money page"><span class="coin"></span><span class="num">${L.coins}</span></button>
-      <div class="row deskonly"><button class="btn sm" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
-      <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰${SET.autoTip ? '' : '<span class="tabbadge">!</span>'}</button>
+      <div class="row deskonly"><button class="btn sm" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn sm" data-act="navtip-show">🧭 Where things are</button><button class="btn sm" data-act="help-hub">How to play</button><button class="btn sm" data-act="settings-hub">Settings</button><button class="btn sm" data-act="menu">Menu</button></div>
+      <button class="btn sm phoneonly" data-act="sheet" aria-label="More">☰${SET.autoTip && SET.navTip ? '' : '<span class="tabbadge">!</span>'}</button>
     </div>
-    ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
+    ${UI.sheet ? `<div class="sheet phoneonly"><div class="row" style="gap:8px;justify-content:space-between"><span class="cond">Screen size <b>${Math.round(+getComputedStyle(document.documentElement).getPropertyValue('--uiz')*100) || 100}%</b></span><span class="row" style="gap:8px"><button class="btn sm" data-act="uisize" data-id="-1" aria-label="Smaller">A−</button><button class="btn sm" data-act="uisize" data-id="1" aria-label="Bigger">A+</button></span></div><button class="btn" data-act="tab" data-id="auto">⚙️ Auto</button><button class="btn" data-act="navtip-show">🧭 Where things are</button><button class="btn" data-act="help-hub">How to play</button><button class="btn" data-act="settings-hub">Settings</button><button class="btn" data-act="menu">Main menu</button><span class="dim cond cloudline">${cloudStatus()}</span><span class="dim cond">Version ${GAME_VER}</span></div>` : ''}
     <div class="tabs">${NAV_GROUPS.map(g => `<button class="tab ${groupOf(UI.tab).id === g.id ? 'on' : ''}" data-act="navgrp" data-id="${g.id}">${g.icon} ${g.label} ${countBadge(groupCount(L, g))}</button>`).join('')}</div>
     ${subTabs()}
     ${rivalBar(L)}${fiveOn(L) && !L.five.joined && L.five.tid !== L.rival ? fiveBar(L) : ''}
@@ -7425,7 +7426,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 270;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 271;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8939,10 +8940,26 @@ function fold(key, title, sub, open0, inner){ if(!inner || !inner.replace(/<!--[
 function foldSet(k, v){ SET.folds = SET.folds || {}; if(SET.folds[k] === v) return; SET.folds[k] = v; saveSettings(); }
 /* v270: where Auto is. Auto lives in the ☰ menu (top right) since v268, which is easy to miss, so the Play and Team
    tabs show this note until you open Auto once or tap Got it. Kept in your settings (SET.autoTip). */
-function autoTipPanel(){ if(SET.autoTip) return '';
+/* v271: "Where everything is now". The tabs were regrouped in v268, so every player (new or not) gets this card on the
+   Play tab once: each group, what is in it, and a button that goes there. Got it hides it (SET.navTip); the ☰ menu
+   has a "Where things are" button that brings it back. While it shows, the Auto note below stays hidden. */
+function navTipPanel(){ if(SET.navTip) return '';
+  const row = (g, what, extra) => `<div class="frow"><span class="tmain"><b>${g.icon} ${g.label}</b> <span class="dim cond">${what}</span>${extra ? `<br><span class="dim cond" style="font-size:13px">${extra}</span>` : ''}</span><button class="btn sm" data-act="navgrp" data-id="${g.id}">Go</button></div>`;
+  const G = id => NAV_GROUPS.find(g => g.id === id);
+  return `<div class="panel navtip"><div class="row" style="justify-content:space-between;gap:8px"><h3 style="margin:0">🧭 Where everything is now</h3><button class="btn sm hot" data-act="navtip-ok">Got it</button></div>
+    <div class="dim cond" style="margin:4px 0 6px">The tabs were regrouped in the bottom bar. A number on a group means something there is waiting for you.</div>
+    ${row(G('play'), 'Your next game', 'Game prep, Story and News fold open and closed. They stay how you leave them.')}
+    ${row(G('team'), 'Roster, Train', 'Compare two creatures is at the top of Roster.')}
+    ${row(G('legend'), 'Skill tree, Bonds', 'Your own player. New: set a goal on the skill tree.')}
+    ${row(G('office'), 'Money, Trade, Free Agents, Scouting', 'New: ⚡ Auto deal in the trade finder, and search and filters in Free Agents.')}
+    ${row(G('build'), 'Farm, Shop, Upgrades, Arena', 'Moved here from Office. New on the Farm: Best pairs and Make an Apex.')}
+    ${row(G('league'), 'Standings, Leaders, Legacy, Types')}
+    <div class="frow"><span class="tmain"><b>☰ Menu</b> <span class="dim cond">(top right) ⚙️ Auto, How to play, Settings</span><br><span class="dim cond" style="font-size:13px">Auto used to be a tab under Team.</span></span><button class="btn sm" data-act="tab" data-id="auto">Auto</button></div>
+    <div class="dim cond" style="margin-top:4px">Tap anything underlined or a yellow ? to see what it means. To see this card again: ☰ menu, Where things are.</div></div>`; }
+function autoTipPanel(){ if(SET.autoTip || !SET.navTip) return '';
   return `<div class="panel autotip"><div class="row" style="gap:8px;justify-content:space-between;flex-wrap:wrap"><span style="flex:1;min-width:200px">⚙️ <b>Auto</b> runs the chores for you: lineups, training, your skill tree, the farm, re-signing and more. It's in the <b>☰ menu</b> at the top right.</span>
     <span class="row" style="gap:6px"><button class="btn sm hot" data-act="tab" data-id="auto">Open Auto</button><button class="btn sm" data-act="autotip-ok">Got it</button></span></div></div>`; }
-function hubPlay(L){ return autoTipPanel() + seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
+function hubPlay(L){ return navTipPanel() + autoTipPanel() + seasonRecapPanel(L) + hubPlay0(L); }   // v267: the season recap sits on top
 function hubPlay0(L){
   const U = L.teams[L.user];
   let main = '';
@@ -11707,6 +11724,8 @@ if(typeof document !== 'undefined'){
         }
         saveLeague(); renderDraft(); break;
       }
+      case 'navtip-ok': SET.navTip = true; SET.autoTip = true; saveSettings(); renderHub(); break;   // v271
+      case 'navtip-show': SET.navTip = false; saveSettings(); UI.sheet = false; UI.tab = 'play'; renderHub(); view().scrollTop = 0; break;
       case 'autotip-ok': SET.autoTip = true; saveSettings(); renderHub(); break;   // v270
       case 'tab': if(id === 'auto' && !SET.autoTip){ SET.autoTip = true; saveSettings(); } UI.tab = id; UI.faPick = null; UI.use = null; UI.sheet = false; if(groupOf(id).tabs.includes(id)) (UI.lastIn = UI.lastIn || {})[groupOf(id).id] = id; renderHub(); break;   // v269: not for Auto, which sits in the menu
       case 'navgrp': { const g = NAV_GROUPS.find(x => x.id === id); UI.sheet = false;
