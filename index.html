@@ -5812,6 +5812,8 @@ function hubBonds(L){
   return `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>💞 Bonds</h3>
       <label class="autotog" style="align-self:flex-start"><input type="checkbox" data-auto="bonds" ${autoOf(L).bonds ? 'checked' : ''}>Auto: hang out for me after every game</label>
       <div class="cond">${used ? 'You already hung out after this game. Play your next game to hang out again.' : '<b>1 hangout available.</b> Pick someone and choose how it goes.'}</div>
+      ${used ? '' : (() => { const st = U.roster.slice(0, STARTERS), ids = U.roster.filter(id => !L.players[id].avatar && L.friend !== id), low = ids.slice().sort((a, b) => (bondOf(L, a) - (st.includes(a) ? 8 : 0)) - (bondOf(L, b) - (st.includes(b) ? 8 : 0)))[0];   /* v277: starters count a bit more */
+        return low != null && bondOf(L, low) < 70 ? `<div class="row" style="gap:8px"><span class="dim cond" style="flex:1">💡 Suggested: <b>${esc(pname(L.players[low]))}</b> (${bondWord(bondOf(L, low))}, ${Math.round(bondOf(L, low))}${st.includes(low) ? ', a starter' : ''}). Low bonds can cost rating in games.</span><button class="btn sm hot" data-act="hang" data-id="${low}">Hang out</button></div>` : ''; })()}
       <div class="suggest"><div><b>🎬 If the season ended now: ${preview.icon} ${preview.name}</b><div class="dim cond">${preview.next}</div></div></div>
       ${howto('Every bond is 0 to 100 (five hearts). Close teammates (80+) play +2 in games, Ride or die (95+) +3; Cold ones (20 or less) play −2, Bad blood (10 or less) −3. A Close coach gives the whole team +1, a Cold one −1. The owner bond is owner patience and the fans bond is fan hype. Every event choice moves bonds: chemistry swings move everyone, and the creature the story is about moves the most. At the end of the season your bonds and results pick the ending, and the ending changes next season.', 'How bonds work')}</div>
     <div class="panel" style="display:flex;flex-direction:column;gap:6px"><h3>The people around you</h3>
@@ -7078,6 +7080,8 @@ function tabCount(L, k){ if(!L) return 0;
   if(k === 'farm') return L.eggs ? L.eggs.filter(e => eggLeft(L, e) <= 1).length : 0;   // eggs hatching after your next game
   if(k === 'trade') return offersWaiting(L) || 0;
   if(k === 'fa') return (L.fa || []).filter(id => L.players[id] && L.players[id].reserved === L.user).length;   // reserved for you
+  if(k === 'train'){ const U = L.teams[L.user]; return U ? Math.floor(U.roster.reduce((t, id) => { const q = L.players[id]; return t + CATS.reduce((a, c) => a + (catLevels(q, c) < catMax(c) ? ((q.tp && q.tp[c]) || 0) : 0), 0); }, 0)) : 0; }   // v277: TP ready to spend
+  if(k === 'bonds') return L.hangGame === (L.gameNo || 0) || L.phase === 'draft' ? 0 : 1;   // v277: a hangout is open
   if(k === 'play') return todoList(L).length;
   return 0; }
 const groupCount = (L, g) => g.tabs.reduce((t, k) => t + tabCount(L, k), 0);
@@ -7488,7 +7492,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 276;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 277;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8127,7 +8131,7 @@ function hubArena(L){
       <div class="dim cond">Demand: ${d.parts.filter(x => x[1]).map(x => `${x[0]} ${x[1] > 0 ? '+' : ''}${x[1].toLocaleString()}`).join(' · ')} → × ${d.price.elastic} for ${d.price.name.toLowerCase()} = ${d.demand.toLocaleString()}</div>` : '<div class="dim cond">Road game: no gate. Set up your next home night anyway.</div>'}</div>` : ''}
     <div><div class="dim cond" style="margin-bottom:4px">Ticket prices</div><div class="row" style="gap:6px">${Object.entries(PRICES).map(([k, P]) => `<button class="btn sm ${A.price === k ? 'hot' : ''}" data-act="price" data-id="${k}">${P.name} · ${P.per}/1k fans · demand ×${P.elastic}</button>`).join('')}</div></div>
     <div><div class="dim cond" style="margin-bottom:4px">Next home game promotion (one night)</div><div class="row" style="gap:6px">${Object.entries(PROMOS).map(([k, P]) => `<button class="btn sm ${A.promo === k ? 'hot' : ''}" data-act="promo" data-id="${k}">${P.name}${P.cost ? ` · −${P.cost} · +${P.demand.toLocaleString()} fans${P.hype ? ', fans +' + P.hype : ''}` : ''}</button>`).join('')}</div></div>
-    <div class="row" style="gap:8px"><span class="dim cond">Seat expansion, Jumbotron, suites and food court are on the Upgrades tab (Office).</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
+    <div class="row" style="gap:8px"><span class="dim cond">Seat expansion, Jumbotron, suites and food court are on the Upgrades tab (Build).</span><button class="btn sm" data-act="tab" data-id="upgrades">Upgrades</button></div>
     ${season.length ? `<div><div class="dim cond" style="margin-bottom:4px">Home crowds this season</div><div class="crowdbars">${season.map(h => `<i style="height:${Math.round(h.att/h.cap*100)}%;background:${h.sold ? 'var(--good)' : h.att < h.cap*0.6 ? 'var(--bad)' : 'var(--cool)'}" title="vs ${L.teams[h.opp].abbr}: ${h.att.toLocaleString()} (${h.coins} coins)"></i>`).join('')}</div></div>` : ''}
   </div>`;
 }
@@ -9177,11 +9181,15 @@ function hubRoster(L){
     </div>` }); }).join('')}</div>`;
 }
 function hubStandings(L){
-  const confs = NT(L) >= 30 ? ['East', 'West'] : [null], cut = NT(L) >= 30 ? 8 : playoffTeams(L);
+  const confs = NT(L) >= 30 ? ['East', 'West'].sort((x, y) => (y === confOf(L, L.user)) - (x === confOf(L, L.user))) : [null], cut = NT(L) >= 30 ? 8 : playoffTeams(L);   // v277: your conference first
   const table = (list, title) => `<div class="panel tablewrap">${title ? `<h3>${title}</h3>` : ''}<table style="margin-top:6px"><thead><tr><th>Team</th><th>W</th><th>L</th><th>GB</th><th>Diff</th><th>OVR</th></tr></thead><tbody>
     ${list.map((t, i) => { const gb = ((list[0].w - t.w) + (t.l - list[0].l))/2; return `<tr class="${t.user ? 'me' : ''}" ${i === cut ? 'style="border-top:2px dashed var(--line)"' : ''}><td><span class="row" style="gap:8px;flex-wrap:nowrap"><span class="rk ${i === 0 ? 'top' : i < cut ? 'in' : ''}">${i + 1}</span><span class="swatch" style="background:${t.color};height:16px;width:8px"></span>${esc(t.name)}${t.id === L.rival ? ' <span class="rivaltag">RIVAL</span>' : ''}${i < cut && L.phase === 'season' ? ' <span class="dim cond deskonly">· playoff spot</span>' : ''}</span></td><td class="num">${t.w}</td><td class="num">${t.l}</td><td class="num">${gb ? gb.toFixed(1) : '—'}</td><td class="num">${t.pf - t.pa > 0 ? '+' : ''}${t.pf - t.pa}</td><td class="num">${teamOVR(L, t.id)}</td></tr>`; }).join('')}
   </tbody></table></div>`;
-  return `<div class="split">${confs.map(c => table(c ? confStandings(L, c) : standings(L), c ? c + 'ern Conference' : '')).join('')}</div><p class="dim cond" style="margin:0">${NT(L) >= 30 ? 'Top 8 in each conference make the playoffs (dashed line).' : `Top ${playoffTeams(L)} make the playoffs.`} Ties break on point differential.</p>`;
+  // v277: where you stand, in one line
+  const me = (() => { try { const P = playoffLine(L), c = confs[0] ? confOf(L, L.user) + 'ern Conference' : 'league';
+    const gap = P.isIn ? P.outW != null ? (L.teams[L.user].w - P.outW) : 0 : (P.inW - L.teams[L.user].w);
+    return L.phase === 'season' ? `<div class="panel cond">📍 You are <b>${P.rank}${['th', 'st', 'nd', 'rd'][(P.rank % 100 > 10 && P.rank % 100 < 14) || P.rank % 10 > 3 ? 0 : P.rank % 10]}</b> in the ${c}. ${P.isIn ? `In the playoffs, ${gap} win${gap === 1 ? '' : 's'} clear of the first team out.` : `Out of the playoffs, ${gap} win${gap === 1 ? '' : 's'} behind the last team in.`} ${P.left} game${P.left === 1 ? '' : 's'} left.</div>` : ''; } catch(e){ return ''; } })();
+  return me + `<div class="split">${confs.map(c => table(c ? confStandings(L, c) : standings(L), c ? c + 'ern Conference' : '')).join('')}</div><p class="dim cond" style="margin:0">${NT(L) >= 30 ? 'Top 8 in each conference make the playoffs (dashed line).' : `Top ${playoffTeams(L)} make the playoffs.`} Ties break on point differential.</p>`;
 }
 function hubLeaders(L){
   const owner = {}; L.teams.forEach(t => t.roster.forEach(id => owner[id] = t));
