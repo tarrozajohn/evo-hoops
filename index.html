@@ -7499,7 +7499,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 281;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 282;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9297,12 +9297,14 @@ function tradeFinder(L){
   } else {
     let ps = L.teams.filter(t => !t.user).flatMap(t => t.roster.map(id => ({ p:L.players[id], t }))).filter(x => !x.p.nemesis);
     if(F.pos !== 'all'){ const i = POS_NAMES.indexOf(F.pos); ps = ps.filter(x => { const r = naturalPos(x.p); return i >= r[0] && i <= r[1]; }); }
+    if(F.trait && F.trait !== 'all') ps = ps.filter(x => traitMatch(x.p, F.trait));   // v282: a specific trait or tier
     if(F.tag === 'gen') ps = ps.filter(x => x.p.generational); else if(F.tag === 'pot') ps = ps.filter(x => (trainOf(x.p).mind.pot || 0) >= 4 && (x.p.age || 0) <= 2); else if(F.tag === 'rare') ps = ps.filter(x => x.p.rare); else if(F.tag === 'cheap') ps = ps.filter(x => capHit(x.p) <= 8); else if(F.tag === 'need') ps = ps.filter(x => needTags(L, x.p).length);
     // Best OVR: ties go to the one with more tags (Generational +10, Rare +6, Potential/High potential up to +7.5)
     const key = { ovr:x => ovr(x.p) + tagWorth(L, x.p)/100, pot:x => (trainOf(x.p).mind.pot || 0)*100 + ovr(x.p), young:x => -(x.p.age || 0)*100 + ovr(x.p), cheap:x => -capHit(x.p)*10 + ovr(x.p)/10 }[F.sort];
     ps.sort((a, b) => key(b) - key(a)); const shown = ps.slice(0, 40);
     const sel = (k, opts) => `<select data-find="${k}">${opts.map(([v, n]) => `<option value="${v}" ${F[k] === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
-    body = `<div class="panel" style="display:flex;flex-direction:column;gap:6px"><div class="row" style="gap:6px">${sel('pos', [['all', 'Any position'], ...POS_NAMES.map(x => [x, x])])}${sel('tag', [['all', 'Everyone'], ['gen', '👑 Generational'], ['pot', '💎 High potential'], ['rare', '★ Rare'], ['cheap', '$8M or less'], ['need', '🎯 Fills my needs']])}${sel('sort', [['ovr', 'Best OVR'], ['pot', 'Most Potential'], ['young', 'Youngest'], ['cheap', 'Cheapest']])}</div>
+    const allPs = L.teams.filter(t => !t.user).flatMap(t => t.roster.map(id => L.players[id])).filter(p => p && !p.nemesis);
+    body = `<div class="panel" style="display:flex;flex-direction:column;gap:6px"><div class="row" style="gap:6px"><select data-find="trait" aria-label="Rare trait">${traitOptions(allPs, F.trait || 'all')}</select>${sel('pos', [['all', 'Any position'], ...POS_NAMES.map(x => [x, x])])}${sel('tag', [['all', 'Everyone'], ['gen', '👑 Generational'], ['pot', '💎 High potential'], ['rare', '★ Rare'], ['cheap', '$8M or less'], ['need', '🎯 Fills my needs']])}${sel('sort', [['ovr', 'Best OVR'], ['pot', 'Most Potential'], ['young', 'Youngest'], ['cheap', 'Cheapest']])}</div>
       <div class="dim cond">${ps.length} match${ps.length === 1 ? '' : 'es'}${ps.length > 40 ? ', showing the top 40' : ''}.</div></div>
       <div class="panel tlist">${shown.map(({ p, t }) => `<div class="frow"><img src="${portrait(p, t.color, displayTier(p))}" alt="" style="width:34px;height:37px"><span class="tmain"><b>${pname(p)}</b> <span class="dim">${posLabel(p)} · yr ${(p.age || 0) + 1}</span><br><span class="dim"><b style="color:${t.color}">${t.abbr}</b> · ${p.contract ? (p.contract.legend ? 'Legend deal' : fmtM(p.contract.sal) + ' · ' + p.contract.yrs + 'y') : ''}</span> ${talentTags(L, p, cut)} ${needChips(L, p)}</span><span class="tovr">${ovr(p)}</span><button class="btn sm cool" data-act="auto-deal" data-id="${p.id}" data-tip="Finds a deal their team says yes to and fills it in. You still tap Propose.">⚡ Auto deal</button><button class="btn sm" data-act="find-player" data-id="${p.id}">Trade</button></div>`).join('') || '<div class="dim">Nobody matches. Try another filter.</div>'}</div>`;
   }
@@ -9438,13 +9440,13 @@ function hubFA(L){
   /* v267: search by name, filter by position and trait, and sort. These only narrow the list below. */
   const q = (UI.faQ || '').trim().toLowerCase(), posF = UI.faPos || 'all', trF = UI.faTrait || 'all', srt = UI.faSort || 'ovr';
   const keepP = p => (!q || pname(p).toLowerCase().includes(q)) && (posF === 'all' || posLabel(p).split('/').includes(posF))
-    && (trF === 'all' || (trF === 'any' && p.rare) || (trF === 'mythic' && (TIER_RANK[tierOf(p.rare)] || 0) >= 5) || (trF === 'bred' && p.bred) || (trF === 'none' && !p.rare));
+    && (trF === 'all' || (trF === 'any' && p.rare) || (trF === 'mythic' && (TIER_RANK[tierOf(p.rare)] || 0) >= 5) || (trF === 'bred' && p.bred) || (trF === 'none' && !p.rare) || ((trF.startsWith('t:') || RARE[trF]) && traitMatch(p, trF)));   // v282: specific traits too
   const sortF = { ovr:p => -ovr(p), pot:p => -(trainOf(p).mind.pot || 0)*100 - ovr(p)/1000, tal:p => -((p.genes && p.genes.tal) || 0), cheap:p => faAsk(L, p).sal, young:p => (p.age || 0) }[srt] || (p => -ovr(p));
   const fa = L.fa.filter(id => L.players[id] && keepP(L.players[id])).sort((a, b) => sortF(L.players[a]) - sortF(L.players[b]));
   const opt = (k, v, cur) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${v}</option>`;
   const finder = `<div class="panel row" style="gap:6px;flex-wrap:wrap"><input data-ui="faQ" value="${esc(UI.faQ || '')}" placeholder="Search by name" aria-label="Search free agents by name" style="flex:1;min-width:140px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font:inherit">
     <select data-ui="faPos" aria-label="Position">${opt('all', 'Any position', posF)}${POS_NAMES.map(n => opt(n, n, posF)).join('')}</select>
-    <select data-ui="faTrait" aria-label="Trait">${opt('all', 'Any trait or none', trF)}${opt('any', 'Has a Rare trait', trF)}${opt('mythic', 'Mythic or better', trF)}${opt('bred', 'Hatched on your farm', trF)}${opt('none', 'No trait', trF)}</select>
+    <select data-ui="faTrait" aria-label="Trait">${opt('all', 'Any trait or none', trF)}${opt('any', 'Has a Rare trait', trF)}${opt('mythic', 'Mythic or better', trF)}${opt('bred', 'Hatched on your farm', trF)}${opt('none', 'No trait', trF)}${traitOptions(L.fa.map(id => L.players[id]), trF).replace(/<option value="all"[^>]*>[^<]*<\/option>/, '')}</select>
     <select data-ui="faSort" aria-label="Sort">${opt('ovr', 'Best OVR', srt)}${opt('pot', 'Most Potential', srt)}${opt('tal', 'Most talent', srt)}${opt('cheap', 'Cheapest', srt)}${opt('young', 'Youngest', srt)}</select>
     ${q || posF !== 'all' || trF !== 'all' ? `<button class="btn sm" data-act="fa-clearf">Clear filters</button><span class="dim cond">${fa.length} of ${L.fa.length} shown</span>` : ''}</div>`;
   if(UI.faPick != null && (!L.players[UI.faPick] || !L.fa.includes(UI.faPick))) UI.faPick = null;   // that creature is gone (signed elsewhere, or a different save)
@@ -9759,6 +9761,15 @@ function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutat
   if(A.rare || B.rare){ const k = A.rare && B.rare && A.rare !== B.rare ? null : A.rare || B.rare, keep = farmRareTable(A, B, 'keep').filter(x => x[0] && x[0] !== 'new').reduce((t, x) => t + x[1], 0);
     return { aim:'keep', why:`${keep}% the baby keeps ${k ? RARE[k].name : "a parent's trait"}. ${m ? `A mutation here (${RARE[m].name}) is no better than what they have.` : 'A mutation here would only be a random Wild trait.'}` }; }
   return { aim:'mutate', why:`Neither parent has a trait, so this gives the best shot at a Wild trait (${pct('mutate', 'new')}%).` }; }
+/* v282: a <select> of specific Rare traits, for the trade finder and Free Agents. Only traits somebody in the list has,
+   rarest tier first, each with a count. 'all' = no filter, 't:Mythic' etc. = a whole tier, otherwise a trait key. */
+function traitOptions(players, cur){
+  const n = {}; players.forEach(p => { if(p && p.rare) n[p.rare] = (n[p.rare] || 0) + 1; });
+  const keys = Object.keys(n).filter(k => RARE[k]).sort((a, b) => (TIER_RANK[tierOf(b)] || 0) - (TIER_RANK[tierOf(a)] || 0) || RARE[a].name.localeCompare(RARE[b].name));
+  const tiers = [...new Set(keys.map(tierOf))];
+  const o = (v, t) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(t)}</option>`;
+  return o('all', 'Any trait') + tiers.map(t => o('t:' + t, `Any ${t} (${keys.filter(k => tierOf(k) === t).reduce((s, k) => s + n[k], 0)})`)).join('') + keys.map(k => o(k, `★ ${RARE[k].name} · ${tierOf(k)} (${n[k]})`)).join(''); }
+const traitMatch = (p, f) => !f || f === 'all' ? true : f.startsWith('t:') ? !!p.rare && tierOf(p.rare) === f.slice(2) : p.rare === f;
 function bestPairs(L, list, aim, n){
   const out = []; for(let i = 0; i < list.length; i++) for(let j = i + 1; j < list.length; j++){ const a = list[i], b = list[j]; if(!a.rare && !b.rare) continue;
     const m = pairMut(a, b); if(!m) continue; out.push({ a, b, m, rank:TIER_RANK[tierOf(m)] || 0, pct:mutPctOf(a, b, suggestAim(a, b).aim === 'mutate' ? 'mutate' : aim) }); }   // v278: odds on Go for a mutation when that is the goal it would pick
