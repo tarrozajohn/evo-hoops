@@ -7135,6 +7135,8 @@ const TIP_TERMS = {
   ratings:'Each rating\'s strong or weak gene comes from one parent or the other, 50/50.',
   goal:'Keep a trait: the baby most likely copies a parent\'s trait. Go for a mutation: most likely something new. Balanced: in between.',
   cost:'Breeding cost goes up with the parents\' trade value. Better parents cost more.',
+  dealmode:'Cheapest: the deal they accept that gives up the least trade value. Best for me: the deal they accept that the deal bar rates best for you (OVR, your starting five, traits, picks, salary). Teams always want to come out a little ahead, so a deal that favors you is not always possible.',
+  likes:'Either: the baby gets one parent\'s species line and the parents\' average size. Pick a parent and the baby takes after that one: its species line and mostly its size, so it plays that parent\'s position. The Rare trait odds stay the same. Use it to put a big\'s trait on a guard.',
   position:'The position the hatchling will play. It comes from one parent\'s species line and the parents\' average body, so two guards make guards and two bigs make bigs. It keeps that position when it grows up.',
   nest:'The nest holds up to 5 eggs. Each hatches after 3 of your games, counted from when you bred it.',
   double:'Once you are good, other teams send two defenders at you. Your shots get harder, but the teammate left open gets a better look. Passing out of it wins games. Story bosses double you harder.',
@@ -7500,7 +7502,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 283;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 284;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9305,7 +9307,8 @@ function tradeFinder(L){
     ps.sort((a, b) => key(b) - key(a)); const shown = ps.slice(0, 40);
     const sel = (k, opts) => `<select data-find="${k}">${opts.map(([v, n]) => `<option value="${v}" ${F[k] === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
     const allPs = L.teams.filter(t => !t.user).flatMap(t => t.roster.map(id => L.players[id])).filter(p => p && !p.nemesis);
-    body = `<div class="panel" style="display:flex;flex-direction:column;gap:6px"><div class="row" style="gap:6px"><select data-find="trait" aria-label="Rare trait">${traitOptions(allPs, F.trait || 'all')}</select>${sel('pos', [['all', 'Any position'], ...POS_NAMES.map(x => [x, x])])}${sel('tag', [['all', 'Everyone'], ['gen', '👑 Generational'], ['pot', '💎 High potential'], ['rare', '★ Rare'], ['cheap', '$8M or less'], ['need', '🎯 Fills my needs']])}${sel('sort', [['ovr', 'Best OVR'], ['pot', 'Most Potential'], ['young', 'Youngest'], ['cheap', 'Cheapest']])}</div>
+    const modeSw = `<div class="row" style="gap:6px;align-items:center"><span class="dim cond">⚡ Auto deal finds ${qtip('dealmode')}</span>${[['cheap', 'Cheapest'], ['mine', '⭐ Best for me']].map(([k, n]) => `<button class="btn sm ${(UI.dealMode || 'cheap') === k ? 'hot' : ''}" data-act="deal-mode" data-id="${k}">${n}</button>`).join('')}</div>`;
+    body = `<div class="panel" style="display:flex;flex-direction:column;gap:6px">${modeSw}<div class="row" style="gap:6px"><select data-find="trait" aria-label="Rare trait">${traitOptions(allPs, F.trait || 'all')}</select>${sel('pos', [['all', 'Any position'], ...POS_NAMES.map(x => [x, x])])}${sel('tag', [['all', 'Everyone'], ['gen', '👑 Generational'], ['pot', '💎 High potential'], ['rare', '★ Rare'], ['cheap', '$8M or less'], ['need', '🎯 Fills my needs']])}${sel('sort', [['ovr', 'Best OVR'], ['pot', 'Most Potential'], ['young', 'Youngest'], ['cheap', 'Cheapest']])}</div>
       <div class="dim cond">${ps.length} match${ps.length === 1 ? '' : 'es'}${ps.length > 40 ? ', showing the top 40' : ''}.</div></div>
       <div class="panel tlist">${shown.map(({ p, t }) => `<div class="frow"><img src="${portrait(p, t.color, displayTier(p))}" alt="" style="width:34px;height:37px"><span class="tmain"><b>${pname(p)}</b> <span class="dim">${posLabel(p)} · yr ${(p.age || 0) + 1}</span><br><span class="dim"><b style="color:${t.color}">${t.abbr}</b> · ${p.contract ? (p.contract.legend ? 'Legend deal' : fmtM(p.contract.sal) + ' · ' + p.contract.yrs + 'y') : ''}</span> ${talentTags(L, p, cut)} ${needChips(L, p)}</span><span class="tovr">${ovr(p)}</span><button class="btn sm cool" data-act="auto-deal" data-id="${p.id}" data-tip="Finds a deal their team says yes to and fills it in. You still tap Propose.">⚡ Auto deal</button><button class="btn sm" data-act="find-player" data-id="${p.id}">Trade</button></div>`).join('') || '<div class="dim">Nobody matches. Try another filter.</div>'}</div>`;
   }
@@ -9322,16 +9325,18 @@ function autoDeal(L, tid, theirs, theirsPk){
   const sets = []; const pickN = (arr, k, start, cur) => { if(cur.length === k){ sets.push(cur.slice()); return; } for(let i = start; i < arr.length; i++){ cur.push(arr[i]); pickN(arr, k, i + 1, cur); cur.pop(); } };
   pickN(pool, n, 0, []);
   const pkSets = [[]].concat(picks.map(x => [x])).concat(picks.flatMap((x, i) => picks.slice(i + 1).map(y => [x, y])));
-  let best = null, close = null;
+  let best = null, close = null, mineBest = null;
   for(const mine of sets){ if(!tradeCapCheck(L, L.user, mine, theirs).ok || !tradeCapCheck(L, tid, theirs, mine).ok) continue;
     for(const minePk of pkSets){ const r = evaluateTrade(L, tid, mine, theirs, minePk, theirsPk);
       /* v280: of the deals they accept, take the one that costs you the least value: the trade value of the players you
          give (OVR plus future worth, as tradeValue) plus what your picks are worth (pickWorth, the same scale the other
          team uses). Ties go to fewer picks. */
       if(r.ok){ const cost = mine.reduce((t, id) => t + tradeValue(L.players[id]), 0) + minePk.reduce((t, id) => t + pickWorth(L, L.picks.find(k => k.id === id)), 0);
-        if(!best || cost < best.cost - 0.01 || (Math.abs(cost - best.cost) <= 0.01 && minePk.length < best.minePk.length)) best = { mine, minePk, cost }; }
+        if(!best || cost < best.cost - 0.01 || (Math.abs(cost - best.cost) <= 0.01 && minePk.length < best.minePk.length)) best = { mine, minePk, cost };
+        const e = dealEdge(L, mine, theirs, minePk, theirsPk);   // v284: and the one the deal bar rates best for you
+        if(!mineBest || e.score > mineBest.edge) mineBest = { mine, minePk, cost, edge:e.score, verdict:e.verdict }; }
       else if(!close || r.score > close.score) close = { mine, minePk, score:r.score }; } }
-  return { best, close };
+  return { best, close, mineBest };
 }
 function tradeCheck(L, T){
   const U = L.teams[L.user], O = L.teams[T.team];
@@ -9364,7 +9369,7 @@ function dealBar(L){
     ${c.state === 'yes' || c.state === 'no' ? (() => { const e = dealEdge(L, T.mine, T.theirs, T.minePk, T.theirsPk);   // same rating the offer cards use, so you can judge your own deals
       return `<div class="dealmsg">For you: <b style="color:${{ steal:'var(--good)', good:'var(--good)', even:'var(--gold)', bad:'var(--bad)' }[e.verdict]}">${{ steal:'🔥 a steal', good:'good', even:'about even', bad:'favors them' }[e.verdict]}</b> <span class="dim">(score ${e.score > 0 ? '+' : ''}${e.score} · ${esc(e.why.filter(w => !w.includes('total salary')).join(' · '))})</span></div>`; })() : ''}
     <div class="dealbtns"><button class="btn sm hot" data-act="propose" ${c.state === 'yes' || c.state === 'no' ? '' : 'disabled'}>Propose</button>${c.state === 'no' ? (L.coins >= c.cost ? `<button class="btn sm cool" data-act="bribe">💰 Bribe ${c.cost.toLocaleString()}</button>`
-      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal">⚡ Find a deal they accept</button>` : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
+      : `<button class="btn sm" disabled title="Not enough coins">💰 Bribe ${c.cost.toLocaleString()} (need ${(c.cost - L.coins).toLocaleString()} more)</button>`) : ''}${T.theirs.length ? `<button class="btn sm cool" data-act="auto-deal">${UI.dealMode === 'mine' ? '⭐ Find the best deal for me' : '⚡ Find the cheapest deal'}</button><button class="btn sm" data-act="deal-mode" data-id="${UI.dealMode === 'mine' ? 'cheap' : 'mine'}">${UI.dealMode === 'mine' ? 'Switch to cheapest' : 'Switch to best for me'}</button>` : ''}<button class="btn sm" data-act="trade-clear" ${T.mine.length + T.theirs.length + T.minePk.length + T.theirsPk.length ? '' : 'disabled'}>Clear</button></div></div>`;
 }
 function hubTrade(L){
   memoClear(); MEMO.on = true;   // ratings and rosters may have changed since the last screen; cache for this render
@@ -9693,8 +9698,12 @@ function farmOdds(A, B, aim){
   return { species, rare, att, pot:[clamp(pm - 1, 0, TRAIN_MAX), clamp(pm + 1, 0, TRAIN_MAX)], tal:[clamp(tm - 3, -15, 18), clamp(tm + 4, -15, 18)] };
 }
 // makes the hatchling from the two saved parents
-function farmMake(L, A, B, aim){
-  const lines = [A.line, B.line].filter(l => l >= 0);
+/* v284: like = 0 or 1 makes the baby take after that parent: its species line, and a body 80% that parent's (so it
+   plays that parent's position). Anything else = the old way: either line 50/50 and the parents' average body.
+   The Rare trait odds don't change. */
+function farmMake(L, A, B, aim, like){
+  const T = like === 0 ? A : like === 1 ? B : null;
+  const lines = (T ? [T.line] : [A.line, B.line]).filter(l => l >= 0);
   const c = genPlayer(L, { line: lines.length ? pick(lines) : null, lvl:0, rareChance:0 });
   for(const k of STATS) c.genes[k] = (rand() < 0.5 ? A : B).genes[k] || 0;   // each rating gene comes from one parent or the other
   c.genes.tal = clamp(Math.round(((A.genes.tal || 0) + (B.genes.tal || 0))/2) + Math.floor(rand()*8) - 3, -15, 18);   // natural talent: near the parents' average
@@ -9702,7 +9711,8 @@ function farmMake(L, A, B, aim){
   c.rare = farmRareRoll(A, B, aim);   // a parent's Rare trait, a brand new one, or none (see farmRareTable)
   const r = rand(); c.att = r < 0.4 ? A.att : r < 0.8 ? B.att : rollAtt();
   c.look = { tone: pick([A, B]).look.tone, acc: pick(ACC_POOL) };   // a parent's color, its own accessory
-  c.bod = { h:(A.bod.h + B.bod.h)/2, ws:(A.bod.ws + B.bod.ws)/2, wt:(A.bod.wt + B.bod.wt)/2 };
+  const wA = like === 0 ? 0.8 : like === 1 ? 0.2 : 0.5;   // v284: body weight toward the parent it takes after
+  c.bod = { h:A.bod.h*wA + B.bod.h*(1 - wA), ws:A.bod.ws*wA + B.bod.ws*(1 - wA), wt:A.bod.wt*wA + B.bod.wt*(1 - wA) };
   c.age = 0; c.bred = { a:A.name, b:B.name, s:L.season + 1 };
   return c;
 }
@@ -9720,7 +9730,7 @@ function farmHatch(L, now){
   const E = farmEggs(L), U = L.teams[L.user], due = E.filter(e => e && e.snap && (!now || eggLeft(L, e) <= 0)), notes = [];   // now: only the eggs whose 3 games are up. New season: every egg
   L.eggs = E.filter(e => !due.includes(e)); L.farm = L.eggs[0] || null; L.farmNote = null;
   for(const F of due){
-    const c = farmMake(L, F.snap[0], F.snap[1], F.aim); if(c.rare && RARE[c.rare] && RARE[c.rare].mut) (L.mutSeen = L.mutSeen || {})[c.rare] = 1;   // v265: your mutation collection if(now){ c.bred.s = L.season; if(L.hatchShow == null) L.hatchShow = c.id; else (L.hatchQ = L.hatchQ || []).push(c.id); }   // one reveal at a time; the rest wait in L.hatchQ
+    const c = farmMake(L, F.snap[0], F.snap[1], F.aim, F.like); if(c.rare && RARE[c.rare] && RARE[c.rare].mut) (L.mutSeen = L.mutSeen || {})[c.rare] = 1;   // v265: your mutation collection if(now){ c.bred.s = L.season; if(L.hatchShow == null) L.hatchShow = c.id; else (L.hatchQ = L.hatchQ || []).push(c.id); }   // one reveal at a time; the rest wait in L.hatchQ
     if(U.roster.length < ROSTER){ assignNumber(L, U, c); U.roster.push(c.id); c.contract = { sal:MIN_SAL, yrs:3 }; }
     else { c.reserved = L.user; L.fa.push(c.id); }
     (L.farmLog = L.farmLog || []).unshift({ s:now ? L.season : L.season + 1, id:c.id, a:F.snap[0].name, b:F.snap[1].name }); L.farmLog.length = Math.min(L.farmLog.length, 12);
@@ -9760,11 +9770,13 @@ const mutPctOf = (a, b, aim) => { const r = farmRareTable(farmSnap(a), farmSnap(
    body (the parents' average), so it is worked out by making 24 test hatchlings and throwing them away (the league's
    id counter is put back). Cached per pair for the session. Returns [[pos, pct], ...], most likely first. */
 const POS_CACHE = new Map();
-function posOdds(L, a, b){ const key = [a.id, b.id].sort().join(',') + ':' + (a.sp + '.' + b.sp); if(POS_CACHE.has(key)) return POS_CACHE.get(key);
+function posOdds(L, a, b, like){ const key = a.id + ',' + b.id + ':' + (a.sp + '.' + b.sp) + ':' + (like == null ? '-' : like); if(POS_CACHE.has(key)) return POS_CACHE.get(key);
   const nid = L.nextId, c = {}, A = farmSnap(a), B = farmSnap(b), N = 24;
-  for(let i = 0; i < N; i++){ const k = farmMake(L, A, B, 'keep'), pos = posLabel(k); c[pos] = (c[pos] || 0) + 1; delete L.players[k.id]; }
+  for(let i = 0; i < N; i++){ const k = farmMake(L, A, B, 'keep', like), pos = posLabel(k); c[pos] = (c[pos] || 0) + 1; delete L.players[k.id]; }
   L.nextId = nid; const r = Object.entries(c).sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round(v/N*100)]); POS_CACHE.set(key, r); return r; }
 const FARM_WANT = { any:['Any position', null], guard:['A guard (PG/SG, SG/SF)', ['PG/SG', 'SG/SF']], wing:['A wing (SG/SF, SF/PF)', ['SG/SF', 'SF/PF']], big:['A big (PF/C)', ['PF/C']] };
+// with "I want" set: take after the parent that plays that position (if only one does)
+const likeFor = (a, b) => { const P = FARM_WANT[UI.farmWant || 'any'] && FARM_WANT[UI.farmWant || 'any'][1]; if(!P) return null; const ia = P.includes(posLabel(a)), ib = P.includes(posLabel(b)); return ia && !ib ? 0 : ib && !ia ? 1 : null; };
 const wantPct = (L, a, b, w) => { const P = FARM_WANT[w] && FARM_WANT[w][1]; return P ? posOdds(L, a, b).filter(([k]) => P.includes(k)).reduce((t, x) => t + x[1], 0) : 100; };
 function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutation(A, B, true), best = Math.max(TIER_RANK[tierOf(A.rare)] || 0, TIER_RANK[tierOf(B.rare)] || 0);
   const pct = (aim, k) => { const r = farmRareTable(A, B, aim).find(x => x[0] === k); return r ? r[1] : 0; };
@@ -9789,7 +9801,7 @@ function bestPairs(L, list, aim, n){
 function farmOddsHtml(O, A, B, aim){
   return `<div class="farmodds"><span class="dim">Species ${qtip('species')}</span><span>${oddsList(O.species)}</span>
     <span class="dim">Rare trait ${qtip('raretrait')}</span><span>${A && B ? rareOddsHtml(A, B, aim) : oddsList(O.rare)}</span>
-    ${A && B && A.pid != null ? `<span class="dim">Position ${qtip('position')}</span><span>${oddsList(posOdds(LEAGUE, LEAGUE.players[A.pid], LEAGUE.players[B.pid]))}</span>` : ''}
+    ${A && B && A.pid != null ? `<span class="dim">Position ${qtip('position')}</span><span>${oddsList(posOdds(LEAGUE, LEAGUE.players[A.pid], LEAGUE.players[B.pid], UI.farmLike))}</span>` : ''}
     <span class="dim">Attitude ${qtip('attitude')}</span><span>${oddsList(O.att)}</span>
     <span class="dim">Potential ${qtip('potential')}</span><span><b>${O.pot[0] === O.pot[1] ? O.pot[0] : O.pot[0] + ' to ' + O.pot[1]}</b> out of ${TRAIN_MAX}</span>
     <span class="dim">Natural talent ${qtip('nattalent')}</span><span><b>${O.tal[0] > 0 ? '+' : ''}${O.tal[0]} to ${O.tal[1] > 0 ? '+' : ''}${O.tal[1]}</b> on every rating</span>
@@ -9829,6 +9841,7 @@ function hubFarm(L){
     const pair = a && b ? (() => { const cost = farmCost(a, b), short = cost - L.coins;
       return `<div class="farmpair"><img src="${portrait(a, U.color)}" alt=""><span class="x">×</span><img src="${portrait(b, U.color)}" alt=""></div>
         ${(() => { const S = suggestAim(a, b), on = aimOf(L.farmAim) === S.aim; return `<div class="cond" style="margin:6px 0 0">💡 Best goal for this pair: <b>${FARM_AIMS[S.aim].name}</b>${on ? ' ✓' : ` <button class="btn sm hot" data-act="farm-aim" data-id="${S.aim}">Use it</button>`}<br><span class="dim">${esc(S.why)}</span></div>`; })()}
+        <div class="cond" style="margin:6px 0 0">Baby takes after ${qtip('likes')}: ${[[null, 'Either'], [0, pname(a)], [1, pname(b)]].map(([v, n]) => `<button class="btn sm ${UI.farmLike === v || (v == null && UI.farmLike == null) ? 'hot' : ''}" data-act="farm-like" data-id="${v == null ? '' : v}">${esc(n)}${v == null ? '' : ' · ' + posLabel(v === 0 ? a : b)}</button>`).join(' ')}</div>
         <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">${Object.entries(FARM_AIMS).map(([k, G]) => `<button class="btn sm ${aimOf(L.farmAim) === k ? 'hot' : ''}" data-act="farm-aim" data-id="${k}">${G.name}</button>`).join('')}</div>
         <div class="dim cond" style="margin-bottom:6px">Goal ${qtip('goal')}: ${FARM_AIMS[aimOf(L.farmAim)].desc} Breeding cost ${qtip('cost')}</div>
         ${farmOddsHtml(farmOdds(farmSnap(a), farmSnap(b), L.farmAim), farmSnap(a), farmSnap(b), L.farmAim)}
@@ -9844,7 +9857,7 @@ function hubFarm(L){
     const rows = order.map(p => { const on = sel.includes(p.id), S = SPECIES[p.sp];
       return `<div class="frow ${on ? 'sel' : ''}">${faceTile(p, U.color)}<span class="tmain"><b>${esc(pname(p))}</b> <span class="dim"><span data-tip="${esc(TIP_TERMS.ovr)}" class="hastip">${ovr(p)} OVR</span> · <span data-tip="${esc(TIP_TERMS.pos)}" class="hastip">${posLabel(p)}</span> · <span data-tip="${esc(TIP_TERMS.pot)}" class="hastip">Pot ${trainOf(p).mind.pot || 0}/${TRAIN_MAX}</span> · <span data-tip="${esc(TIP_TERMS.talent)}" class="hastip">Talent ${tal(p)}</span></span><br>${typeChips(S.types)} ${p.rare ? traitChip(p.rare) : ''} ${attChip(p)}${traitInfo(p.rare)}${makes(p)}</span><button class="btn sm ${on ? 'hot' : ''}" data-act="farm-pick" data-id="${p.id}" ${!on && sel.length >= 2 ? 'disabled' : ''}>${on ? '✓ Picked' : 'Pick'}</button></div>`; }).join('');
     const want = UI.farmWant || 'any';
-    const best = bestPairs(L, pool, L.farmAim, want === 'any' ? 5 : 40).filter(o => want === 'any' || wantPct(L, o.a, o.b, want) >= 50).slice(0, 5);   // v283: only pairs that usually make the position you want
+    const best = bestPairs(L, pool, L.farmAim, want === 'any' ? 5 : 60).filter(o => { if(want === 'any') return true; const P = FARM_WANT[want][1]; o.like = likeFor(o.a, o.b); return wantPct(L, o.a, o.b, want) >= 50 || P.includes(posLabel(o.a)) || P.includes(posLabel(o.b)); }).slice(0, 5);   // v284: a parent playing it is enough, the baby takes after that one   // v283: only pairs that usually make the position you want
     /* v267 Apex helper. For every trait on your roster that has an Apex: with two creatures that share it, one tap breeds
        them on Go for a mutation; with one, one tap copies it onto your cheapest creature without a trait (Keep a trait). */
     const apexKeyOf = k => BASE_RARE.includes(k) ? k + '+' + k : 'apex:' + k, traits = [...new Set(pool.map(p => p.rare).filter(k => k && !k.startsWith('apex:') && !(rareParts(k).length === 1 && !BASE_RARE.includes(k)) && RARE[apexKeyOf(k)]))];
@@ -9857,7 +9870,7 @@ function hubFarm(L){
       return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Step 1: copy it. ${esc(pname(a))} × ${esc(pname(z))} on Keep a trait, ${keep}% the baby gets ${esc(RARE[k].name)}. When it hatches, this turns into step 2.</span></span><button class="btn sm" data-act="farm-quick" data-id="${a.id},${z.id},keep" ${L.coins >= c && !full ? '' : 'disabled'}>Copy · ${c}</button></div>`; }).join('');
     const apexHtml = apexRows ? `<details class="panel"><summary><b>🔁 Make an Apex</b> <span class="dim cond">· one tap per step, it breeds right away</span></summary>${apexRows}</details>` : '';
     const wantSel = `<select data-ui="farmWant" aria-label="Position you want">${Object.entries(FARM_WANT).map(([k, [n]]) => `<option value="${k}" ${want === k ? 'selected' : ''}>I want: ${n}</option>`).join('')}</select>`;
-    const bestHtml = `<div class="panel"><div class="row" style="justify-content:space-between;gap:6px;flex-wrap:wrap"><h3 style="margin:0">Best pairs on your roster</h3>${wantSel}</div><p class="dim cond" style="margin:4px 0">The rarest mutation each pair can make, with its odds on the goal Pick will choose for it, and the position the baby usually plays.</p>${best.length ? best.map(o => { const po = posOdds(L, o.a, o.b)[0]; return `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b> · usually <b>${po[0]}</b> (${po[1]}%)${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`; }).join('') : `<div class="dim cond">No pair with a trait usually makes that position. Two creatures that play it will, even without traits: pick them in the list below.</div>`}</div>`;
+    const bestHtml = `<div class="panel"><div class="row" style="justify-content:space-between;gap:6px;flex-wrap:wrap"><h3 style="margin:0">Best pairs on your roster</h3>${wantSel}</div><p class="dim cond" style="margin:4px 0">The rarest mutation each pair can make, with its odds on the goal Pick will choose for it, and the position the baby usually plays.</p>${best.length ? best.map(o => { const po = posOdds(L, o.a, o.b, o.like)[0]; return `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b> · usually <b>${po[0]}</b> (${po[1]}%)${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`; }).join('') : `<div class="dim cond">No pair with a trait usually makes that position. Two creatures that play it will, even without traits: pick them in the list below.</div>`}</div>`;
     main = `<div class="panel"><h3>The pair</h3>${pair}</div>${bestHtml}${apexHtml}<div class="panel"><h3>Your roster</h3>${rows}</div>`;
   }
   const log = (L.farmLog || []).filter(e => L.players[e.id]);
@@ -11873,18 +11886,20 @@ if(typeof document !== 'undefined'){
       case 'tree-jump': { const n = TREE.N[id]; if(!n) break; UI.treeList = false; UI.treeSel = id; const V = UI.treeView; if(V){ V.x = n.x; V.y = n.y; V.z = Math.max(V.z, 0.8); } renderHub(); break; }   // center the tree on it
       case 'tree-undo': { const A = L.players[L.avatar], U0 = A && A.treeUndo; if(!U0 || A.tree.length <= U0.len) break; const back = A.tree.splice(U0.len);
         A.treePts = (+A.treePts || 0) + back.length; if(U0.goals) A.treeGoals = U0.goals; A.treeUndo = null;   /* goals reached by what you undid come back too */ A._tfx = null; memoClear(); UI.msg = `Undid ${back.length} node${back.length > 1 ? 's' : ''}: ${back.length} point${back.length > 1 ? 's' : ''} back.`; saveLeague(); renderHub(); break; }
-      case 'farm-pair': { UI.farmSel = String(id).split(',').map(Number); { const [a, b] = UI.farmSel.map(x => L.players[x]); if(farmOk(a) && farmOk(b)) L.farmAim = suggestAim(a, b).aim; } renderHub(); break; }   // v278: the best goal for it   // v265: a suggested pair
+      case 'farm-pair': { UI.farmSel = String(id).split(',').map(Number); { const [a, b] = UI.farmSel.map(x => L.players[x]); if(farmOk(a) && farmOk(b)){ L.farmAim = suggestAim(a, b).aim; UI.farmLike = likeFor(a, b); } } renderHub(); break; }   // v278: the best goal for it   // v265: a suggested pair
       case 'farm-pick': { const n = +id, cur = UI.farmSel || []; UI.farmSel = cur.includes(n) ? cur.filter(x => x !== n) : cur.length < 2 ? cur.concat(n) : cur;
-        if(UI.farmSel.length === 2 && !cur.includes(n)){ const [a, b] = UI.farmSel.map(x => L.players[x]); L.farmAim = suggestAim(a, b).aim; }   // v278: switch to the best goal for the new pair
+        if(UI.farmSel.length === 2 && !cur.includes(n)){ const [a, b] = UI.farmSel.map(x => L.players[x]); L.farmAim = suggestAim(a, b).aim; UI.farmLike = likeFor(a, b); }   // v278: switch to the best goal for the new pair
         renderHub(); break; }
       case 'farm-clear': UI.farmSel = []; renderHub(); break;
+      case 'deal-mode': UI.dealMode = id === 'mine' ? 'mine' : 'cheap'; renderHub(); break;   // v284
+      case 'farm-like': UI.farmLike = id === '' ? null : +id; renderHub(); break;   // v284
       case 'farm-aim': L.farmAim = aimOf(id); saveLeague(); renderHub(); break;   // v259: the breeding goal, remembered for the next pair too
       case 'farm-quick': { const [x, y, aim] = String(id).split(','); UI.farmSel = [+x, +y]; L.farmAim = aimOf(aim); }   // v267 Apex helper: pick both, set the goal, then breed right away (falls through)
       case 'farm-go': {
         const [a, b] = (UI.farmSel || []).map(x => L.players[x]);
         if(!farmOk(a) || !farmOk(b) || farmEggs(L).length >= FARM_NEST) break;   // up to FARM_NEST eggs at once (v255)
         const cost = farmCost(a, b); if(L.coins < cost) break;
-        L.coins -= cost; farmEggs(L).push({ s:L.season, g:L.gameNo || 0, aim:aimOf(L.farmAim), snap:[farmSnap(a), farmSnap(b)] }); farmEggs(L);   /* g: your game count when the egg was laid. The second call points L.farm at the oldest egg */
+        L.coins -= cost; farmEggs(L).push({ s:L.season, g:L.gameNo || 0, aim:aimOf(L.farmAim), like:UI.farmLike == null ? null : UI.farmLike, snap:[farmSnap(a), farmSnap(b)] }); farmEggs(L); UI.farmLike = null;   /* g: your game count when the egg was laid. The second call points L.farm at the oldest egg */
         UI.farmSel = [];
         saveLeague(); UI.msg = `🥚 ${pname(a)} and ${pname(b)} left an egg in the nest (${farmEggs(L).length} of ${FARM_NEST}). It hatches after your next ${FARM_GAMES} games.`; renderHub(); break; }
       // decision prompts
@@ -11936,7 +11951,11 @@ if(typeof document !== 'undefined'){
         if(!T || T.team == null || !(T.theirs.length + T.theirsPk.length)){ UI.toast = 'Pick who you want first.'; renderHub(); break; }
         if(!T.theirs.length){ UI.toast = 'Add at least one of their players: players must match one for one.'; renderHub(); break; }
         const R = autoDeal(L, T.team, T.theirs, T.theirsPk), O = L.teams[T.team];
-        if(R.best){ T.mine = R.best.mine; T.minePk = R.best.minePk; const get = T.theirs.reduce((t, x) => t + tradeValue(L.players[x]), 0);
+        if(UI.dealMode === 'mine' && R.mineBest){ const B = R.mineBest; T.mine = B.mine; T.minePk = B.minePk;   // v284: Best for me
+          const word = { steal:'a steal for you', good:'good for you', even:'about even', bad:'still favors them a little' }[B.verdict] || '';
+          UI.msg = B.edge > 0 ? `⭐ Found the deal ${O.abbr} accepts that's best for you: ${word}. Check it in the bar below and tap Propose.` : `⭐ No deal ${O.abbr} accepts favors you for this player. This is the closest to even (${word}). The cheapest option or a bribe may be better.`;
+          UI.toast = B.edge > 0 ? 'Best deal for you found.' : 'Closest to even loaded.'; }
+        else if(R.best){ T.mine = R.best.mine; T.minePk = R.best.minePk; const get = T.theirs.reduce((t, x) => t + tradeValue(L.players[x]), 0);
           UI.msg = `⚡ Found the cheapest deal ${O.abbr} accepts: you give about ${Math.round(R.best.cost)} in trade value for ${Math.round(get)}. Check it in the bar below and tap Propose.`; UI.toast = 'Cheapest deal found.'; }
         else if(R.close){ T.mine = R.close.mine; T.minePk = R.close.minePk; UI.msg = `No deal ${O.abbr} would accept as is. This is the closest one: the bar below shows the bribe price to close it.`; UI.toast = 'No straight deal. Closest one loaded.'; }
         else { UI.msg = `Nothing works: the salary cap blocks every combination for this player.`; UI.toast = UI.msg; }
