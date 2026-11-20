@@ -7135,6 +7135,7 @@ const TIP_TERMS = {
   ratings:'Each rating\'s strong or weak gene comes from one parent or the other, 50/50.',
   goal:'Keep a trait: the baby most likely copies a parent\'s trait. Go for a mutation: most likely something new. Balanced: in between.',
   cost:'Breeding cost goes up with the parents\' trade value. Better parents cost more.',
+  position:'The position the hatchling will play. It comes from one parent\'s species line and the parents\' average body, so two guards make guards and two bigs make bigs. It keeps that position when it grows up.',
   nest:'The nest holds up to 5 eggs. Each hatches after 3 of your games, counted from when you bred it.',
   double:'Once you are good, other teams send two defenders at you. Your shots get harder, but the teammate left open gets a better look. Passing out of it wins games. Story bosses double you harder.',
   modes:'Sim: the game is played for you in a second. Play: you control your Legend. Watch: see the whole game play out. Quick coach: no court, the game stops every half quarter for your calls.',
@@ -7499,7 +7500,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 282;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 283;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9629,7 +9630,7 @@ const FARM_MUT = 0.25;   // chance of a Wild mutation when neither parent has a 
 const farmOk = p => p && !p.avatar && !p.nemesis;
 const babyOf = line => SPECIES.find(S => S.line === line && S.stage === 1);
 // what the farm remembers about a parent, so the egg still hatches if the parent is traded before then
-function farmSnap(p){ return { name:pname(p), line:SPECIES[p.sp].line, genes:{ ...(p.genes || {}) }, pot:trainOf(p).mind.pot || 0, rare:p.rare || null, att:p.att || 'pro', look:p.look || { tone:0, acc:0 }, bod:p.bod || { h:1, ws:1, wt:1 } }; }
+function farmSnap(p){ return { pid:p.id, name:pname(p), line:SPECIES[p.sp].line, genes:{ ...(p.genes || {}) }, pot:trainOf(p).mind.pot || 0, rare:p.rare || null, att:p.att || 'pro', look:p.look || { tone:0, acc:0 }, bod:p.bod || { h:1, ws:1, wt:1 } }; }
 function farmCost(a, b){ return Math.round((80 + 6*Math.max(0, (tradeValue(a) + tradeValue(b))/2 - 60))/10)*10; }   // better parents cost more. v259: about half again (v255 was 150 + 12 per point, before that 300 + 25)
 /* Rare trait inheritance (v225). farmRareTable gives the chances as [[trait key | 'new' | null, percent], ...]:
      both parents have a trait   the hatchling ALWAYS gets one: about 33% each parent's (65% if they share it), 35% a mutation
@@ -9755,6 +9756,16 @@ const mutPctOf = (a, b, aim) => { const r = farmRareTable(farmSnap(a), farmSnap(
 /* v278: the goal that fits a pair best, and why. A mutation that beats both parents' traits: Go for a mutation.
    Parents with traits but no better mutation (or only a random Wild one): Keep a trait. No traits at all: Go for a
    mutation (the best shot at a Wild trait). Picking a pair switches to this goal; you can still change it. */
+/* v283: what position a pair's hatchling plays. The position comes from the species line (one parent's, 50/50) and the
+   body (the parents' average), so it is worked out by making 24 test hatchlings and throwing them away (the league's
+   id counter is put back). Cached per pair for the session. Returns [[pos, pct], ...], most likely first. */
+const POS_CACHE = new Map();
+function posOdds(L, a, b){ const key = [a.id, b.id].sort().join(',') + ':' + (a.sp + '.' + b.sp); if(POS_CACHE.has(key)) return POS_CACHE.get(key);
+  const nid = L.nextId, c = {}, A = farmSnap(a), B = farmSnap(b), N = 24;
+  for(let i = 0; i < N; i++){ const k = farmMake(L, A, B, 'keep'), pos = posLabel(k); c[pos] = (c[pos] || 0) + 1; delete L.players[k.id]; }
+  L.nextId = nid; const r = Object.entries(c).sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round(v/N*100)]); POS_CACHE.set(key, r); return r; }
+const FARM_WANT = { any:['Any position', null], guard:['A guard (PG/SG, SG/SF)', ['PG/SG', 'SG/SF']], wing:['A wing (SG/SF, SF/PF)', ['SG/SF', 'SF/PF']], big:['A big (PF/C)', ['PF/C']] };
+const wantPct = (L, a, b, w) => { const P = FARM_WANT[w] && FARM_WANT[w][1]; return P ? posOdds(L, a, b).filter(([k]) => P.includes(k)).reduce((t, x) => t + x[1], 0) : 100; };
 function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutation(A, B, true), best = Math.max(TIER_RANK[tierOf(A.rare)] || 0, TIER_RANK[tierOf(B.rare)] || 0);
   const pct = (aim, k) => { const r = farmRareTable(A, B, aim).find(x => x[0] === k); return r ? r[1] : 0; };
   if(m && (TIER_RANK[tierOf(m)] || 0) > best) return { aim:'mutate', why:`${pct('mutate', 'new')}% to make ${RARE[m].name} (${tierOf(m)}), which beats both parents' traits.` };
@@ -9778,6 +9789,7 @@ function bestPairs(L, list, aim, n){
 function farmOddsHtml(O, A, B, aim){
   return `<div class="farmodds"><span class="dim">Species ${qtip('species')}</span><span>${oddsList(O.species)}</span>
     <span class="dim">Rare trait ${qtip('raretrait')}</span><span>${A && B ? rareOddsHtml(A, B, aim) : oddsList(O.rare)}</span>
+    ${A && B && A.pid != null ? `<span class="dim">Position ${qtip('position')}</span><span>${oddsList(posOdds(LEAGUE, LEAGUE.players[A.pid], LEAGUE.players[B.pid]))}</span>` : ''}
     <span class="dim">Attitude ${qtip('attitude')}</span><span>${oddsList(O.att)}</span>
     <span class="dim">Potential ${qtip('potential')}</span><span><b>${O.pot[0] === O.pot[1] ? O.pot[0] : O.pot[0] + ' to ' + O.pot[1]}</b> out of ${TRAIN_MAX}</span>
     <span class="dim">Natural talent ${qtip('nattalent')}</span><span><b>${O.tal[0] > 0 ? '+' : ''}${O.tal[0]} to ${O.tal[1] > 0 ? '+' : ''}${O.tal[1]}</b> on every rating</span>
@@ -9827,10 +9839,12 @@ function hubFarm(L){
     // with one parent picked: traits first, and the best match for it at the top
     const order = one ? pool.slice().sort((x, y) => (x === one ? -1 : y === one ? 1 : 0) || (TIER_RANK[tierOf(pairMut(one, y))] || 0) - (TIER_RANK[tierOf(pairMut(one, x))] || 0)) : pool.slice().sort((x, y) => (TIER_RANK[tierOf(y.rare)] || 0) - (TIER_RANK[tierOf(x.rare)] || 0));
     const makes = p => { if(!one || p === one) return ''; const m = pairMut(one, p), pct = mutPctOf(one, p, L.farmAim), t = m ? tierOf(m) : null;
-      return `<div class="pairmake ${t && TIER_RANK[t] >= 5 ? 'gold' : ''}">With ${esc(pname(one))}: 🧬 ${m ? `<b>${esc(RARE[m].name)}</b> ${tierChip(m)}` : 'a random Wild trait'} <b>${pct}%</b></div>`; };
+      const po = posOdds(L, one, p)[0];
+      return `<div class="pairmake ${t && TIER_RANK[t] >= 5 ? 'gold' : ''}">With ${esc(pname(one))}: 🧬 ${m ? `<b>${esc(RARE[m].name)}</b> ${tierChip(m)}` : 'a random Wild trait'} <b>${pct}%</b> · usually <b>${po[0]}</b> (${po[1]}%)</div>`; };
     const rows = order.map(p => { const on = sel.includes(p.id), S = SPECIES[p.sp];
       return `<div class="frow ${on ? 'sel' : ''}">${faceTile(p, U.color)}<span class="tmain"><b>${esc(pname(p))}</b> <span class="dim"><span data-tip="${esc(TIP_TERMS.ovr)}" class="hastip">${ovr(p)} OVR</span> · <span data-tip="${esc(TIP_TERMS.pos)}" class="hastip">${posLabel(p)}</span> · <span data-tip="${esc(TIP_TERMS.pot)}" class="hastip">Pot ${trainOf(p).mind.pot || 0}/${TRAIN_MAX}</span> · <span data-tip="${esc(TIP_TERMS.talent)}" class="hastip">Talent ${tal(p)}</span></span><br>${typeChips(S.types)} ${p.rare ? traitChip(p.rare) : ''} ${attChip(p)}${traitInfo(p.rare)}${makes(p)}</span><button class="btn sm ${on ? 'hot' : ''}" data-act="farm-pick" data-id="${p.id}" ${!on && sel.length >= 2 ? 'disabled' : ''}>${on ? '✓ Picked' : 'Pick'}</button></div>`; }).join('');
-    const best = bestPairs(L, pool, L.farmAim, 5);
+    const want = UI.farmWant || 'any';
+    const best = bestPairs(L, pool, L.farmAim, want === 'any' ? 5 : 40).filter(o => want === 'any' || wantPct(L, o.a, o.b, want) >= 50).slice(0, 5);   // v283: only pairs that usually make the position you want
     /* v267 Apex helper. For every trait on your roster that has an Apex: with two creatures that share it, one tap breeds
        them on Go for a mutation; with one, one tap copies it onto your cheapest creature without a trait (Keep a trait). */
     const apexKeyOf = k => BASE_RARE.includes(k) ? k + '+' + k : 'apex:' + k, traits = [...new Set(pool.map(p => p.rare).filter(k => k && !k.startsWith('apex:') && !(rareParts(k).length === 1 && !BASE_RARE.includes(k)) && RARE[apexKeyOf(k)]))];
@@ -9842,7 +9856,8 @@ function hubFarm(L){
       const c = farmCost(a, z), keep = (farmRareTable(farmSnap(a), farmSnap(z), 'keep').find(r => r[0] === k) || [0, 0])[1];
       return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Step 1: copy it. ${esc(pname(a))} × ${esc(pname(z))} on Keep a trait, ${keep}% the baby gets ${esc(RARE[k].name)}. When it hatches, this turns into step 2.</span></span><button class="btn sm" data-act="farm-quick" data-id="${a.id},${z.id},keep" ${L.coins >= c && !full ? '' : 'disabled'}>Copy · ${c}</button></div>`; }).join('');
     const apexHtml = apexRows ? `<details class="panel"><summary><b>🔁 Make an Apex</b> <span class="dim cond">· one tap per step, it breeds right away</span></summary>${apexRows}</details>` : '';
-    const bestHtml = best.length ? `<div class="panel"><h3>Best pairs on your roster</h3><p class="dim cond" style="margin:0 0 4px">The rarest mutation each pair can make, with its odds on the goal Pick will choose for it.</p>${best.map(o => `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b>${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`).join('')}</div>` : '';
+    const wantSel = `<select data-ui="farmWant" aria-label="Position you want">${Object.entries(FARM_WANT).map(([k, [n]]) => `<option value="${k}" ${want === k ? 'selected' : ''}>I want: ${n}</option>`).join('')}</select>`;
+    const bestHtml = `<div class="panel"><div class="row" style="justify-content:space-between;gap:6px;flex-wrap:wrap"><h3 style="margin:0">Best pairs on your roster</h3>${wantSel}</div><p class="dim cond" style="margin:4px 0">The rarest mutation each pair can make, with its odds on the goal Pick will choose for it, and the position the baby usually plays.</p>${best.length ? best.map(o => { const po = posOdds(L, o.a, o.b)[0]; return `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b> · usually <b>${po[0]}</b> (${po[1]}%)${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`; }).join('') : `<div class="dim cond">No pair with a trait usually makes that position. Two creatures that play it will, even without traits: pick them in the list below.</div>`}</div>`;
     main = `<div class="panel"><h3>The pair</h3>${pair}</div>${bestHtml}${apexHtml}<div class="panel"><h3>Your roster</h3>${rows}</div>`;
   }
   const log = (L.farmLog || []).filter(e => L.players[e.id]);
