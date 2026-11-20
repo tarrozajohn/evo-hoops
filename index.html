@@ -7507,7 +7507,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 286;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 287;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9755,6 +9755,9 @@ const oddsList = list => list.map(([n, pct]) => `${esc(n)} <b>${pct}%</b>`).join
 /* v265 farm quality of life. Every trait shows its tier and what it does, and the odds are split into lines. */
 const TIER_RANK = { Base:1, Wild:1, Apex:2, Fusion:3, 'Apex Fusion':4, Mythic:5, 'Apex Mythic':6 };   // higher = rarer and stronger
 const TIER_COL = { Base:'#9fb3d9', Wild:'#7be0a0', Apex:'#ffb347', Fusion:'#6fd3ff', 'Apex Fusion':'#ff8a5c', Mythic:'#c69bff', 'Apex Mythic':'#ffd23a' };
+/* v287: how strong a trait is, for every suggestion: the number of base traits in it counts most (a 4-trait Mythic beats
+   any 3-trait one, even an Apex), then Apex on top. Wild traits are the lowest. */
+const traitPower = k => !k || !RARE[k] ? 0 : rareParts(k).length*10 + (/^apex:|^(\w+)\+\1$/.test(k) ? 5 : 0) + (WILD_RARE.includes(k) ? 1 : 0);
 const tierOf = k => !k || !RARE[k] ? null : RARE[k].tier || (BASE_RARE.includes(k) ? 'Base' : RARE[k].has && RARE[k].has.length === 1 ? 'Apex' : 'Fusion');
 // "+17 Shooting, +5 to everything else" style, from a trait's boost
 function boostWords(k){ const o = boostObj(k), vals = STATS.map(st => o[st]).filter(v => v), common = vals.length === STATS.length ? Math.min(...vals) : 0;
@@ -9791,9 +9794,9 @@ const FARM_WANT = { any:['Any position', null], guard:['A guard (PG/SG, SG/SF)',
 // with "I want" set: take after the parent that plays that position (if only one does)
 const likeFor = (a, b) => { const P = FARM_WANT[UI.farmWant || 'any'] && FARM_WANT[UI.farmWant || 'any'][1]; if(!P) return null; const ia = P.includes(posLabel(a)), ib = P.includes(posLabel(b)); return ia && !ib ? 0 : ib && !ia ? 1 : null; };
 const wantPct = (L, a, b, w) => { const P = FARM_WANT[w] && FARM_WANT[w][1]; return P ? posOdds(L, a, b).filter(([k]) => P.includes(k)).reduce((t, x) => t + x[1], 0) : 100; };
-function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutation(A, B, true), best = Math.max(TIER_RANK[tierOf(A.rare)] || 0, TIER_RANK[tierOf(B.rare)] || 0);
+function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutation(A, B, true), best = Math.max(traitPower(A.rare), traitPower(B.rare));
   const pct = (aim, k) => { const r = farmRareTable(A, B, aim).find(x => x[0] === k); return r ? r[1] : 0; };
-  if(m && (TIER_RANK[tierOf(m)] || 0) > best) return { aim:'mutate', why:`${pct('mutate', 'new')}% to make ${RARE[m].name} (${tierOf(m)}), which beats both parents' traits.` };
+  if(m && traitPower(m) > best) return { aim:'mutate', why:`${pct('mutate', 'new')}% to make ${RARE[m].name} (${tierOf(m)}), which beats both parents' traits.` };
   if(A.rare || B.rare){ const k = A.rare && B.rare && A.rare !== B.rare ? null : A.rare || B.rare, keep = farmRareTable(A, B, 'keep').filter(x => x[0] && x[0] !== 'new').reduce((t, x) => t + x[1], 0);
     return { aim:'keep', why:`${keep}% the baby keeps ${k ? RARE[k].name : "a parent's trait"}. ${m ? `A mutation here (${RARE[m].name}) is no better than what they have.` : 'A mutation here would only be a random Wild trait.'}` }; }
   return { aim:'mutate', why:`Neither parent has a trait, so this gives the best shot at a Wild trait (${pct('mutate', 'new')}%).` }; }
@@ -9801,14 +9804,14 @@ function suggestAim(a, b){ const A = farmSnap(a), B = farmSnap(b), m = farmMutat
    rarest tier first, each with a count. 'all' = no filter, 't:Mythic' etc. = a whole tier, otherwise a trait key. */
 function traitOptions(players, cur){
   const n = {}; players.forEach(p => { if(p && p.rare) n[p.rare] = (n[p.rare] || 0) + 1; });
-  const keys = Object.keys(n).filter(k => RARE[k]).sort((a, b) => (TIER_RANK[tierOf(b)] || 0) - (TIER_RANK[tierOf(a)] || 0) || RARE[a].name.localeCompare(RARE[b].name));
+  const keys = Object.keys(n).filter(k => RARE[k]).sort((a, b) => traitPower(b) - traitPower(a) || RARE[a].name.localeCompare(RARE[b].name));
   const tiers = [...new Set(keys.map(tierOf))];
   const o = (v, t) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(t)}</option>`;
   return o('all', 'Any trait') + tiers.map(t => o('t:' + t, `Any ${t} (${keys.filter(k => tierOf(k) === t).reduce((s, k) => s + n[k], 0)})`)).join('') + keys.map(k => o(k, `★ ${RARE[k].name} · ${tierOf(k)} (${n[k]})`)).join(''); }
 const traitMatch = (p, f) => !f || f === 'all' ? true : f.startsWith('t:') ? !!p.rare && tierOf(p.rare) === f.slice(2) : p.rare === f;
 function bestPairs(L, list, aim, n){
   const out = []; for(let i = 0; i < list.length; i++) for(let j = i + 1; j < list.length; j++){ const a = list[i], b = list[j]; if(!a.rare && !b.rare) continue;
-    const m = pairMut(a, b); if(!m) continue; out.push({ a, b, m, rank:TIER_RANK[tierOf(m)] || 0, pct:mutPctOf(a, b, suggestAim(a, b).aim === 'mutate' ? 'mutate' : aim) }); }   // v278: odds on Go for a mutation when that is the goal it would pick
+    const m = pairMut(a, b); if(!m) continue; out.push({ a, b, m, rank:traitPower(m), pct:mutPctOf(a, b, suggestAim(a, b).aim === 'mutate' ? 'mutate' : aim) }); }   // v278: odds on Go for a mutation when that is the goal it would pick
   out.sort((x, y) => y.rank - x.rank || y.pct - x.pct); const seen = new Set();
   return out.filter(o => !seen.has(o.m) && seen.add(o.m)).slice(0, n); }
 function farmOddsHtml(O, A, B, aim){
@@ -9863,7 +9866,7 @@ function hubFarm(L){
       : `<p class="dim" style="margin:0">${sel.length ? 'Pick one more parent.' : 'Pick two parents from the list.'} The odds for the hatchling show up here before you pay.</p>`;
     const one = sel.length === 1 ? L.players[sel[0]] : null, pool = U.roster.map(id => L.players[id]).filter(farmOk);
     // with one parent picked: traits first, and the best match for it at the top
-    const order = one ? pool.slice().sort((x, y) => (x === one ? -1 : y === one ? 1 : 0) || (TIER_RANK[tierOf(pairMut(one, y))] || 0) - (TIER_RANK[tierOf(pairMut(one, x))] || 0)) : pool.slice().sort((x, y) => (TIER_RANK[tierOf(y.rare)] || 0) - (TIER_RANK[tierOf(x.rare)] || 0));
+    const order = one ? pool.slice().sort((x, y) => (x === one ? -1 : y === one ? 1 : 0) || traitPower(pairMut(one, y)) - traitPower(pairMut(one, x))) : pool.slice().sort((x, y) => traitPower(y.rare) - traitPower(x.rare));
     const makes = p => { if(!one || p === one) return ''; const m = pairMut(one, p), pct = mutPctOf(one, p, L.farmAim), t = m ? tierOf(m) : null;
       const po = posOdds(L, one, p)[0];
       return `<div class="pairmake ${t && TIER_RANK[t] >= 5 ? 'gold' : ''}">With ${esc(pname(one))}: 🧬 ${m ? `<b>${esc(RARE[m].name)}</b> ${tierChip(m)}` : 'a random Wild trait'} <b>${pct}%</b> · usually <b>${po[0]}</b> (${po[1]}%)</div>`; };
@@ -9875,7 +9878,7 @@ function hubFarm(L){
        them on Go for a mutation; with one, one tap copies it onto your cheapest creature without a trait (Keep a trait). */
     const apexKeyOf = k => BASE_RARE.includes(k) ? k + '+' + k : 'apex:' + k, traits = [...new Set(pool.map(p => p.rare).filter(k => k && !k.startsWith('apex:') && !(rareParts(k).length === 1 && !BASE_RARE.includes(k)) && RARE[apexKeyOf(k)]))];
     const blanks = pool.filter(p => !p.rare).sort((x, y) => tradeValue(x) - tradeValue(y));
-    const apexRows = traits.sort((x, y) => (TIER_RANK[tierOf(y)] || 0) - (TIER_RANK[tierOf(x)] || 0)).map(k => { const own = pool.filter(p => p.rare === k), ak = apexKeyOf(k);
+    const apexRows = traits.sort((x, y) => traitPower(y) - traitPower(x)).map(k => { const own = pool.filter(p => p.rare === k), ak = apexKeyOf(k);
       if(own.length >= 2){ const [a, b] = own, c = farmCost(a, b), pct = mutPctOf(a, b, 'mutate');
         return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Ready: ${esc(pname(a))} × ${esc(pname(b))} on Go for a mutation, ${pct}%</span></span><button class="btn sm hot" data-act="farm-quick" data-id="${a.id},${b.id},mutate" ${L.coins >= c && !full ? '' : 'disabled'}>Breed · ${c}</button></div>`; }
       const a = own[0], z = blanks[0]; if(!z) return `<div class="frow"><span class="tmain">${traitChip(k)} → <b>${esc(RARE[ak].name)}</b> ${tierChip(ak)}<br><span class="dim cond">Step 1 needs a creature with no trait to copy it onto. You have none.</span></span></div>`;
