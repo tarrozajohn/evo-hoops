@@ -31,7 +31,7 @@
   --panel2:#1d2352;                /* raised panels, hovered rows */
   --line:#2d3672;                  /* borders and dividers */
   --text:#eef1ff;                  /* main text */
-  --dim:#9aa3d6;                   /* secondary text */
+  --dim:#b3bbe8;   /* v288: brighter (was #9aa3d6) so secondary text is easier to read */                   /* secondary text */
   --hot:#ff6b2c;                   /* basketball orange accent */
   --cool:#3fd0ff;                  /* player-one cyan */
   --good:#4fdc8a; --bad:#ff5470;   /* semantic win/loss */
@@ -100,6 +100,19 @@ button,.btn,.tab,.subtab,.bnavitem{-webkit-user-select:none;user-select:none}
 .card img{width:64px;height:70px;flex:none}
 .card .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 @media (max-width:400px){ .bnav .bnavitem{font-size:10px;letter-spacing:.02em} }
+/* v288 READABILITY on phones: no body text smaller than 14px before the phone scale (about 12.5px on screen, up from 10).
+   Inline sizes of 11-13px are raised, plain .dim/.cond text gets a floor, and longer text gets more line spacing.
+   Chips, badges, buttons and the bottom bar keep their own sizes. */
+@media (max-width:760px){
+  #view [style*="font-size:11px"], #view [style*="font-size:12px"], #view [style*="font-size:13px"]{font-size:14px!important}
+  #view p, #view li, #view td, #view .dim, #view .cond, #view .frow .tmain, #view .card .body > div{font-size:max(100%, 14px)}
+  #view p, #view li, #view .dim, #view .frow .tmain, #view .howto{line-height:1.42}
+  #view .chip, #view .rarechip, #view .tierchip, #view .attchip, #view .tabbadge, #view .btn, #view button, #view .qtip, #view .bars span, #view .pkchip{font-size:revert-layer}
+}
+@media (max-width:760px){   /* v288: the small labels on cards and lists (free agent status, pay, role, tags) and small buttons */
+  #view .fastat span{font-size:14px!important;line-height:1.35}
+  #view .paychip, #view .rolechip, #view .ttag, #view .tval, #view .gradechip, #view .morebtn, #view .btn.sm{font-size:max(100%, 13.5px)!important}
+}
 @media (max-width:360px){ .bnav .bnavitem{font-size:9px;letter-spacing:0} .bnav .bnavsim{width:52px!important} .bnav .bnavitem .bi{font-size:18px} .bnav{padding-left:4px!important;padding-right:4px!important;gap:0!important} }   /* v279: small phones (more specific than the base rule further down) */
 /* v278: on computers the cards were too narrow next to the 128px portrait, so the OVR number got cut off. Wider columns
    on bigger screens, and the OVR never shrinks. Phones keep one card per row as before. */
@@ -441,7 +454,7 @@ details.stylebox > summary::before{content:'🎨 '}
    Idea: a TV broadcast over a night arena. Your team color (--team) drives the accents, panels have
    a clipped broadcast corner, tabs are slanted like on-screen graphics, and Sim is a basketball. */
 html.skin{ --team:#3fd0ff; --ink:#000; --panel:#121110; --panel2:#1d1b19; --line:#2e2a26;
-  --text:#f6f2ea; --dim:#a8a096;    /* warm white and warm gray text */
+  --text:#f6f2ea; --dim:#c4bdb2;   /* v288: was #a8a096 */    /* warm white and warm gray text */
   --cool:#ffc94a;                   /* "selected" buttons are gold instead of cyan */
   --acc:#ff6b2c;                    /* basketball orange: the main accent in this look */
   --chamfer:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
@@ -6799,7 +6812,7 @@ const isPhone = () => typeof matchMedia !== 'undefined' && matchMedia('(max-widt
 // inside a CSS-zoomed page (the drawing and your taps ended up in different places, so taps missed nodes and
 // taken nodes didn't light up where you expected).
 function applyUiScale(){ if(typeof document === 'undefined') return; const v = SET.ui || 'auto', onTree = (() => { try { return UI.tab === 'badges' && !!LEAGUE && LEAGUE.phase !== 'draft'; } catch(e){ return false; } })();   // try: this also runs at page load, before UI and LEAGUE exist
-  const mine = v === 'auto' ? (isPhone() ? 0.8 : window.innerWidth >= 2300 ? 1.4 : window.innerWidth >= 1750 ? 1.2 : 1) : +v   /* v279: bigger on 1080p+ and 1440p+ monitors */, z = onTree ? 1 : mine;
+  const mine = v === 'auto' ? (isPhone() ? 0.88 :   /* v288: 0.8 before; text was rendering at 10-11px */ window.innerWidth >= 2300 ? 1.4 : window.innerWidth >= 1750 ? 1.2 : 1) : +v   /* v279: bigger on 1080p+ and 1440p+ monitors */, z = onTree ? 1 : mine;
   if(document.documentElement.style.getPropertyValue('--uiz') !== String(z)) document.documentElement.style.setProperty('--uiz', z);
   document.documentElement.style.setProperty('--uizm', mine);
   document.documentElement.classList.toggle('skin', (SET.look || 'arena') === 'arena');   // Settings → Look
@@ -7507,7 +7520,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 287;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 288;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
