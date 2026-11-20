@@ -3352,8 +3352,9 @@ function accentColor(S){ return S.types[1] ? TYPES[S.types[1]].c : TYPES[S.types
 function litFill(ctx, c, cx, cy, r){ const g = ctx.createRadialGradient(cx - r*0.35, cy - r*0.45, r*0.08, cx, cy, r*1.25); g.addColorStop(0, shade(c, 0.28)); g.addColorStop(0.55, c); g.addColorStop(1, shade(c, -0.3)); return g; }
 function drawCreature(ctx, sp, px, py, hpx, o){
   if(SPECIES[sp].avatar || SPECIES[sp].nemesis){   // you: an athlete (Rookie), half-awakened (Lv 20), then a majestic creature (Lv 50) and its Legendary form; your nemesis is the dark mirror
-    const dark = !!SPECIES[sp].nemesis; if(dark) o = { ...o, dark:true, legendary:false };
-    const hs = o.heroStage || (dark ? nemesisStageNow() : heroStageNow());
+    const dark = !!SPECIES[sp].nemesis, boss = dark && typeof LEAGUE !== 'undefined' && LEAGUE && kaineFinalOn(LEAGUE);   // v291: is Kaine the final boss right now?
+    if(dark) o = { ...o, dark:true, legendary:false, bossFx: o.bossFx || boss };
+    const hs = boss ? Math.max(3, o.heroStage || 0) : o.heroStage || (dark ? nemesisStageNow() : heroStageNow());   // the final boss always wears his armor
     if(o.legendary || hs >= 3) return drawKnight(ctx, px, py, hpx*1.04, o, !!o.legendary);   // the white knight
     drawHero(ctx, px, py, hpx, o, hs); return;
   }
@@ -3816,6 +3817,42 @@ function sparkle(ctx, x, y, s, col){
    The armor is fitted to an athlete's body: a breastplate with a glowing core, pointed layered shoulder plates,
    arm guards with a fin, hip plates around a tabard in your team colour, knee spikes, greaves and armored boots,
    with glowing seams, and a long cape with a high collar. Same units and pose inputs as drawHero. */
+/* v291: lightning for your Legendary form only. Everything is in the knight's own units (height = 1).
+   lzRand gives a repeatable random number from a seed, so a bolt keeps its shape for one flicker frame and then re-forms. */
+function lzRand(n){ const x = Math.sin(n*127.1 + 311.7)*43758.5453; return x - Math.floor(x); }
+// One jagged bolt from (x1,y1) to (x2,y2): a wide soft glow, then a thin white-hot core. 'forks' adds short side branches.
+function lzBolt(ctx, x1, y1, x2, y2, seed, w, col, forks){
+  const n = 7, dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy) || 1, nx = -dy/d, ny = dx/d, pts = [[x1, y1]];
+  for(let i = 1; i < n; i++){ const f = i/n, off = (lzRand(seed + i*3.1) - 0.5)*d*0.32; pts.push([x1 + dx*f + nx*off, y1 + dy*f + ny*off]); }   // zig-zag points along the line
+  pts.push([x2, y2]);
+  const path = () => { ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); };
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = col.replace('A', '.3'); ctx.lineWidth = w*4.5; path(); ctx.stroke();    // outer glow
+  ctx.strokeStyle = col.replace('A', '.9'); ctx.lineWidth = w*2.2; path(); ctx.stroke();    // inner glow
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = w; path(); ctx.stroke();                      // core
+  if(forks) for(let k = 2; k < n - 1; k += 2){ if(lzRand(seed + k*9.7) < 0.45) continue;      // short branches off some of the points
+    const [px, py] = pts[k], a = Math.atan2(dy, dx) + (lzRand(seed + k) < 0.5 ? -1 : 1)*(0.5 + lzRand(seed + k*2)*0.6), L = d*(0.12 + lzRand(seed + k*5)*0.14);
+    lzBolt(ctx, px, py, px + Math.cos(a)*L, py + Math.sin(a)*L, seed + k*41, w*0.6, col, false); }
+}
+// The whole effect. layer 'back' = big bolts arcing around you behind the body; 'front' = crackles over the armor and strikes at your feet.
+function legendLightning(ctx, t, layer, dark){
+  const fr = Math.floor(t*14);   // a new flicker frame 14 times a second
+  const col = dark ? 'rgba(255,40,70,A)' : 'rgba(25,105,255,A)', gcol = dark ? 'rgba(170,70,255,A)' : 'rgba(0,190,255,A)';   // your colors are deep enough to show against the bright Legendary aura   // you: electric blue with gold; Kaine: crimson with violet
+  ctx.save();
+  if(layer === 'back'){
+    for(let i = 0; i < 4; i++){ if(lzRand(fr*7 + i) < 0.3) continue;   // each bolt is off about 30% of frames, which makes it flicker
+      const a = -Math.PI/2 + (i - 1.5)*0.95 + (lzRand(fr + i*13) - 0.5)*0.5, r1 = 0.18, r2 = 0.78 + lzRand(fr*3 + i)*0.22;
+      lzBolt(ctx, Math.cos(a)*r1, -0.58 + Math.sin(a)*r1*1.2, Math.cos(a)*r2, -0.58 + Math.sin(a)*r2*1.05, fr*31 + i*17, 0.02, i % 2 ? gcol : col, true); }
+    if(lzRand(fr*5 + 2) > 0.55){ ctx.fillStyle = dark ? 'rgba(255,60,90,.16)' : 'rgba(120,200,255,.2)'; ctx.beginPath(); ctx.arc(0, -0.58, 0.7, 0, Math.PI*2); ctx.fill(); }   // a faint flash on some frames
+  } else {
+    const spots = [[-0.17, -0.78, -0.05, -0.62], [0.2, -0.76, 0.1, -0.58], [-0.06, -0.4, 0.05, -0.24], [0.09, -0.3, 0.06, -0.12], [-0.25, -0.62, -0.32, -0.45]];   // short arcs over shoulders, arms and legs
+    spots.forEach(([a, b, c, d], i) => { if(lzRand(fr*11 + i) < 0.45) return; lzBolt(ctx, a, b, c, d, fr*19 + i*7, 0.009, col, false); });
+    for(let i = 0; i < 2; i++){ if(lzRand(fr*3 + i*5) < 0.5) continue;   // a strike from the feet into the floor, with a small splash
+      const x = (i ? 0.1 : -0.1) + (lzRand(fr + i) - 0.5)*0.1; lzBolt(ctx, x*0.6, -0.12, x*1.9, 0.0, fr*23 + i, 0.012, col, true);
+      ctx.fillStyle = dark ? 'rgba(255,120,140,.5)' : 'rgba(170,225,255,.55)'; ctx.beginPath(); ctx.ellipse(x*1.9, 0, 0.06, 0.014, 0, 0, Math.PI*2); ctx.fill(); }
+  }
+  ctx.restore();
+}
 function drawKnight(ctx, px, py, hpx, o, LG){
   const t = o.t || 0, face = o.face || 1, sq = o.sq || 1, spinX = o.spinX == null ? 1 : o.spinX;
   const armF = o.armF == null ? 0.25 : o.armF, armB = o.armB == null ? 0.25 : o.armB;
@@ -3837,6 +3874,8 @@ function drawKnight(ctx, px, py, hpx, o, LG){
     tipC: LG ? '#ffffff' : DK ? '#ff5a66' : '#ffd23a', iris: DK ? '#ff3344' : '#ffd23a', eyeGlow:true, band:'crown', gold, t, blink:o.blink, mouth:o.mouth, marks:!DK };
   // radiant backdrop for the Legendary form
   if(LG){ const g = ctx.createRadialGradient(0, -0.6, 0.05, 0, -0.6, 0.85); g.addColorStop(0, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(225,235,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -0.6, 0.85, 0, Math.PI*2); ctx.fill(); }
+  const ZAP = (LG && !DK) || (DK && o.bossFx);   // v291: lightning for your Legendary form, and for Kaine only as the final boss
+  if(ZAP) legendLightning(ctx, t, 'back', DK);
   // 1) the cape: wide, flowing back, jagged at the hem, with a lighter lining edge
   const w1 = Math.sin(t*3.2)*0.04, w2 = Math.sin(t*3.2 + 1.3)*0.035;
   const cg = ctx.createLinearGradient(0, shY, 0, 0); cg.addColorStop(0, cape1); cg.addColorStop(1, cape2); ctx.fillStyle = cg;
@@ -3904,6 +3943,7 @@ function drawKnight(ctx, px, py, hpx, o, LG){
     const a = i*2.399 + t*0.6, rr = 0.35 + (i % 3)*0.12, tw = 0.5 + 0.5*Math.sin(t*5 + i*1.7);
     sparkle(ctx, Math.cos(a)*rr*0.9, -0.62 + Math.sin(a)*rr*0.85, 0.018 + tw*0.02, LG ? 'rgba(255,255,255,.95)' : DK ? 'rgba(255,170,180,.85)' : 'rgba(200,245,255,.9)');
   }
+  if(ZAP) legendLightning(ctx, t, 'front', DK);   // v291: crackles over the armor and strikes at your feet
   if(LG){ ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 0.01; for(let q = 0; q < 2; q++){ const a0 = t*2 + q*3; ctx.beginPath(); for(let j = 0; j <= 6; j++){ const a = a0 + j*0.35, rr = 0.55 + Math.sin(j*2 + t*9)*0.04; const x = Math.cos(a)*rr, y = -0.6 + Math.sin(a)*rr*0.9; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); } }
   ctx.restore();
   // jersey number on the tabard
@@ -7560,7 +7600,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 290;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 291;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
