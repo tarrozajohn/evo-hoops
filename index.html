@@ -7604,7 +7604,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 292;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 293;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -12154,6 +12154,16 @@ if(typeof document !== 'undefined'){
         saveLeague(); renderHub(); break;
       }
       case 'usepick': {
+        /* v293: Badge Tokens in your bag (from rewards) go straight to your player's skill tree. Before this they opened
+           the "pick a creature" screen, which had no handler for them, so they could never be used. Tokens you were
+           given as rewards work even while the Shop's Badge Token is still locked. All of them are used in one tap. */
+        if(SHOP[id] && SHOP[id].kind === 'bp' && L.inv[id]){
+          const A = L.players[L.avatar];
+          if(!A){ UI.msg = 'Badge Tokens give skill points to your own player, and you don\'t have one in this league.'; renderHub(); break; }
+          const n = L.inv[id]; A.treePts = (A.treePts || 0) + 5*n; delete L.inv[id]; UI.use = null;
+          UI.msg = `Used ${n} Badge Token${n > 1 ? 's' : ''}: +${5*n} skill points. Spend them on the Skill Tree.`; UI.toast = UI.msg;
+          saveLeague(); renderHub(); break;
+        }
         // Team Camp works on the whole roster at once, so there's no player to pick: use it right away
         if(SHOP[id] && SHOP[id].kind === 'camp' && L.inv[id]){
           L.teams[L.user].roster.forEach(pid => CATS.forEach(c => addTP(L.players[pid], c, 2)));
