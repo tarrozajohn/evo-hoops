@@ -194,6 +194,9 @@ select{background:var(--panel2);color:var(--text);border:1px solid var(--line);b
 .ultitle{background:linear-gradient(90deg,#ff6a3d,#ffd23a,#4cc66a,#3a9bff,#ff7ad9);-webkit-background-clip:text;background-clip:text;color:transparent}
 @keyframes ultshift{to{background-position:200% 0}}
 
+.tipbubble{position:fixed;z-index:9999;background:#141a33;color:#eef2ff;border:1px solid rgba(255,210,58,.6);border-radius:10px;padding:8px 11px;font-size:14px;line-height:1.4;box-shadow:0 8px 28px rgba(0,0,0,.55);pointer-events:none}
+.qtip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-style:normal;font-size:11px;font-weight:700;color:#141a33;background:#ffd23a;vertical-align:middle;cursor:help;margin-left:2px}
+.hastip{text-decoration:underline dotted rgba(255,255,255,.45);text-underline-offset:3px;cursor:help}
 .tierchip{display:inline-block;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:0 6px;border-radius:999px;color:var(--tc);border:1px solid var(--tc)}
 .oddline{display:flex;gap:8px;align-items:baseline;padding:3px 0;border-top:1px solid rgba(255,255,255,.06)}.oddline:first-child{border-top:0}.oddline>b{min-width:38px}.oddline.mut>b{color:#c69bff}
 .pairmake{font-size:13px;margin-top:3px;padding:2px 6px;border-radius:6px;background:rgba(111,211,255,.08)}.pairmake.gold{background:rgba(255,210,58,.14);box-shadow:inset 0 0 0 1px rgba(255,210,58,.5)}
@@ -7029,6 +7032,77 @@ function subTabs(){
   return `<div class="subtabs">${g.tabs.map(k => `<button class="subtab ${UI.tab === k ? 'on' : ''}" data-act="tab" data-id="${k}">${tabName(k)}${k === 'trade' && LEAGUE && offersWaiting(LEAGUE) ? ` 📨${offersWaiting(LEAGUE)}` : ''}</button>`).join('')}</div>`;
 }
 // Drawing a screen asks for the same ratings hundreds of times; remember them while one screen is being drawn.
+/* ---------- v266 TAP TOOLTIPS ----------
+   Phones can't hover, so the game's hover text (title="...") never showed on an iPhone. Now:
+   - tap anything with an explanation and a bubble shows it (tap anywhere else to close it)
+   - after every screen update, tipScan() adds explanations to chips and labels that had none:
+     Rare traits, tiers, elements, keystones, positions, OVR, auras and the 8 rating labels
+   - qtip('key') makes a small "?" for a term in TIP_TERMS
+   Things that are buttons keep working as buttons: only chips, "?" icons and plain text show a bubble. */
+const TIP_TERMS = {
+  ovr:'Overall rating: a weighted average of the 8 ratings. Shooting counts most, then Speed and Dunking; Stamina counts least. Higher is better.',
+  pot:'Potential (0 to 5): each level gives +8% XP and about 8% more training points from games, so the creature grows faster.',
+  talent:'Natural talent: added straight to every rating. A hatchling gets about the average of its parents, give or take a few.',
+  pos:'The positions this creature plays best. Playing it out of position costs some rating.',
+  aura:'Aura: every training category a creature maxes adds +2 to every rating and a glow (Gold, then Red, then Blue). Ultimate, Eternal and Legendary auras come from shop items.',
+  species:'The hatchling is a baby of one parent\'s evolution line, so it can evolve the same way.',
+  raretrait:'The Rare trait the hatchling gets: a parent\'s trait, a mutation (a new, stronger trait) or none. Tap a trait or tier for what it does.',
+  attitude:'Personality. Each parent passes its own 40% of the time, and 20% of the time it is random.',
+  potential:'The hatchling\'s Potential: the parents\' average, give or take one.',
+  nattalent:'The hatchling\'s natural talent, added to every rating: near the parents\' average.',
+  ratings:'Each rating\'s strong or weak gene comes from one parent or the other, 50/50.',
+  goal:'Keep a trait: the baby most likely copies a parent\'s trait. Go for a mutation: most likely something new. Balanced: in between.',
+  cost:'Breeding cost goes up with the parents\' trade value. Better parents cost more.',
+  nest:'The nest holds up to 5 eggs. Each hatches after 3 of your games, counted from when you bred it.',
+  double:'Once you are good, other teams send two defenders at you. Your shots get harder, but the teammate left open gets a better look. Passing out of it wins games. Story bosses double you harder.',
+  modes:'Sim: the game is played for you in a second. Play: you control your Legend. Watch: see the whole game play out. Quick coach: no court, the game stops every half quarter for your calls.',
+  featured:'Sims the ordinary games and stops in front of the next one that matters: a rivalry game, a story boss, a must-win for the playoffs and so on.',
+  stakes:'What this game changes: streaks, revenge games, contracts, crowds and the story.',
+  playbooks:'Your team\'s offense and defense in every game you sim. The suggested ones fit your players and this opponent. Each one gives some ratings and costs others.',
+  goals:'Extra coins if your team hits these numbers in this game.',
+  draft:'How strong this year\'s rookie class is (Weak, Thin, Average, Deep or Loaded). The Scouting tab tells you more.',
+  treepts:'Skill points: you earn them from levels (+3 each), games (+2 a win, +1 a loss after your rookie year) and +35 every new season. You can also buy 5 for 220 coins. Each node costs 1.',
+  key:'Keystones are the big hexagons: each one changes how you play (or, on the outer rings, boosts your teammates).',
+  mastery:'Masteries (stars) give a big rating boost at the end of a lane.' };
+const STAT_TIP = { spd:'Speed: how fast it runs, drives and gets back on defense.', sht:'Shooting: jump shots and threes.', dnk:'Dunking: finishing at the rim.', blk:'Blocking: swatting shots.',
+  stl:'Stealing: picking pockets and intercepting passes.', pdf:'Perimeter D: guarding shooters and ball handlers outside.', idf:'Inside D: guarding the paint and contesting at the rim.', sta:'Stamina: how slowly it tires during a game.' };
+const TIER_TIP = { Base:'Base trait: one of the 7 starting traits, each with its own power.', Apex:'Apex: two parents with the same base trait. A stronger version of it.',
+  Fusion:'Fusion: two different base traits in one, with both powers.', 'Apex Fusion':'Apex Fusion: two parents with the same Fusion. A stronger Fusion.',
+  Mythic:'Mythic: three or four base traits in one, with all their powers.', 'Apex Mythic':'Apex Mythic: the same Mythic from both parents (or a Mythic with one of its own Fusions). The strongest tier.',
+  Wild:'Wild: a trait only breeding can make. Rating boosts only, no powers.' };
+const qtip = k => `<i class="qtip" data-tip="${esc(TIP_TERMS[k] || k)}">?</i>`;
+let RARE_BY_NAME = null;
+function tipScan(root){
+  if(!RARE_BY_NAME){ RARE_BY_NAME = {}; for(const k in RARE) RARE_BY_NAME[RARE[k].name] = k; }
+  const set = (el, t) => { if(t && !el.dataset.tip) el.dataset.tip = t; };
+  root.querySelectorAll('.rarechip').forEach(el => { const k = RARE_BY_NAME[el.textContent.replace(/^★\s*/, '').trim()];
+    if(k) set(el, BASE_RARE.includes(k) && RARE[k].desc ? `${RARE[k].name} (Base): ${RARE[k].desc}` : `${RARE[k].name} (${tierOf(k)}): ${boostWords(k)}. ${powersOf(k)}.`); });   // base traits: their own description says it best
+  root.querySelectorAll('.tierchip').forEach(el => set(el, TIER_TIP[el.textContent.trim()]));
+  root.querySelectorAll('.chip').forEach(el => { const T = TYPES[el.textContent.trim()]; if(T) set(el, `${el.textContent.trim()} element: beats ${T.beats.join(' and ')} (${T.why}). That means about 5% better odds on shots, steals, interceptions and blocks against them.`); });
+  root.querySelectorAll('.keychip').forEach(el => { const n = el.textContent.replace(/^◆\s*/, '').trim(), k = Object.keys(KEYSTONES).find(x => KEYSTONES[x].name === n); if(k) set(el, `Keystone: ${KEYSTONES[k].desc}`); });
+  root.querySelectorAll('.ovr, .fpos, .posb, .aurachip, .faura').forEach(el => set(el, el.classList.contains('ovr') ? TIP_TERMS.ovr : el.classList.contains('aurachip') || el.classList.contains('faura') ? TIP_TERMS.aura : TIP_TERMS.pos));
+  root.querySelectorAll('.bars > span:not(.bar):not(.num)').forEach(el => { const k = Object.keys(STAT_LABEL).find(x => STAT_LABEL[x] === el.textContent.trim()); if(k) set(el, STAT_TIP[k]); });
+  // hover text the phone could never show: make it tappable, with a dotted underline on plain text
+  root.querySelectorAll('[title]').forEach(el => { if(el.closest('button, [data-act], a, input, select, canvas, svg')) return; set(el, el.getAttribute('title')); if(!el.matches('.rarechip, .chip, .attchip, .tierchip, img, i')) el.classList.add('hastip'); });
+}
+let TIP_EL = null;
+function hideTip(){ if(TIP_EL){ TIP_EL.remove(); TIP_EL = null; } }
+function showTip(el){
+  hideTip(); const t = document.createElement('div'); t.className = 'tipbubble'; t.textContent = el.dataset.tip; document.body.appendChild(t); TIP_EL = t;
+  const r = el.getBoundingClientRect(), w = Math.min(300, window.innerWidth - 24); t.style.width = w + 'px';
+  const left = clamp(r.left + r.width/2 - w/2, 12, window.innerWidth - w - 12), h = t.offsetHeight, below = r.bottom + 8 + h < window.innerHeight;
+  t.style.left = left + 'px'; t.style.top = (below ? r.bottom + 8 : Math.max(8, r.top - h - 8)) + 'px';
+}
+if(typeof document !== 'undefined'){
+  // a tap on a chip or "?" shows its bubble (and does not also open the card around it); other taps close the bubble
+  document.addEventListener('click', ev => {
+    const el = ev.target.closest && ev.target.closest('[data-tip]');
+    if(!el || el.closest('button') || (el.closest('[data-act]') && !el.matches('.qtip, .rarechip, .tierchip, .chip, .attchip, .keychip, .aurachip, .fpos, .faura, .posb, .ovr'))){ hideTip(); return; }
+    if(TIP_EL && TIP_EL._src === el){ hideTip(); return; }
+    ev.preventDefault(); ev.stopPropagation(); showTip(el); TIP_EL._src = el; }, true);
+  window.addEventListener('scroll', hideTip, true);
+  let tipQ = false; new MutationObserver(() => { if(tipQ) return; tipQ = true; requestAnimationFrame(() => { tipQ = false; try{ tipScan(document.body); }catch(e){} }); }).observe(document.documentElement, { childList:true, subtree:true });
+}
 function renderHub(){ if(MEMO.on) return renderHub0(); memoClear(); MEMO.on = true; PORT_LAZY.on = true;
   try { return renderHub0(); } finally { MEMO.on = false; PORT_LAZY.on = false; memoClear(); fillPortraits(); markWideTables(); } }
 // tables wider than the screen scroll sideways; this marks them so a "swipe" hint shows under them
@@ -7284,7 +7358,7 @@ function treeQuickList(A){
   const pts = Math.floor(+A.treePts || 0), avail = Object.keys(TREE.N).filter(id => canTake(A, id)).map(id => TREE.N[id])
     .sort((a, b) => treeNodeValue(b, 'all') - treeNodeValue(a, 'all')).slice(0, 12);
   const label = n => n.type === 'notable' ? `${BADGES[n.badge].name} ${BADGE_TIERS[n.tier].name}` : n.type === 'key' ? `◆ ${n.name}` : n.type === 'mastery' ? `★ ${n.name}` : n.name;
-  return `<div class="panel"><h3 style="margin:0 0 6px">Take a node <span class="dim cond" style="font-size:14px">(${pts} point${pts === 1 ? '' : 's'} · ${avail.length ? 'best ones next to what you own' : 'nothing connected is open'})</span></h3>
+  return `<div class="panel"><h3 style="margin:0 0 6px">Take a node ${qtip('treepts')} ${qtip('key')} ${qtip('mastery')} <span class="dim cond" style="font-size:14px">(${pts} point${pts === 1 ? '' : 's'} · ${avail.length ? 'best ones next to what you own' : 'nothing connected is open'})</span></h3>
     <div class="row" style="gap:6px;flex-wrap:wrap">${avail.map(n => `<button class="btn sm ${pts >= 1 ? 'cool' : ''}" data-act="tree-take" data-id="${n.id}" ${pts >= 1 ? '' : 'disabled'} style="border-color:${TREE_COL[n.g] || 'var(--line)'}">${esc(label(n))}${n.lane ? ` <span style="opacity:.7;font-size:.85em">· ${esc(BADGES[n.lane].name)} line</span>` : ''}</button>`).join('')}</div>
     <div class="dim cond" style="margin-top:6px">Works the same as tapping a node on the tree.</div></div>
     ${treeBigList(A, pts)}`;
@@ -7310,7 +7384,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 265;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 266;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -7885,7 +7959,7 @@ function stakesList(L, g){
 function stakesPanel(L, g){
   const list = stakesList(L, g); if(!list.length) return '';
   const icon = { win:'<b style="color:var(--good)">WIN</b>', lose:'<b style="color:var(--bad)">LOSE</b>', note:'<span class="dim">•</span>' };
-  return `<div class="stakes"><b>What's at stake</b><ul>${list.map(([k, t]) => `<li>${icon[k]} ${esc(t)}</li>`).join('')}</ul></div>`;
+  return `<div class="stakes"><b>What's at stake</b> ${qtip('stakes')}<ul>${list.map(([k, t]) => `<li>${icon[k]} ${esc(t)}</li>`).join('')}</ul></div>`;
 }
 // After your game: apply the ripples and return what happened, for the post-game screen.
 /* ---------- YOUR ARENA ----------
@@ -8786,7 +8860,7 @@ function planPanel(L){
   const sugBox = (B, s, on, act) => `<div class="suggest"><div><b>⭐ Suggested${vs}: ${B.icon} ${B.name}</b><div class="dim cond">Why: ${esc(s.why)}.</div></div>
       ${on ? '<span class="good cond">✓ Using it</span>' : `<button class="btn sm hot" data-act="${act}" data-id="${s.id}">Use it</button>`}</div>`;
   const grid = (books, curK, sugK, act) => `<div class="bookgrid">${Object.entries(books).map(([k, B]) => `<button class="bookcard ${curK === k ? 'on' : ''}" data-act="${act}" data-id="${k}"><span class="bk-h">${B.icon} ${B.name}${k === sugK ? ' <span class="bk-star">⭐</span>' : ''}</span><span class="dim">${B.note}</span></button>`).join('')}</div>`;
-  return `<div class="planbox"><div class="row" style="justify-content:space-between"><b>📋 Playbooks</b><span class="dim cond">One offense + one defense, used in every game you sim</span></div>
+  return `<div class="planbox"><div class="row" style="justify-content:space-between"><b>📋 Playbooks ${qtip('playbooks')}</b><span class="dim cond">One offense + one defense, used in every game you sim</span></div>
     <label class="autotog" style="align-self:flex-start"><input type="checkbox" data-auto="book" ${A.book ? 'checked' : ''}>Auto: use both suggested playbooks every game</label>
     ${(() => { const F = abilityFit(L); if(!F.tips.length) return ''; return `<div class="suggest" style="flex-direction:column;align-items:stretch"><b>⚡ Fits your abilities${F.off ? `: ${PLAYBOOKS[F.off].icon} ${PLAYBOOKS[F.off].name}` : ''}${F.def ? `${F.off ? ' + ' : ': '}${DEF_BOOKS[F.def].icon} ${DEF_BOOKS[F.def].name}` : ''}</b>
       <ul class="tradenotes" style="margin:4px 0 0">${F.tips.slice(0, 4).map(x => `<li>${x.icon} ${esc(x.text)}</li>`).join('')}</ul>
@@ -8833,13 +8907,13 @@ function hubPlay(L){
           <details class="panel" style="margin:0"><summary class="cond"><b>👑 What each of the Five can do</b></summary><div class="fivequotes" style="margin-top:6px;border-color:#8fd3ff">${fiveIds(L).map(id => { const X = FIVE[(L.players[id].crown || 1) - 1]; return `<div><b>${X.nick} · ${X.ab}:</b> ${X.abd}</div>`; }).join('')}</div></details>`; })() : ''}
         ${rookieYear(L) ? (() => { const me = L.players[L.avatar], fr = L.friend != null ? L.players[L.friend] : null, U0 = L.teams[L.user], left = Math.max(0, ((L.schedule || []).length || 29) - (U0.w + U0.l));
           return `<div class="uplock" style="background:rgba(80,220,130,.1);box-shadow:inset 0 0 0 1px rgba(80,220,130,.45)">🌱 <b>Rookie year: the grind.</b> You${fr && fr.dev != null ? ' and ' + esc(pname(fr)) : ''} started at ${ROOKIE_OVR} overall, far behind everyone. You are at <b>OVR ${ovr(me)}</b>${fr && fr.dev != null ? ` (${esc(pname(fr))} ${ovr(fr)})` : ''} and gain after every game${L.phase === 'season' ? `: ${left} game${left === 1 ? '' : 's'} left to catch the league's best (OVR ${Math.round(topOvr(L))})` : ''}. Until then the team shares the ball and plays through your best teammate, nobody double-teams you, and your Legend powers have not woken up.${(() => { const rr = L.phase === 'season' ? royRace(L) : []; return rr.length ? `<div style="margin-top:6px">🏅 <b>Rookie of the Year race:</b> ${rr.map((r, i) => `${i + 1}. ${r.me ? '<b>You</b>' : esc(r.who)} ${r.pts} pts`).join(' · ')}</div>` : ''; })()}</div>`; })() : ''}
-        ${!rookieYear(L) && L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you: ${lv >= 2 ? 'SHT −40, DNK −32' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
-        <div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simfeat" ${UI.busy || L.event || featuredGame(L, g) ? 'disabled' : ''} title="Sims ordinary games and stops before a rivalry game, a 3-game skid, or a game that matters for the playoffs">⏭ Sim to next featured game</button><button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
+        ${!rookieYear(L) && L.avatar != null && !L.avatarRetired && L.teams[L.user].roster.includes(L.avatar) ? (() => { const lv = simOpts(L, g).boss || 0; return `<div class="dim cond">👥 They will double-team you ${qtip('double')}: ${lv >= 2 ? 'SHT −40, DNK −32' : lv ? 'SHT −18, DNK −15' : 'SHT −14, DNK −12'} for you, SHT +${lv ? 4 : 3} for every teammate. Use them.</div>`; })() : ''}
+        <div class="dim cond" style="margin:2px 0">How to play this game ${qtip('modes')} · Sim to next featured game ${qtip('featured')}</div><div class="row gamebtns"><button class="btn hot" data-act="simgame" ${UI.busy || L.event ? 'disabled' : ''}>Sim next game</button><button class="btn cool" data-act="game-mode" data-id="play" ${UI.busy || L.event ? 'disabled' : ''}>🎮 Play</button><button class="btn cool" data-act="game-mode" data-id="watch" ${UI.busy || L.event ? 'disabled' : ''}>📺 Watch</button><button class="btn cool" data-act="game-mode" data-id="live" ${UI.busy || L.event ? 'disabled' : ''}>🎙 Quick coach</button>${L.phase === 'season' ? `<button class="btn" data-act="simfeat" ${UI.busy || L.event || featuredGame(L, g) ? 'disabled' : ''} title="Sims ordinary games and stops before a rivalry game, a 3-game skid, or a game that matters for the playoffs">⏭ Sim to next featured game</button><button class="btn" data-act="simseason" ${UI.busy ? 'disabled' : ''}>Sim rest of season</button>` : `<button class="btn" data-act="simplayoffs" ${UI.busy || L.event ? 'disabled' : ''}>Sim the rest of the playoffs</button>`}</div>
         ${scoutLine(L, g)}
         ${stakesPanel(L, g)}
         ${planPanel(L)}
         ${goalsPanel(L)}
-        ${(() => { const R = classReport(L, L.season); return R && R.known && L.phase === 'season' ? `<div class="cond">This year's draft class: ${gradeChip(R.grade)} <span class="dim">${R.conf}. See the Scouting tab.</span></div>` : ''; })()}
+        ${(() => { const R = classReport(L, L.season); return R && R.known && L.phase === 'season' ? `<div class="cond">This year's draft class ${qtip('draft')}: ${gradeChip(R.grade)} <span class="dim">${R.conf}. See the Scouting tab.</span></div>` : ''; })()}
         <!-- game buttons moved up, under the matchup poster -->
         ${UI.busy ? `<div class="dim">${UI.busy}</div>` : ''}
       </div>`;
@@ -9260,7 +9334,7 @@ function hubTrain(L){
 // ----- Economy screens -----
 function goalsPanel(L){
   ensureGoals(L);
-  return `<div><div class="dim cond" style="margin-bottom:4px">Bonus goals for this game</div><div class="goals">${L.goals.map(id => { const G = GOALS.find(g => g.id === id); return `<span class="goal">${G.text(goalNeed(G))} <b class="gold num">+${G.reward}</b></span>`; }).join('')}</div></div>`;
+  return `<div><div class="dim cond" style="margin-bottom:4px">Bonus goals for this game ${qtip('goals')}</div><div class="goals">${L.goals.map(id => { const G = GOALS.find(g => g.id === id); return `<span class="goal">${G.text(goalNeed(G))} <b class="gold num">+${G.reward}</b></span>`; }).join('')}</div></div>`;
 }
 function econPanel(E){
   return `<div class="panel"><div class="row" style="justify-content:space-between"><h3>Coins earned</h3><span class="coins static"><span class="coin"></span><span class="num">+${E.total}</span></span></div>
@@ -9477,12 +9551,12 @@ function bestPairs(L, list, aim, n){
   out.sort((x, y) => y.rank - x.rank || y.pct - x.pct); const seen = new Set();
   return out.filter(o => !seen.has(o.m) && seen.add(o.m)).slice(0, n); }
 function farmOddsHtml(O, A, B, aim){
-  return `<div class="farmodds"><span class="dim">Species</span><span>${oddsList(O.species)}</span>
-    <span class="dim">Rare trait</span><span>${A && B ? rareOddsHtml(A, B, aim) : oddsList(O.rare)}</span>
-    <span class="dim">Attitude</span><span>${oddsList(O.att)}</span>
-    <span class="dim">Potential</span><span><b>${O.pot[0] === O.pot[1] ? O.pot[0] : O.pot[0] + ' to ' + O.pot[1]}</b> out of ${TRAIN_MAX}</span>
-    <span class="dim">Natural talent</span><span><b>${O.tal[0] > 0 ? '+' : ''}${O.tal[0]} to ${O.tal[1] > 0 ? '+' : ''}${O.tal[1]}</b> on every rating</span>
-    <span class="dim">Ratings</span><span>Each rating's strength or weakness comes from one parent or the other.</span></div>`;
+  return `<div class="farmodds"><span class="dim">Species ${qtip('species')}</span><span>${oddsList(O.species)}</span>
+    <span class="dim">Rare trait ${qtip('raretrait')}</span><span>${A && B ? rareOddsHtml(A, B, aim) : oddsList(O.rare)}</span>
+    <span class="dim">Attitude ${qtip('attitude')}</span><span>${oddsList(O.att)}</span>
+    <span class="dim">Potential ${qtip('potential')}</span><span><b>${O.pot[0] === O.pot[1] ? O.pot[0] : O.pot[0] + ' to ' + O.pot[1]}</b> out of ${TRAIN_MAX}</span>
+    <span class="dim">Natural talent ${qtip('nattalent')}</span><span><b>${O.tal[0] > 0 ? '+' : ''}${O.tal[0]} to ${O.tal[1] > 0 ? '+' : ''}${O.tal[1]}</b> on every rating</span>
+    <span class="dim">Ratings ${qtip('ratings')}</span><span>Each rating's strength or weakness comes from one parent or the other.</span></div>`;
 }
 function hubFarm(L){
   const U = L.teams[L.user], E = farmEggs(L), full = E.length >= FARM_NEST;
@@ -9504,7 +9578,7 @@ function hubFarm(L){
     <div style="margin-top:4px"><b>Tip:</b> to get two of the same trait for an Apex, breed your trait creature with one that has no trait on Keep a trait (85% it copies), then breed the two.</div></div></details>`;
   // the eggs waiting in the nest, oldest first, each with its own countdown and its chance of a mutation
   const mutPct = e => { const m = farmOdds(e.snap[0], e.snap[1], e.aim).rare.find(x => x[0].startsWith('🧬')); return m ? m[1] : 0; };
-  const nest = E.length ? `<div class="panel"><h3>Eggs in the nest (${E.length}/${FARM_NEST})</h3>${E.map(e => { const left = eggLeft(L, e); return `<div class="frow"><span style="font-size:26px">🥚</span><span class="tmain"><b>${esc(e.snap[0].name)}</b> × <b>${esc(e.snap[1].name)}</b><br><span class="dim">Hatches after ${left === 1 ? 'your next game' : left + ' more of your games'} · ${FARM_AIMS[aimOf(e.aim)].name} · ${mutPct(e)}% mutation chance${(() => { const m = farmMutation(e.snap[0], e.snap[1], true); return m ? ': 🧬 ' + esc(RARE[m].name) + ' (' + tierOf(m) + ')' : ''; })()}</span></span></div>`; }).join('')}</div>` : '';
+  const nest = E.length ? `<div class="panel"><h3>Eggs in the nest (${E.length}/${FARM_NEST}) ${qtip('nest')}</h3>${E.map(e => { const left = eggLeft(L, e); return `<div class="frow"><span style="font-size:26px">🥚</span><span class="tmain"><b>${esc(e.snap[0].name)}</b> × <b>${esc(e.snap[1].name)}</b><br><span class="dim">Hatches after ${left === 1 ? 'your next game' : left + ' more of your games'} · ${FARM_AIMS[aimOf(e.aim)].name} · ${mutPct(e)}% mutation chance${(() => { const m = farmMutation(e.snap[0], e.snap[1], true); return m ? ': 🧬 ' + esc(RARE[m].name) + ' (' + tierOf(m) + ')' : ''; })()}</span></span></div>`; }).join('')}</div>` : '';
   let main;
   if(full){
     main = `<div class="panel"><h3>The nest is full</h3><p class="dim" style="margin:0">All ${FARM_NEST} spots have an egg. You can breed again as soon as one hatches.</p></div>`;
@@ -9513,7 +9587,7 @@ function hubFarm(L){
     const pair = a && b ? (() => { const cost = farmCost(a, b), short = cost - L.coins;
       return `<div class="farmpair"><img src="${portrait(a, U.color)}" alt=""><span class="x">×</span><img src="${portrait(b, U.color)}" alt=""></div>
         <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">${Object.entries(FARM_AIMS).map(([k, G]) => `<button class="btn sm ${aimOf(L.farmAim) === k ? 'hot' : ''}" data-act="farm-aim" data-id="${k}">${G.name}</button>`).join('')}</div>
-        <div class="dim cond" style="margin-bottom:6px">Goal: ${FARM_AIMS[aimOf(L.farmAim)].desc}</div>
+        <div class="dim cond" style="margin-bottom:6px">Goal ${qtip('goal')}: ${FARM_AIMS[aimOf(L.farmAim)].desc} Breeding cost ${qtip('cost')}</div>
         ${farmOddsHtml(farmOdds(farmSnap(a), farmSnap(b), L.farmAim), farmSnap(a), farmSnap(b), L.farmAim)}
         <div class="row" style="gap:8px"><button class="btn hot" data-act="farm-go" ${short > 0 ? 'disabled' : ''}>🥚 Breed${E.length ? ' another' : ''} · ${cost} coins</button><button class="btn sm" data-act="farm-clear">Clear</button>${short > 0 ? `<span class="dim cond">You need ${short} more coins.</span>` : ''}</div>`; })()
       : `<p class="dim" style="margin:0">${sel.length ? 'Pick one more parent.' : 'Pick two parents from the list.'} The odds for the hatchling show up here before you pay.</p>`;
@@ -9523,7 +9597,7 @@ function hubFarm(L){
     const makes = p => { if(!one || p === one) return ''; const m = pairMut(one, p), pct = mutPctOf(one, p, L.farmAim), t = m ? tierOf(m) : null;
       return `<div class="pairmake ${t && TIER_RANK[t] >= 5 ? 'gold' : ''}">With ${esc(pname(one))}: 🧬 ${m ? `<b>${esc(RARE[m].name)}</b> ${tierChip(m)}` : 'a random Wild trait'} <b>${pct}%</b></div>`; };
     const rows = order.map(p => { const on = sel.includes(p.id), S = SPECIES[p.sp];
-      return `<div class="frow ${on ? 'sel' : ''}">${faceTile(p, U.color)}<span class="tmain"><b>${esc(pname(p))}</b> <span class="dim">${ovr(p)} OVR · ${posLabel(p)} · Pot ${trainOf(p).mind.pot || 0}/${TRAIN_MAX} · Talent ${tal(p)}</span><br>${typeChips(S.types)} ${p.rare ? traitChip(p.rare) : ''} ${attChip(p)}${traitInfo(p.rare)}${makes(p)}</span><button class="btn sm ${on ? 'hot' : ''}" data-act="farm-pick" data-id="${p.id}" ${!on && sel.length >= 2 ? 'disabled' : ''}>${on ? '✓ Picked' : 'Pick'}</button></div>`; }).join('');
+      return `<div class="frow ${on ? 'sel' : ''}">${faceTile(p, U.color)}<span class="tmain"><b>${esc(pname(p))}</b> <span class="dim"><span data-tip="${esc(TIP_TERMS.ovr)}" class="hastip">${ovr(p)} OVR</span> · <span data-tip="${esc(TIP_TERMS.pos)}" class="hastip">${posLabel(p)}</span> · <span data-tip="${esc(TIP_TERMS.pot)}" class="hastip">Pot ${trainOf(p).mind.pot || 0}/${TRAIN_MAX}</span> · <span data-tip="${esc(TIP_TERMS.talent)}" class="hastip">Talent ${tal(p)}</span></span><br>${typeChips(S.types)} ${p.rare ? traitChip(p.rare) : ''} ${attChip(p)}${traitInfo(p.rare)}${makes(p)}</span><button class="btn sm ${on ? 'hot' : ''}" data-act="farm-pick" data-id="${p.id}" ${!on && sel.length >= 2 ? 'disabled' : ''}>${on ? '✓ Picked' : 'Pick'}</button></div>`; }).join('');
     const best = bestPairs(L, pool, L.farmAim, 5);
     const bestHtml = best.length ? `<div class="panel"><h3>Best pairs on your roster</h3><p class="dim cond" style="margin:0 0 4px">The rarest mutation each pair can make, with your current goal's odds.</p>${best.map(o => `<div class="frow"><span class="tmain"><b>${esc(pname(o.a))}</b> × <b>${esc(pname(o.b))}</b><br>🧬 ${esc(RARE[o.m].name)} ${tierChip(o.m)} <b>${o.pct}%</b>${traitInfo(o.m)}</span><button class="btn sm" data-act="farm-pair" data-id="${o.a.id},${o.b.id}">Pick</button></div>`).join('')}</div>` : '';
     main = `<div class="panel"><h3>The pair</h3>${pair}</div>${bestHtml}<div class="panel"><h3>Your roster</h3>${rows}</div>`;
