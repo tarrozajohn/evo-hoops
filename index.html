@@ -1034,6 +1034,9 @@ function storyBonus(p){
 function ratings(p){
   const S = SPECIES[p.sp], f = p.avatar ? 0.80 + p.lvl*0.02 : p.nemesis ? 0.84 + Math.min(p.lvl, 60)*0.012 : 0.80 + p.lvl*0.008, T = trainOf(p).stats, aura = auraTier(p)*2 + (isEternal(p) ? 4 : 0) + (p.gift || 0) - declineOf(p), o = {};   // gift: natural talent from the draft class
   for(const k of STATS) o[k] = clamp(Math.round(S.base[k]*f) + ((p.genes && p.genes[k]) || 0) + ((p.genes && p.genes.tal) || 0) + (p.avatar ? (treeEffects(p).st[k] || 0) : 0) + storyBonus(p) + (T[k] || 0)*2 + (k === 'sta' ? (trainOf(p).phys.end || 0)*3 : 0) + aura + rareBoost(p, k) + attBoost(p, k) + (p.boost || 0) + (p.dev || 0), p.dev != null && !p.nemesis ? 5 : 20,   /* dev: the rookie-year catch-up (v212), see rookieGrow */ p.avatar ? 999 : 99 + Math.round(storyBonus(p)/3));   /* story characters may go a little past 99, so their order still shows at the cap */   // boost = Star treatment   // Endurance training raises STA
+  /* v261: Kaine on your team is at least half as strong as you: each of his ratings is at least half of your Legend's */
+  if(p.nemesis && typeof LEAGUE !== 'undefined' && LEAGUE && kaineAlly(LEAGUE) && LEAGUE.avatar != null && LEAGUE.players && LEAGUE.players[LEAGUE.avatar] && LEAGUE.teams[LEAGUE.user].roster.includes(p.id)){
+    const A = ratings(LEAGUE.players[LEAGUE.avatar]); for(const k of STATS) o[k] = Math.max(o[k], Math.round(A[k]*0.5)); }
   return o;
 }
 /* Badges (your player only, like 2K): 16 badges in 4 groups, each with Bronze, Silver, Gold and Hall of Fame tiers.
@@ -1232,12 +1235,14 @@ const dblStyle = S => S ? { ...S, three:S.three*0.5, jump:S.jump*0.5, drive:S.dr
    (plus one rare archetype each), so they play differently from everyone else:
    CROWN_KIT[n] = { rare, keys } for crown number n (1 Zenith, 2 Mirage, 3 Onyx, 4 Tempest, 5 Colossus, 6 Vex). */
 const CROWN_KIT = [null,
-  { rare:'maestro',    keys:{ vision:true, laser:true, captain:true, handles:true } },   // Zenith: Foresight (the only one of them who can't be stripped)
-  { rare:'sniper',     keys:{ nolimit:true } },                                 // Mirage: No Limit (deadly when open, from anywhere; poor when guarded)
-  { rare:'ballhawk',   keys:{ thiefking:true } },                               // Onyx: Shadow (leads the double team on you)
-  { rare:'juggernaut', keys:{ meteor:true } },                                  // Tempest: Comet (his dunks can be blocked and he can be stripped)
-  { rare:'wall',       keys:{ guardian:true } },                                // Colossus: The Wall
-  { rare:'phenom',     keys:{} } ];                                             // Vex: Prodigy
+  /* v261: each of them has an Apex Mythic trait (was one base trait each). The boosts and signature powers come with it,
+     on their team and on yours once they join you. */
+  { rare:'apex:ballhawk+maestro+sniper',   keys:{ vision:true, laser:true, captain:true, handles:true } },   // Zenith: Apex Deadeye Puppet Master. Foresight (the only one of them who can't be stripped)
+  { rare:'apex:maestro+phenom+sniper',     keys:{ nolimit:true } },        // Mirage: Apex Prime Deadeye Conductor. No Limit (deadly when open, from anywhere; poor when guarded)
+  { rare:'apex:ballhawk+phenom+sniper',    keys:{ thiefking:true } },      // Onyx: Apex Prime Assassin. Shadow (leads the double team on you)
+  { rare:'apex:juggernaut+maestro+phenom', keys:{ meteor:true } },         // Tempest: Apex Prime Wrecking Maestro. Comet (his dunks can be blocked and he can be stripped)
+  { rare:'apex:juggernaut+unicorn+wall',   keys:{ guardian:true } },       // Colossus: Apex Iron Freight Train. The Wall
+  { rare:'apex:ballhawk+phenom+wall',      keys:{} } ];                    // Vex: Apex Prime No-Fly Zone. Prodigy
 const KAINE_FINAL_KEYS = { unstoppable:true, unblockable:true, handles:true, gravity:true };
 function storyKeys(p){ if(p.crown && CROWN_KIT[p.crown]) return CROWN_KIT[p.crown].keys;
   if(p.nemesis && typeof LEAGUE !== 'undefined' && LEAGUE && LEAGUE.kaine && LEAGUE.kaine.ending === 'final') return KAINE_FINAL_KEYS;
@@ -6160,6 +6165,8 @@ function migrate(L){
   if(L.five && !L.five.joined && L.players) L.five.ids.concat(L.five.six != null ? [L.five.six] : []).forEach(id => { const p = L.players[id]; if(p && p.crown){ p.youth = false; p.ultimate = false; } });
   if(L.five && !L.five.joined && L.teams[L.five.tid]){ memoClear(); sortRosterByOvr(L, L.teams[L.five.tid]); L.teams[L.five.tid].star = L.five.ids[0]; }   // v233: Vex moves up to sixth on their roster
   if(!L.fix248){ L.fix248 = true; if(L.five && !L.five.joined && (L.five.edge || 0) >= 230) L.five.edge -= 25; if(L.kaine && L.kaine.final && L.kaine.ending === 'final' && (L.kaine.final.edge || 0) >= 196) L.kaine.final.edge -= 25; }   // v248: the short-lived +150 setting is dialled back to +125
+  if(!L.fix261){ L.fix261 = true; if(L.five && !L.five.joined && L.five.fin !== 2){ const F = L.five; F.edge = Math.max(FIVE_FLOOR, (F.edge || 0) - (F.fin === 1 ? 175 : 180)); if(F.fin === 1 && F.finS == null) F.finS = L.season; }
+    if(L.five) fiveAll(L).forEach(id => { const p = L.players[id]; if(p && p.crown && CROWN_KIT[p.crown]) p.rare = CROWN_KIT[p.crown].rare; }); }   // v261: the Five's Apex Mythic traits
   if(!L.fix260){ L.fix260 = true; Object.values(L.players).forEach(p => { if(p.rare) p.rare = fixRemovedRare(p.rare); }); (L.eggs || []).concat(L.farm ? [L.farm] : []).forEach(e => (e.snap || []).forEach(sn => { if(sn.rare) sn.rare = fixRemovedRare(sn.rare); })); }   // v260: removed v259 traits
   if(!L.fix258){ L.fix258 = true; const F = L.five, K = L.kaine;   /* v258: lower a boss already in progress by the same amount the new numbers dropped */
     if(F && !F.joined && F.fin !== 2) F.edge = Math.max(FIVE_FLOOR, (F.edge || 0) - (F.fin === 1 ? 40 + 195 : 40));   /* the Five alone: -40; the Five and Kaine final: -40 and the final bonus 240 -> 45 */
@@ -7241,7 +7248,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 260;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 261;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -8105,7 +8112,7 @@ const KAINE_FINAL_FLOOR = 65;   /* v258: was 161 */   /* v249: the boss boosts t
      - their double team on your Legend costs you more (-40 shooting, -32 dunking; it was -24 and -20)
      - Ultimates work on them in full, like on anyone: the stun, and the ball coming loose.
      - their passes are intercepted about a third as often. Colossus alone was having 13 passes a game picked off. */
-const FIVE_FLOOR = 155;   /* v258: was 195 */   /* v249: the boss boosts total +115 (v244 had 80) */
+const FIVE_FLOOR = -20;   /* v261: was 155 (195 before v258) */   /* v249: the boss boosts total +115 (v244 had 80) */
 const kaineHunt = L => { const K = L.kaine || {}; return !kaineOff(K) && L.nemesis != null && L.rival != null && L.teams[L.rival] && L.teams[L.rival].roster.includes(L.nemesis) && !L.teams[L.user].roster.includes(L.nemesis); };
 const kaineHuntLive = L => kaineHunt(L) && !!(L.playoffs && (L.playoffs.seeds || []).includes(L.user));   // only once the bracket has you in it
 const stalkTeam = L => kaineFinalOn(L) ? L.rival : vexTeam(L) != null ? vexTeam(L) : fiveOn(L) && !L.five.joined ? L.five.tid : kaineHuntLive(L) ? L.rival : null;
@@ -8538,7 +8545,7 @@ function formFive(L){
   if(vex && !U.roster.includes(vex.id)){ L.teams.forEach(T => { T.roster = T.roster.filter(x => x !== vex.id); }); L.fa = L.fa.filter(x => x !== vex.id); vex.reserved = null;
     const five = ids.slice(); vex.sp = CROWN_SP + 5; crown(vex, 5); ids.length = 0; ids.push(...five); six = vex.id; vex.inj = 0; room(vex);   /* he arrives healthy */ R.roster.push(vex.id); assignNumber(L, R, vex); }
   sortRosterByOvr(L, R); R.star = ids[0];
-  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 225 : (L.heat || 0) >= 50 ? 195 : 170 };   /* v258: 40 lower, about 25% wins for you (was 265/235/210) */   /* v249: starts at 210, 235 or 265 (the boss boosts total +115) */
+  L.five = { tid:R.id, ids, six, third, s:L.season, w:0, l:0, sw:0, sl:0, edge:(L.heat || 0) >= 85 ? 45 : (L.heat || 0) >= 50 ? 15 : -10 };   /* v261: 180 lower, because their Apex Mythic traits made them far stronger (0 wins in 96 at the old 225). About 35% wins for you */   /* v258: 40 lower, about 25% wins for you (was 265/235/210) */   /* v249: starts at 210, 235 or 265 (the boss boosts total +115) */
   memoClear(); sortRosterByOvr(L, R); R.star = ids[0];   // v233: sort again now that L.five exists, because Vex's story rating only counts once it does
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`👑 The Five Crowns: the ${R.name} unveil five generational players, one at every position.`, rival:true, me:true });
   memoClear();
@@ -8582,7 +8589,7 @@ function kaineSkipIntro(L){
   if(!L.five) formFive(L);                                                     // the Five (and Vex as their sixth man) on Kaine's old team
   const F = L.five, R = L.teams[F.tid];
   N.lvl = Math.max(N.lvl || 0, lv); N.xp = xpFor(N.lvl); N.kaineEdge = (N.kaineEdge || 0) + 5;
-  kaineJoinsCrowns(L); F.fin = 1; F.edge = Math.max(F.edge || 0, FIVE_FLOOR) + FIVE_FINAL_EDGE; memoClear(); sortRosterByOvr(L, R); R.star = N.id; memoClear();
+  kaineJoinsCrowns(L); F.fin = 1; F.edge = Math.max(F.edge || 0, FIVE_FLOOR) + FIVE_FINAL_EDGE; F.finS = L.season; memoClear(); sortRosterByOvr(L, R); R.star = N.id; memoClear();
   L.news = L.news || []; L.news.unshift({ s:L.season, r:L.round, t:`Kaine is back, and he brought the Five Crowns and Vex with him to the ${R.name}.`, rival:true, me:true });
   saveLeague(true); M.hidden = false; fanfare(true);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
@@ -8598,11 +8605,11 @@ function kaineSkipIntro(L){
 }
 // Timeline B: the season after you beat the Five with Kaine on your team, he joins them. This is the final boss.
 const kaineCrownDue = L => !!(L.kaine && L.kaine.crownDue && kaineAlly(L) && fiveOn(L) && !L.five.joined);   // a safety net: normally it happens the moment you turn the Five down
-const FIVE_FINAL_EDGE = 45;   /* v258: about 5% wins for you (was 240) */   /* v252: was 40. Ratings only, no special rule. In tests a maxed team won about 2 in 16 at this level, and going higher (500) did not lower that */   // extra rating edge the Five get for the last fight, on top of where their edge already is
+const FIVE_FINAL_EDGE = 50;   /* v261: the Five and Kaine final starts at the Five's edge + 50, about 5% wins for you at first (45 in v258, 240 before) */   /* v252: was 40. Ratings only, no special rule. In tests a maxed team won about 2 in 16 at this level, and going higher (500) did not lower that */   // extra rating edge the Five get for the last fight, on top of where their edge already is
 function kaineCrownIntro(L){
   const K = L.kaine, F = L.five, N = L.players[L.nemesis], U = L.teams[L.user], M = $('#modal'); K.crownDue = false;
   if(!kaineJoinsCrowns(L)){ saveLeague(true); return renderHub(); }
-  const R = L.teams[F.tid]; F.fin = 1; F.edge = Math.max(F.edge || 0, FIVE_FLOOR) + FIVE_FINAL_EDGE; N.kaineEdge = (N.kaineEdge || 0) + 5; memoClear(); sortRosterByOvr(L, R); R.star = N.id; memoClear();
+  const R = L.teams[F.tid]; F.fin = 1; F.edge = Math.max(F.edge || 0, FIVE_FLOOR) + FIVE_FINAL_EDGE; F.finS = L.season; N.kaineEdge = (N.kaineEdge || 0) + 5; memoClear(); sortRosterByOvr(L, R); R.star = N.id; memoClear();
   saveLeague(true); M.hidden = false; fanfare(true);
   M.innerHTML = `<div class="storycard showcard" style="--tc:#ff3344">${SHOW_BEAMS}
     <div class="news-kicker" style="color:#ff8fa3">The final chapter</div><div class="showaward" style="background:linear-gradient(90deg,#ff3344,#ffb0bd,#ff3344);background-size:250% 100%;-webkit-background-clip:text;background-clip:text">SIX CROWNS</div>
@@ -9718,10 +9725,23 @@ function showUltimate(p, done){
    of their own (only the league-wide "heat"). Now they get a small fixed one. The Five and the final fights were
    raised where their numbers are set (FIVE_FLOOR, FIVE_FINAL_EDGE, KAINE_FINAL_FLOOR and the starting edges). */
 const RIVAL_EDGE = 20, VEX_EDGE = 75;   /* v258 targets on a maxed save: rival Kaine about 75% wins for you, Vex about 50% (tested 51% over 192 games). Was 45 and 125 */   /* v249: the boss boosts total +115 (v244 had 5 and 10) */
+/* v261 THE SURGE. Once the final fight starts (Kaine alone, or the Five and Kaine), you grow every season it goes on:
+   season 1 of the final the boss is at full strength, then each new season takes more off its edge. The steps get
+   bigger each season, so the first try is close to hopeless and the 4th or 5th season is close to even.
+   Tested on a maxed save, your chance per game by season of the final (1st, 2nd, 3rd, 4th, 5th):
+     Kaine alone:        about 5%, 15%, 30%, 45%, 60%
+     the Five and Kaine: about 5%, 15%, 30%, 45%, 60%   (see SURGE below for the exact amounts) */
+const SURGE = { solo:[0, 45, 75, 100, 125], crown:[0, 20, 45, 70, 95], five:[0, 15, 30, 45, 60] };   /* five: a smaller surge against the Five Crowns too, by seasons since they arrived */
+const surgeYear = L => { const K = L.kaine, F = L.five;   // 0 in the first season of the final, 1 in the second, ...
+  if(kaineFinalOn(L) && K.final) return Math.max(0, L.season - (K.final.s != null ? K.final.s : L.season));
+  if(F && F.fin === 1) return Math.max(0, L.season - (F.finS != null ? F.finS : L.season));
+  if(F && !F.joined && F.beatS == null) return Math.max(0, L.season - (F.s != null ? F.s : L.season));   // the Five before you first beat them
+  return 0; };
+const surgeEdge = (L, kind) => { const A = SURGE[kind]; return A[Math.min(surgeYear(L), A.length - 1)]; };
 const storyEdge = (L, opp) => vexTeam(L) === opp ? VEX_EDGE : kaineHunt(L) && opp === L.rival ? RIVAL_EDGE : 0;
 function simOpts(L, g){ if(!(g.a === L.user || g.b === L.user)) return {}; const sup = isSuper(L, g.a === L.user ? g.b : g.a), five = isFiveTeam(L, g.a === L.user ? g.b : g.a);   // superteams and the Five Crowns bring extra against you
   const opp0 = g.a === L.user ? g.b : g.a, boss = five || (kaineFinalOn(L) && opp0 === L.rival) ? 2 : vexTeam(L) === opp0 ? 1 : 0;   /* story bosses double you harder: 2 = the Five Crowns and (v250) final-boss Kaine, 1 = Vex's team. v250: Kaine alone moved from 1 to 2 to bring him to about 1 win in 16 for a maxed team. More rating edge no longer changed his results (4-28 at an edge of 100, 130 and 155 alike), the heavier double team did (5-59). */
-  return { boss, rook:rookieYear(L), heat: boss || SET.balance === false ? 0 : Math.round(L.heat || 0), mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : (SET.balance === false ? 0 : Math.round(L.heat || 0)) + storyEdge(L, opp0) }; }   // superteams ignore the balance switch: they're meant to be hard
+  return { boss, rook:rookieYear(L), heat: boss || SET.balance === false ? 0 : Math.round(L.heat || 0), mine: g.a === L.user ? 0 : 1, diff: (SET.diff || 1) + (g.b === L.rival || g.a === L.rival ? 0.12 : 0) + (sup || five ? 0.08 : 0), edge: kaineFinalOn(L) && (g.a === L.rival || g.b === L.rival) ? Math.round((L.heat || 0) + L.kaine.final.edge - surgeEdge(L, 'solo')) : five ? Math.round((L.heat || 0) + (L.five.edge || 0) - surgeEdge(L, L.five.fin === 1 ? 'crown' : 'five') + (sup ? L.era.edge || 0 : 0)) : sup ? Math.round((L.heat || 0) + (L.era.edge || 0)) : (SET.balance === false ? 0 : Math.round(L.heat || 0)) + storyEdge(L, opp0) }; }   // superteams ignore the balance switch: they're meant to be hard
 /* Competitive balance ("the league studies your tape"): after each of your games, L.heat moves toward whatever keeps
    your average winning margin near +7. Blow teams out and opponents get fired up against you (+heat to every rating);
    lose and it cools off. It never goes below 0, so a weak team is never handicapped. */
@@ -11238,7 +11258,10 @@ function playoffLine(L){
 }
 function featuredGame(L, g){
   if(!g || L.phase !== 'season') return null; const opp = g.a === L.user ? g.b : g.a, U = L.teams[L.user];
-  if(isFiveTeam(L, opp)) return { icon:'👑', tag:'Rivalry game', why:`The Five are next. ${L.five.w || 0}-${L.five.l || 0} against them so far.` };
+  // v261: the surge shows here, on the banner for a boss game
+  const surgeTxt = () => { const y = surgeYear(L); return y ? ` Season ${y + 1} against them: you have grown, and the gap is closing.` : ''; };
+  if(isFiveTeam(L, opp)) return { icon:'👑', tag:L.five.fin === 1 ? 'Final boss' : 'Rivalry game', why:`The Five are next. ${L.five.w || 0}-${L.five.l || 0} against them so far.` + surgeTxt() };
+  if(kaineFinalOn(L) && opp === L.rival) return { icon:'🌑', tag:'Final boss', why:`Kaine is next. ${L.kaine.final.w || 0}-${L.kaine.final.l || 0} against him so far.` + surgeTxt() };
   if(opp === vexTeam(L)) return { icon:'⚔️', tag:'Rivalry game', why:`Vex and the ${L.teams[opp].name} are next.` };
   if(opp === L.rival) return { icon:'🔥', tag:'Rivalry game', why:`${L.nemesis != null && L.teams[opp].roster.includes(L.nemesis) ? 'Kaine and the ' : 'Your rivals, the '}${L.teams[opp].name} are next.` };
   const P = playoffLine(L);
