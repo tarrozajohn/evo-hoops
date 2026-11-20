@@ -228,6 +228,16 @@ select{background:var(--panel2);color:var(--text);border:1px solid var(--line);b
 .tierchip{display:inline-block;font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:0 6px;border-radius:999px;color:var(--tc);border:1px solid var(--tc)}
 .oddline{display:flex;gap:8px;align-items:baseline;padding:3px 0;border-top:1px solid rgba(255,255,255,.06)}.oddline:first-child{border-top:0}.oddline>b{min-width:38px}.oddline.mut>b{color:#c69bff}
 .pairmake{font-size:13px;margin-top:3px;padding:2px 6px;border-radius:6px;background:rgba(111,211,255,.08)}.pairmake.gold{background:rgba(255,210,58,.14);box-shadow:inset 0 0 0 1px rgba(255,210,58,.5)}
+.rarechip[data-tier]{text-shadow:none;border-radius:10px}   /* v289: rounded corners instead of a pill, so long names that wrap still look tidy */
+/* v289: each tier has its own color, and gold means Apex: Base is silver, Apex is gold, Fusion is cyan, Mythic is purple,
+   Wild is green. The Apex versions of Fusion and Mythic are their color blended into gold. */
+.rarechip[data-tier="base"]{color:#1a1d26;background:linear-gradient(100deg,#b9c2d4 20%,#f4f7ff 40%,#b9c2d4 60%);background-size:250% 100%;box-shadow:0 0 6px rgba(200,210,235,.4)}
+.rarechip[data-tier="apex"]{color:#2a1a00;background:linear-gradient(100deg,#ffcf4a 20%,#fff6c8 40%,#ffcf4a 60%);background-size:250% 100%;box-shadow:0 0 9px rgba(255,207,74,.6)}
+.rarechip[data-tier="fusion"]{color:#001a26;background:linear-gradient(100deg,#3fd0ff 20%,#c8f3ff 40%,#3fd0ff 60%);background-size:250% 100%;box-shadow:0 0 8px rgba(63,208,255,.5)}
+.rarechip[data-tier="apex-fusion"]{color:#062018;background:linear-gradient(100deg,#3fd0ff 10%,#9ff0e0 30%,#ffd84a 55%,#fff3b8 70%,#3fd0ff 90%);background-size:250% 100%;box-shadow:0 0 10px rgba(255,216,74,.55),0 0 6px rgba(63,208,255,.5)}
+.rarechip[data-tier="mythic"]{color:#fff;background:linear-gradient(100deg,#7b3cff 15%,#c9a2ff 35%,#ff4fd8 55%,#7b3cff 75%);background-size:250% 100%;box-shadow:0 0 12px rgba(160,90,255,.7);text-shadow:0 1px 2px rgba(40,0,80,.6)}
+.rarechip[data-tier="apex-mythic"]{color:#fff;background:linear-gradient(100deg,#7b3cff 0%,#ff4fd8 22%,#ffcf4a 45%,#fff3b8 55%,#ffcf4a 65%,#a46bff 85%,#7b3cff 100%);background-size:300% 100%;animation-duration:3.5s;box-shadow:0 0 14px rgba(255,200,80,.7),0 0 10px rgba(160,90,255,.6);text-shadow:0 1px 2px rgba(40,0,60,.75)}
+.rarechip[data-tier="wild"]{color:#0b2210;background:linear-gradient(100deg,#7be06a 20%,#e3ffd6 40%,#7be06a 60%);background-size:250% 100%;box-shadow:0 0 8px rgba(123,224,106,.5)}
 .rarechip{display:inline-block;font-family:var(--cond);font-weight:700;font-size:12px;letter-spacing:.05em;padding:1px 8px;border-radius:999px;color:#2a1a00;background:linear-gradient(100deg,#ffcf4a 20%,#fff6c8 40%,#ffcf4a 60%);background-size:250% 100%;animation:rareshine 2.5s linear infinite;box-shadow:0 0 8px rgba(255,207,74,.45)}
 @keyframes rareshine{to{background-position:-250% 0}}
 select[data-style]{padding:5px 8px;font-size:14px;max-width:100%}
@@ -7178,6 +7188,7 @@ function tipScan(root){
   if(!RARE_BY_NAME){ RARE_BY_NAME = {}; for(const k in RARE) RARE_BY_NAME[RARE[k].name] = k; }
   const set = (el, t) => { if(t && !el.dataset.tip) el.dataset.tip = t; };
   root.querySelectorAll('.rarechip').forEach(el => { const k = RARE_BY_NAME[el.textContent.replace(/^★\s*/, '').trim()];
+    if(k && !el.dataset.tier) el.dataset.tier = tierOf(k).toLowerCase().replace(/\s+/g, '-');   // v289: its color comes from its tier
     if(k) set(el, BASE_RARE.includes(k) && RARE[k].desc ? `${RARE[k].name} (Base): ${RARE[k].desc}` : `${RARE[k].name} (${tierOf(k)}): ${boostWords(k)}. ${powersOf(k)}.`); });   // base traits: their own description says it best
   root.querySelectorAll('.tierchip').forEach(el => set(el, TIER_TIP[el.textContent.trim()]));
   root.querySelectorAll('.chip').forEach(el => { const T = TYPES[el.textContent.trim()]; if(T) set(el, `${el.textContent.trim()} element: beats ${T.beats.join(' and ')} (${T.why}). That means about 5% better odds on shots, steals, interceptions and blocks against them.`); });
@@ -7520,7 +7531,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 288;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 289;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -9767,7 +9778,7 @@ function farmHatch(L, now){
 const oddsList = list => list.map(([n, pct]) => `${esc(n)} <b>${pct}%</b>`).join(' · ');
 /* v265 farm quality of life. Every trait shows its tier and what it does, and the odds are split into lines. */
 const TIER_RANK = { Base:1, Wild:1, Apex:2, Fusion:3, 'Apex Fusion':4, Mythic:5, 'Apex Mythic':6 };   // higher = rarer and stronger
-const TIER_COL = { Base:'#9fb3d9', Wild:'#7be0a0', Apex:'#ffb347', Fusion:'#6fd3ff', 'Apex Fusion':'#ff8a5c', Mythic:'#c69bff', 'Apex Mythic':'#ffd23a' };
+const TIER_COL = { Base:'#c4cde0', Wild:'#7be06a', Apex:'#ffcf4a', Fusion:'#3fd0ff', 'Apex Fusion':'#9ff0e0', Mythic:'#c69bff', 'Apex Mythic':'#ffb8f0' };   // v289: matches the trait chip colors
 /* v287: how strong a trait is, for every suggestion: the number of base traits in it counts most (a 4-trait Mythic beats
    any 3-trait one, even an Apex), then Apex on top. Wild traits are the lowest. */
 const traitPower = k => !k || !RARE[k] ? 0 : rareParts(k).length*10 + (/^apex:|^(\w+)\+\1$/.test(k) ? 5 : 0) + (WILD_RARE.includes(k) ? 1 : 0);
