@@ -1911,6 +1911,7 @@ function tickEnergy(G, dt){
     // Legend passive: whoever is in front of you (closest opponent within 6 ft) slowly loses ratings to you
     // Phoenix: while your team trails and you are on the floor, teammates drain too (using your Legend's range, speed and strength)
     const lead = e.avatar ? (G.rook ? null : e) : phoenixLeader(G, e.team);   // rookie year: the Legend drain has not woken up yet
+    e.drainOn = null;   // v294: who you're draining right now (for the beam on screen); cleared every frame, set below
     if(lead){
       if(e.legT == null) e.legT = 0;
       if(e.legendGain == null) e.legendGain = 0;
@@ -1919,9 +1920,13 @@ function tickEnergy(G, dt){
       if(o){
         e.legT += dt;
         const cap = legendCap(lead)*(e.avatar ? 1 : 0.5);   // most it can steal in one game (teammates on Phoenix get half)
+        const every = hasKey(lead, 'hunger') ? 4 : 6;
+        if(e.legendGain < cap){ e.drainOn = o; e.drainK = Math.min(1, e.legT/every); }   // v294: target and how close the next tick is (0 to 1)
+        e.drainCap = cap; e.drainCol = e.avatar ? (e.legendary ? '#ffd23a' : '#c79bff') : '#ff8a3d';
         if(e.legT >= (hasKey(lead, 'hunger') ? 4 : 6) && e.legendGain < cap){
           const amt = Math.min(lead.legendary ? 2 : 1, cap - e.legendGain);   // the Legendary aura doubles the drain
           e.legT = 0; e.legendGain += amt;
+          e.drainHit = { t:G.t, vic:o, amt };   // v294: a tick just landed (flash the beam and pop the numbers)
           for(const k of STATS) for(let n = 0; n < amt; n++) if(o.r[k] > 20 && (e.avatar || e.r[k] < 99)){
             o.r[k]--; e.r[k]++;
             if(!e.avatar){   // Phoenix drain is temporary: remember it so it can be handed back
@@ -7604,7 +7609,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 293;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 294;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
@@ -11403,6 +11408,56 @@ function bDrawEnt(ctx, V, G, LV, e){
 
 // Name plates under each player: jersey number and first name in the team color ("YOU" for your Legend).
 // Follows the Name tags setting: everyone, your team only, or off.
+/* v294: show the Legend drain so you can tell it's working.
+   - a beam of energy flows from the opponent you're draining into you, brighter as the next tick gets closer
+   - a ring at your feet fills up until the next tick (every 6 s, or 4 s with Legend's Hunger)
+   - when a tick lands: the beam flashes, "+1 ALL" (and your total so far, like 3/8) pops over you, "−1" over them
+   - when you've taken the most you can this game, "DRAIN MAXED" shows once and the beam stops
+   Purple is your drain, gold once you're Legendary, orange for teammates during Phoenix. */
+function drawDrain(ctx, G, P, u){
+  const t = G.t;
+  ctx.save(); ctx.lineCap = 'round';
+  for(const e of G.ents){
+    const col = e.drainCol || '#c79bff', hit = e.drainHit && t - e.drainHit.t < 1.1 ? e.drainHit : null;
+    const o = e.drainOn || (hit && hit.vic);   // keep the beam up during the flash, even if it just maxed out
+    if(o){
+      const a = P(o.x, o.y, 4), b = P(e.x, e.y, 4), k = e.drainOn ? e.drainK || 0 : 1, flash = hit ? 1 - (t - hit.t)/1.1 : 0;
+      const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, nx = -dy/d, ny = dx/d;
+      // three wavy strands between you and them
+      for(let s = 0; s < 3; s++){
+        ctx.globalAlpha = Math.min(1, 0.4 + 0.4*k + 0.6*flash); ctx.strokeStyle = s ? col : '#ffffff'; ctx.lineWidth = u*(s ? 0.3 : 0.12)*(1 + flash*1.2);
+        ctx.beginPath();
+        for(let i = 0; i <= 16; i++){ const f = i/16, w = Math.sin(f*Math.PI)*Math.sin(f*9 - t*8 + s*2.1)*u*0.45*(s ? 1 : 0.4);
+          const x = a.x + dx*f + nx*w, y = a.y + dy*f + ny*w; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+        ctx.stroke(); }
+      // orbs flowing from them into you
+      ctx.fillStyle = col;
+      for(let i = 0; i < 5; i++){ const f = ((t*0.9 + i/5) % 1); ctx.globalAlpha = Math.sin(f*Math.PI)*(0.5 + 0.5*k);
+        ctx.beginPath(); ctx.arc(a.x + dx*f, a.y + dy*f, u*(0.25 + 0.12*k), 0, Math.PI*2); ctx.fill(); }
+      // the opponent being drained gets a dim ring
+      const of = P(o.x, o.y, 0); ctx.globalAlpha = 0.45 + 0.3*flash; ctx.strokeStyle = '#ff4d6a'; ctx.lineWidth = u*0.12;
+      ctx.beginPath(); ctx.ellipse(of.x, of.y, u*1.3, u*0.55, 0, 0, Math.PI*2); ctx.stroke();
+    }
+    // charge ring at your feet: fills clockwise until the next tick
+    if(e.drainOn){ const f = P(e.x, e.y, 0); ctx.globalAlpha = 0.35; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = u*0.28;
+      ctx.beginPath(); ctx.ellipse(f.x, f.y, u*1.6, u*0.7, 0, 0, Math.PI*2); ctx.stroke();
+      ctx.globalAlpha = 0.95; ctx.strokeStyle = col; ctx.lineWidth = u*0.2;
+      ctx.beginPath(); ctx.ellipse(f.x, f.y, u*1.6, u*0.7, 0, -Math.PI/2, -Math.PI/2 + Math.PI*2*(e.drainK || 0)); ctx.stroke(); }
+    // always-on counter over your player once the drain has started: "⚡ 6/14", or "⚡ MAX" when you can't take more this game
+    if(e.avatar && e.drainCap && (e.legendGain || e.drainOn) && !hit){ const f = P(e.x, e.y, 9.5), full = e.legendGain >= e.drainCap, txt = full ? '⚡ MAX ' + e.legendGain : `⚡ ${e.legendGain}/${e.drainCap}`;
+      ctx.globalAlpha = 0.95; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `800 ${Math.round(u*0.9)}px system-ui, sans-serif`;
+      const w = ctx.measureText(txt).width + u*0.8, h = u*1.25; ctx.fillStyle = 'rgba(10,8,30,.8)'; ctx.beginPath(); ctx.roundRect(f.x - w/2, f.y - h/2, w, h, h/2); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.5, u*0.1); ctx.stroke(); ctx.fillStyle = col; ctx.fillText(txt, f.x, f.y + u*0.04); }
+    // the numbers when a tick lands
+    if(hit){ const k = (t - hit.t)/1.1, full = e.legendGain >= (e.drainCap || 99);
+      ctx.globalAlpha = k < 0.7 ? 1 : (1 - k)/0.3; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = Math.max(3, u*0.3); ctx.strokeStyle = 'rgba(0,0,0,.85)';
+      ctx.font = `900 ${Math.round(u*1.25)}px system-ui, sans-serif`;
+      const me = P(e.x, e.y, 9 + k*3), txt = full ? 'DRAIN MAXED' : `+${hit.amt} ALL · ${e.legendGain}/${e.drainCap}`;
+      ctx.strokeText(txt, me.x, me.y); ctx.fillStyle = col; ctx.fillText(txt, me.x, me.y);
+      if(hit.vic){ const v = P(hit.vic.x, hit.vic.y, 8 + k*3); ctx.strokeText(`−${hit.amt}`, v.x, v.y); ctx.fillStyle = '#ff4d6a'; ctx.fillText(`−${hit.amt}`, v.x, v.y); } }
+  }
+  ctx.restore();
+}
 function bDrawTags(ctx, V, G, LV){
   if(SET.tags === 'off') return;
   const fs = Math.round(Math.max(11*V.k, clamp(V.ppf*0.62, 13, 20)));   // at least 11 pixels tall on screen
@@ -11574,6 +11629,7 @@ function drawBroadcast(LV, cv){
   HOOPS.forEach((h, i) => items.push({ y:24.99, f:() => bDrawHoop(ctx, V, h, G, i) }));
   const b = G.ball; items.push({ y:(b.state === 'held' && b.holder ? b.holder.y : b.y) + 0.02, f:() => bDrawBall(ctx, V, G, LV) });
   items.sort((a, c) => a.y - c.y).forEach(i => i.f());
+  drawDrain(ctx, G, (x, y, z) => bproj(V, x, y, z), V.ppf);   // v294: Legend drain beam, charge ring and numbers
   bDrawTags(ctx, V, G, LV);
   bDrawParts(ctx, V, G, false);   // sparks, confetti and embers in the air
   if(G.shock){   // dunk shockwave rings blasting out from the rim
@@ -11671,6 +11727,7 @@ function watchDraw(){
     // energy under your players
     if(e.team === G.mine){ ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(x - 18, y + 24, 36, 6); ctx.fillStyle = e.energy < 45 ? '#ff4d5e' : e.energy < 70 ? '#ffc63a' : '#3fe08a'; ctx.fillRect(x - 18, y + 24, 36*e.energy/100, 6); }
   }
+  drawDrain(ctx, G, (x, y, z) => ({ x:x*s, y:y*s - z*s*0.45 }), s*1.4);   // v294: Legend drain on the overhead view too
   // the ball: follows the holder, rises with its height
   const bx = (b.state === 'held' && b.holder ? b.holder.x + 1.2*dirOf(b.holder.team) : b.x)*s, by = (b.state === 'held' && b.holder ? b.holder.y : b.y)*s, bz = (b.z || 0)*s*0.45;
   ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(bx, by + 3, 9, 4, 0, 0, Math.PI*2); ctx.fill();
