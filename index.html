@@ -1866,6 +1866,7 @@ const softRating = r => r <= 85 ? r : 85 + 30*(1 - Math.exp(-(r - 85)/30));
 function rateFor(e, slot){ const R = rateRaw(e, slot); for(const k in R) R[k] = Math.round((softRating(R[k]) + (e.edge || 0) + ((e.cmod && e.cmod[k]) || 0) + ((e.dbl && e.dbl[k]) || 0) - vetPenalty(e.p))*10)/10;   /* dbl: the double team on your Legend (v199) */ /* cmod: live coaching calls, added after the leveling-off so they always bite */ return R; }   // edge: competitive-balance boost, added after the leveling-off
 function rateRaw(e, slot){ const R = posRatings(e.p, slot); if(e.planDef) for(const k in e.planDef) R[k] = Math.max(20, R[k] + e.planDef[k]); if(e.star) for(const k in R) R[k] = e.avatar ? R[k] + STAR_BUFF : Math.min(99, R[k] + STAR_BUFF); if(e.mood) for(const k in R) R[k] = Math.max(20, R[k] + e.mood); if(e.rb) for(const k in e.rb) R[k] = Math.max(20, R[k] + e.rb[k]); return R; }
 // Legend passive ceiling per game, now only used for teammates' Phoenix drain (half of this). Your own drain has no limit (v296).
+const KAINE_DRAIN_CAP = 10;   // v297: the most Kaine can drain in one game when he's on your team (1 point every 6 s, so he's done in about a minute on the floor)
 function legendCap(e){ return 8 + (hasKey(e, 'hunger') ? 4 : 0) + (e.legendary ? 6 : 0); }
 // Phoenix keystone: returns your Legend if this team has one with Phoenix on the floor and the team is behind, else null.
 // The first time each trailing stretch starts, it announces itself once.
@@ -1910,7 +1911,10 @@ function tickEnergy(G, dt){
     }
     // Legend passive: whoever is in front of you (closest opponent within 6 ft) slowly loses ratings to you
     // Phoenix: while your team trails and you are on the floor, teammates drain too (using your Legend's range, speed and strength)
-    const lead = e.avatar ? (G.rook ? null : e) : phoenixLeader(G, e.team);   // rookie year: the Legend drain has not woken up yet
+    /* v297: Kaine gets his own Legend drain, but only while he's on YOUR team (Brothers in Arms). It has a per-game
+       limit (KAINE_DRAIN_CAP), unlike yours. When he plays against you he doesn't drain. */
+    const allyKaine = e.nemesis && G.mine != null && e.team === G.mine;
+    const lead = e.avatar ? (G.rook ? null : e) : allyKaine ? e : phoenixLeader(G, e.team);   // rookie year: the Legend drain has not woken up yet
     e.drainOn = null;   // v294: who you're draining right now (for the beam on screen); cleared every frame, set below
     if(lead){
       if(e.legT == null) e.legT = 0;
@@ -1919,17 +1923,20 @@ function tickEnergy(G, dt){
       for(const x of G.ents){ if(x.team === e.team) continue; const d = hyp(x.x - e.x, x.y - e.y); if(d < od){ od = d; o = x; } }
       if(o){
         e.legT += dt;
-        const cap = e.avatar ? Infinity : legendCap(lead)*0.5;   // v296: your own drain has no limit; teammates' temporary Phoenix drain keeps its per-game limit
+        // v296: your own drain has no limit. v297: Kaine (on your team) is capped for the whole game, even across trips to the bench,
+        // so his total is kept on the game (G.kaineGain) rather than on him. Teammates' temporary Phoenix drain keeps its per-game limit.
+        if(allyKaine) e.legendGain = G.kaineGain || 0;
+        const cap = e.avatar ? Infinity : allyKaine ? KAINE_DRAIN_CAP : legendCap(lead)*0.5;
         const every = hasKey(lead, 'hunger') ? 4 : 6;
         if(e.legendGain < cap){ e.drainOn = o; e.drainK = Math.min(1, e.legT/every); }   // v294: target and how close the next tick is (0 to 1)
-        e.drainCap = cap; e.drainCol = e.avatar ? (e.legendary ? '#ffd23a' : '#c79bff') : '#ff8a3d';
+        e.drainCap = cap; e.drainCol = e.avatar ? (e.legendary ? '#ffd23a' : '#c79bff') : allyKaine ? '#ff3b5c' : '#ff8a3d';   // Kaine's orbs are crimson
         if(e.legT >= (hasKey(lead, 'hunger') ? 4 : 6) && e.legendGain < cap){
           const amt = Math.min(lead.legendary ? 2 : 1, cap - e.legendGain);   // the Legendary aura doubles the drain
-          e.legT = 0; e.legendGain += amt;
+          e.legT = 0; e.legendGain += amt; if(allyKaine) G.kaineGain = e.legendGain;
           e.drainHit = { t:G.t, vic:o, amt };   // v294: a tick just landed (flash the beam and pop the numbers)
           for(const k of STATS) for(let n = 0; n < amt; n++) if(o.r[k] > 20 && (e.avatar || e.r[k] < 99)){
             o.r[k]--; e.r[k]++;
-            if(!e.avatar){   // Phoenix drain is temporary: remember it so it can be handed back
+            if(!e.avatar && !allyKaine){   // Phoenix drain is temporary: remember it so it can be handed back (Kaine's own drain is his to keep this game)
               e.phxGain = e.phxGain || {}; e.phxGain[k] = (e.phxGain[k] || 0) + 1;
               o.phxLost = o.phxLost || {}; o.phxLost[k] = (o.phxLost[k] || 0) + 1;
             }
@@ -7609,7 +7616,7 @@ function treeBigList(A, pts){
     <div class="panel tlist"><h3 style="margin:0">◆ Keystones <span class="dim cond" style="font-size:14px">${keyCount(A)} of ${Object.values(TREE.N).filter(n => n.type === 'key').length} taken · no limit</span></h3>${keyList}${otherKeys}
     <div class="dim cond" style="margin-top:6px">Version ${GAME_VER}.</div></div>`;
 }
-const GAME_VER = 296;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
+const GAME_VER = 297;   // shown on the skill tree and in the menu, so you can tell which version your phone loaded
 const TREE_COL = { fin:'#ff7a3d', sht:'#3fd0ff', ply:'#4fdc8a', def:'#b57bff' };
 function initTree(){
   const cv = $('#treecv'); if(!cv) return;
